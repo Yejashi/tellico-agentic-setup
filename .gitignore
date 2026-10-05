@@ -1,0 +1,11 @@
+# Credentials and machine-local settings must never enter this repository.
+api-key
+client.env
+*.tmp
+*.log
+
+# Editor and operating-system noise.
+.DS_Store
+*.swp
+*.swo
+*~

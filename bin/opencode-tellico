@@ -1,0 +1,63 @@
+#!/bin/sh
+set -eu
+
+config_home=${XDG_CONFIG_HOME:-"$HOME/.config"}
+client_config="$config_home/tellico-qwen/opencode.json"
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+tunnel_command="$script_dir/tellico-qwen-tunnel"
+node=0
+
+usage() {
+  cat <<'EOF'
+usage: opencode-tellico [0|1] [OPENCODE_ARGS...]
+
+Starts OpenCode with dual-node Tellico orchestration. The optional 0 or 1
+selects the lead model; both node-pinned workers remain available.
+
+examples:
+  opencode-tellico 0
+  opencode-tellico 1 /path/to/project
+  opencode-tellico 0 run 'Review this repository'
+EOF
+}
+
+case ${1:-} in
+  0|1)
+    node=$1
+    shift
+    ;;
+  -h|--help)
+    usage
+    exit 0
+    ;;
+esac
+
+if ! command -v opencode >/dev/null 2>&1; then
+  echo 'opencode-tellico: opencode is not installed or not on PATH' >&2
+  echo 'Install it from https://opencode.ai/docs/ and rerun this command.' >&2
+  exit 1
+fi
+
+if [ ! -r "$client_config" ]; then
+  echo "opencode-tellico: missing $client_config" >&2
+  echo 'Rerun install.sh from the tellico-agentic-setup repository.' >&2
+  exit 1
+fi
+
+if ! "$tunnel_command" start >/dev/null; then
+  "$tunnel_command" status >&2 || true
+  exit 1
+fi
+
+model="tellico-${node}/qwen3.8-27b"
+lead_agent="orchestrate-tellico-${node}"
+runtime_config="{\"model\":\"${model}\",\"small_model\":\"${model}\",\"default_agent\":\"${lead_agent}\",\"agent\":{\"compaction\":{\"model\":\"${model}\"},\"summary\":{\"model\":\"${model}\"},\"title\":{\"model\":\"${model}\"}}}"
+
+if [ "${1:-}" = run ]; then
+  shift
+  exec env OPENCODE_CONFIG="$client_config" OPENCODE_CONFIG_CONTENT="$runtime_config" \
+    opencode run --model "$model" "$@"
+fi
+
+exec env OPENCODE_CONFIG="$client_config" OPENCODE_CONFIG_CONTENT="$runtime_config" \
+  opencode --model "$model" "$@"
