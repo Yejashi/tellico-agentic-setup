@@ -51,13 +51,18 @@ ssh tellico hostname
 ## Install
 
 ```bash
-git clone https://github.com/Yejashi/tellico-agentic-setup.git
+git clone git@github.com:Yejashi/tellico-agentic-setup.git
 cd tellico-agentic-setup
 ./install.sh
 ```
 
-For an SSH-authenticated GitHub checkout, use
-`git@github.com:Yejashi/tellico-agentic-setup.git` instead.
+The repository is private, so the new device must first be authenticated to
+GitHub. An HTTPS checkout also works when Git credential authentication is
+configured:
+
+```bash
+git clone https://github.com/Yejashi/tellico-agentic-setup.git
+```
 
 If the SSH host or alias is not `tellico`:
 
