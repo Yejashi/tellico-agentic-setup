@@ -207,6 +207,14 @@ layer, so the device's normal providers and settings remain available. Runtime
 overrides pin title, summary, compaction, lead, and worker calls to Tellico for
 the launched session.
 
+OpenCode v2 serves plain `opencode` invocations from a shared background
+service that was started without `OPENCODE_CONFIG`, which makes it ignore that
+variable and report `Model unavailable: tellico-0/qwen3.8-27b`. So
+`opencode-tellico` passes `--standalone`, giving the session its own server
+that does read the config. The flag is used only when the installed OpenCode
+advertises it, so older versions without a background service are unaffected.
+Force the choice with `TELLICO_OPENCODE_STANDALONE=1` or `=0`.
+
 ## Allocation lifecycle
 
 The two model servers exist only while the Tellico Slurm allocation is active.

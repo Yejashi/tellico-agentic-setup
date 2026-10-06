@@ -197,9 +197,12 @@ fi
 
 servers_ready=true
 if [ "$start_client" = true ]; then
-  echo 'Validating the merged OpenCode provider configuration...'
-  OPENCODE_CONFIG="$config_dir/opencode.json" opencode models tellico-0 >/dev/null
-  OPENCODE_CONFIG="$config_dir/opencode.json" opencode models tellico-1 >/dev/null
+  echo 'Checking the installed OpenCode provider configuration...'
+  if ! tellico_check_config "$config_dir/opencode.json"; then
+    echo 'install: the installed OpenCode configuration is not usable' >&2
+    echo 'Rerun install.sh from a clean checkout of this repository.' >&2
+    exit 1
+  fi
 
   # A missing allocation is a cluster state, not an installation failure.
   "$bin_dir/tellico-qwen-tunnel" restart || servers_ready=false

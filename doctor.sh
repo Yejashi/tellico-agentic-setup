@@ -73,12 +73,24 @@ fi
 
 # Only meaningful once the commands exist.
 path_warning=false
+config_failed=false
 if [ -r "$config_dir/opencode.json" ]; then
   if tellico_bin_on_path; then
     tellico_status_line path OK "$HOME/.local/bin on PATH"
   else
     tellico_status_line path WARN "$HOME/.local/bin not on PATH"
     path_warning=true
+  fi
+
+  if tellico_check_config "$config_dir/opencode.json" 2>/dev/null; then
+    if [ -n "$(tellico_opencode_standalone_flag)" ]; then
+      tellico_status_line config OK 'both providers present, --standalone'
+    else
+      tellico_status_line config OK 'both providers present, shared service'
+    fi
+  else
+    tellico_status_line config FAIL 'providers missing from opencode.json'
+    config_failed=true
   fi
 fi
 
@@ -87,6 +99,18 @@ tellico_preflight || status=1
 
 if [ "$status" -eq 0 ]; then
   tellico_check_allocation || status=1
+fi
+
+if [ "$config_failed" = true ]; then
+  cat <<EOF
+
+Next step: $config_dir/opencode.json does not declare both node providers.
+Reinstall it from a clean checkout:
+
+    ./install.sh
+
+EOF
+  status=1
 fi
 
 if [ -n "$missing" ]; then

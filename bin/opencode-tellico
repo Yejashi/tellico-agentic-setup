@@ -2,7 +2,9 @@
 set -eu
 
 config_home=${XDG_CONFIG_HOME:-"$HOME/.config"}
-client_config="$config_home/tellico-qwen/opencode.json"
+config_dir="$config_home/tellico-qwen"
+client_config="$config_dir/opencode.json"
+checks="$config_dir/lib/checks.sh"
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 tunnel_command="$script_dir/tellico-qwen-tunnel"
 node=0
@@ -18,6 +20,13 @@ examples:
   opencode-tellico 0
   opencode-tellico 1 /path/to/project
   opencode-tellico 0 run 'Review this repository'
+
+environment:
+  TELLICO_OPENCODE_STANDALONE
+                   Force OpenCode's --standalone flag on (1) or off (0).
+                   Unset, the flag is used when this OpenCode supports it,
+                   because OpenCode's shared background service ignores
+                   OPENCODE_CONFIG.
 EOF
 }
 
@@ -44,6 +53,17 @@ if [ ! -r "$client_config" ]; then
   exit 1
 fi
 
+if [ ! -r "$checks" ]; then
+  echo "opencode-tellico: missing $checks" >&2
+  echo 'Rerun install.sh from the tellico-agentic-setup repository.' >&2
+  exit 1
+fi
+# Installed by install.sh alongside this script.
+# shellcheck disable=SC1090
+. "$checks"
+
+standalone_flag=$(tellico_opencode_standalone_flag)
+
 if ! "$tunnel_command" start >/dev/null; then
   "$tunnel_command" status >&2 || true
   exit 1
@@ -53,11 +73,14 @@ model="tellico-${node}/qwen3.8-27b"
 lead_agent="orchestrate-tellico-${node}"
 runtime_config="{\"model\":\"${model}\",\"small_model\":\"${model}\",\"default_agent\":\"${lead_agent}\",\"agent\":{\"compaction\":{\"model\":\"${model}\"},\"summary\":{\"model\":\"${model}\"},\"title\":{\"model\":\"${model}\"}}}"
 
+# $standalone_flag is one word or empty, so it must stay unquoted.
+# shellcheck disable=SC2086
 if [ "${1:-}" = run ]; then
   shift
   exec env OPENCODE_CONFIG="$client_config" OPENCODE_CONFIG_CONTENT="$runtime_config" \
-    opencode run --model "$model" "$@"
+    opencode run $standalone_flag --model "$model" "$@"
 fi
 
+# shellcheck disable=SC2086
 exec env OPENCODE_CONFIG="$client_config" OPENCODE_CONFIG_CONTENT="$runtime_config" \
-  opencode --model "$model" "$@"
+  opencode $standalone_flag --model "$model" "$@"

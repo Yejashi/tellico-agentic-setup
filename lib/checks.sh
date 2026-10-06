@@ -339,3 +339,66 @@ tellico_bin_on_path() {
     *) return 1 ;;
   esac
 }
+
+# OpenCode v2 runs plain invocations through a shared background service that
+# was started without this client's OPENCODE_CONFIG, so the variable is
+# ignored and the node providers come back as "Model unavailable".
+# --standalone gives the session its own server, which does read the config.
+# OpenCode versions without that background service have no such flag, so
+# probe for it rather than assuming either shape.
+# TELLICO_OPENCODE_STANDALONE=0 or 1 overrides the probe.
+tellico_opencode_standalone_flag() {
+  case ${TELLICO_OPENCODE_STANDALONE:-auto} in
+    1|true|yes|on)
+      echo '--standalone'
+      return 0
+      ;;
+    0|false|no|off)
+      return 0
+      ;;
+  esac
+
+  if opencode --help 2>&1 | grep -q -- '--standalone'; then
+    echo '--standalone'
+  fi
+}
+
+# True when the installed provider configuration declares the providers and
+# model that opencode-tellico will ask for.
+#
+# OpenCode offers no version-stable way to validate a config file:
+# "opencode models" takes no provider argument, reports the background
+# service's providers rather than OPENCODE_CONFIG's, and lists nothing at all
+# under --standalone. So inspect the file directly, using a JSON parser only
+# when the system happens to have one.
+tellico_check_config() {
+  tellico_config=$1
+  tellico_config_ok=true
+
+  if [ ! -s "$tellico_config" ]; then
+    echo "missing or empty: $tellico_config" >&2
+    return 1
+  fi
+
+  for tellico_node in 0 1; do
+    if ! grep -q "\"tellico-$tellico_node\"" "$tellico_config"; then
+      echo "provider tellico-$tellico_node is missing from $tellico_config" >&2
+      tellico_config_ok=false
+    fi
+  done
+
+  if ! grep -q '"qwen3\.8-27b"' "$tellico_config"; then
+    echo "model qwen3.8-27b is missing from $tellico_config" >&2
+    tellico_config_ok=false
+  fi
+
+  if command -v python3 >/dev/null 2>&1; then
+    if ! python3 -c 'import json,sys; json.load(open(sys.argv[1]))' \
+      "$tellico_config" >/dev/null 2>&1; then
+      echo "not valid JSON: $tellico_config" >&2
+      tellico_config_ok=false
+    fi
+  fi
+
+  [ "$tellico_config_ok" = true ]
+}
