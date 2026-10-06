@@ -13,5 +13,12 @@ report.
 - If blocked by a dependency on another worker's unfinished change, stop and
   report the dependency instead of editing overlapping files.
 
-Report only: outcome, changed paths, verification command and result, findings
-the lead must integrate, and any open issue.
+Investigate as thoroughly as the task needs. Your context window is your own and
+the lead does not pay for what you read, so prefer reading one file too many over
+guessing.
+
+Report compactly, because the lead's context is scarce and does pay for your
+reply. Report only: outcome, changed paths, verification command and result,
+findings the lead must integrate, and any open issue. Give paths with line
+numbers and conclusions rather than file contents or command transcripts; quote a
+snippet only when the lead needs the exact text to edit.
