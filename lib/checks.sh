@@ -315,7 +315,10 @@ tellico_check_allocation() {
   tellico_alloc_user=$(printf '%s\n' "$tellico_alloc" | awk '$1 == "user" { print $2 }')
   tellico_alloc_state=$(printf '%s\n' "$tellico_alloc" | awk '$1 == "state" { print $2 }')
   tellico_alloc_ready=$(printf '%s\n' "$tellico_alloc" | grep -c '^ready ' || true)
-  tellico_alloc_total=$(printf '%s\n' $TELLICO_COMPUTE_NODES | grep -c .)
+  # Counted with tr rather than word-splitting an unquoted expansion, which
+  # zsh does not do -- this file is sourced by interactive shells too.
+  tellico_alloc_total=$(printf '%s' "$TELLICO_COMPUTE_NODES" |
+    tr -s ' ' '\n' | grep -c .)
 
   if [ "$tellico_alloc_ready" -eq "$tellico_alloc_total" ]; then
     tellico_status_line allocation OK 'model servers running'

@@ -193,7 +193,19 @@ case ${1:-} in
     echo "Updated $key_file"
     ;;
   cluster-status)
-    exec ssh -o BatchMode=yes "$ssh_host" qwen38-status
+    # qwen38-status lives in the service owner's home directory and is not
+    # readable by other accounts, so report the allocation through the shared
+    # check instead: squeue plus an authenticated probe of each server.
+    checks="$config_dir/lib/checks.sh"
+    if [ ! -r "$checks" ]; then
+      echo "tellico-qwen-tunnel: missing $checks" >&2
+      echo 'Rerun install.sh from the tellico-agentic-setup repository.' >&2
+      exit 1
+    fi
+    # Installed by install.sh alongside this script.
+    # shellcheck disable=SC1090
+    . "$checks"
+    tellico_check_allocation
     ;;
   *)
     usage

@@ -19,7 +19,7 @@
             "field": "reasoning_content"
           },
           "limit": {
-            "context": 262144,
+            "context": 131072,
             "output": 32768
           },
           "options": {
@@ -63,7 +63,7 @@
             "field": "reasoning_content"
           },
           "limit": {
-            "context": 262144,
+            "context": 131072,
             "output": 32768
           },
           "options": {

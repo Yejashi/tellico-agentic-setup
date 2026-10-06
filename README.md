@@ -9,15 +9,28 @@ it only on the client device with mode 0600.
 
 ## Architecture
 
-| OpenCode provider | Cluster node | GPUs | Context | Local endpoint |
-|---|---|---:|---:|---|
-| `tellico-0/qwen3.8-27b` | `tellico-compute0` | 2 x V100 16 GB | 262,144 | `127.0.0.1:18080` |
-| `tellico-1/qwen3.8-27b` | `tellico-compute1` | 2 x V100 16 GB | 262,144 | `127.0.0.1:18081` |
+| OpenCode provider | Cluster node | GPUs | Slots | Context per slot | Local endpoint |
+|---|---|---:|---:|---:|---|
+| `tellico-0/qwen3.8-27b` | `tellico-compute0` | 2 x V100 16 GB | 2 | 131,072 | `127.0.0.1:18080` |
+| `tellico-1/qwen3.8-27b` | `tellico-compute1` | 2 x V100 16 GB | 2 | 131,072 | `127.0.0.1:18081` |
+
+Each server divides one 262,144-token pool across its slots, so slots trade
+context for concurrency at no cost in GPU memory. Four concurrent requests fit
+cluster-wide; beyond that, requests queue. A single OpenCode session can issue
+several at once, because title, summary, compaction, and subagent calls all go
+to the same two servers.
 
 An SSH connection forwards the two private cluster endpoints to localhost.
 OpenCode gets a primary orchestration agent and two node-pinned subagents. For
 parallelizable work, the primary dispatches one bounded task to each server in
 the same Task batch while keeping concurrent write scopes separate.
+
+The cluster side of the service -- the Slurm job, the per-node llama.cpp server
+and the commands that start and inspect them -- lives in
+[qwen38-cluster](https://github.com/Yejashi/qwen38-cluster), and only the
+service owner needs it. The two repositories share the API key path, the port,
+the node names and the per-slot context, so a change to capacity on the cluster
+means a matching change to `config/opencode.json` here.
 
 ## First run
 
@@ -77,10 +90,11 @@ Follow these in order; each step depends on the one before it. Run
    while a Slurm allocation is active:
 
    ```bash
-   ssh tellico qwen38-submit
-   ssh tellico 'qwen38-status --wait'
-   tellico-qwen-tunnel restart
+   tellico-qwen-tunnel cluster-status
    ```
+
+   Only the service owner's account can submit the job. If there is no
+   allocation, ask them to start one, then run `tellico-qwen-tunnel restart`.
 
 ## Installer options
 
@@ -182,6 +196,8 @@ nothing if the profile already sets it. Open a new terminal afterwards.
 
 ## What gets installed
 
+Client side, on each user's own device:
+
 ```text
 ~/.config/tellico-qwen/client.env
 ~/.config/tellico-qwen/lib/checks.sh
@@ -224,16 +240,49 @@ Check it with:
 tellico-qwen-tunnel cluster-status
 ```
 
-When an allocation has expired, submit and wait for another one:
+That check needs no privileged access: it reads the queue with `squeue` and
+probes each server's authenticated `/v1/models`, both of which any cluster
+account may do.
+
+When an allocation has expired, the owner of the service account submits
+another one:
 
 ```bash
 ssh tellico qwen38-submit
 ssh tellico 'qwen38-status --wait'
+```
+
+Everyone else then picks the new servers up with:
+
+```bash
 tellico-qwen-tunnel restart
 ```
 
-Using a custom SSH alias requires replacing `tellico` in the first two commands
-or setting `TELLICO_SSH_HOST` for that shell.
+Using a custom SSH alias requires replacing `tellico` in the submit commands or
+setting `TELLICO_SSH_HOST` for that shell.
+
+### Shared access
+
+The model API key lives in the lab's shared space rather than in the service
+owner's home directory, which is not traversable by other accounts:
+
+```text
+/data/gclab/qwen38/secrets/api-key    mode 0640, group gclab
+```
+
+Any `gclab` member can therefore install this repository under their own
+cluster account with no extra flags. Someone outside that group needs a copy
+they can read, passed with `--remote-key-path`.
+
+These names are defaults, not assumptions. Override them per shell:
+
+```text
+TELLICO_REMOTE_KEY_PATH   Path to the API key on the cluster
+TELLICO_SERVICE_USER      Account that owns the allocation (default: bbogale)
+TELLICO_JOB_NAME          Slurm job name (default: qwen38-api)
+TELLICO_COMPUTE_NODES     Space-separated server hostnames
+TELLICO_MODEL_PORT        Port the servers listen on (default: 8000)
+```
 
 ## Update
 
@@ -259,3 +308,6 @@ remove OpenCode, SSH configuration, any cluster files, or a PATH line added by
 - No API key is written into OpenCode JSON or the systemd unit.
 - The repository contains no private credentials and can safely be cloned.
 - Access still requires both Tellico SSH authorization and the cluster API key.
+- The API key is shared by every user, so it identifies the service rather than
+  the caller. `llama-server --api-key-file` accepts one key per line, so moving
+  to per-user keys is the way to get revocation and attribution.
