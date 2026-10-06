@@ -73,6 +73,10 @@ model="tellico-${node}/qwen3.8-27b"
 lead_agent="orchestrate-tellico-${node}"
 runtime_config="{\"model\":\"${model}\",\"small_model\":\"${model}\",\"default_agent\":\"${lead_agent}\",\"agent\":{\"compaction\":{\"model\":\"${model}\"},\"summary\":{\"model\":\"${model}\"},\"title\":{\"model\":\"${model}\"}}}"
 
+# OpenCode's interactive command takes no --model (v2.0.24 rejects the flag
+# outright), so the lead model and agent reach the session through
+# $runtime_config. "opencode run" does accept it, and passing it there keeps a
+# non-interactive run from depending on config precedence alone.
 # $standalone_flag is one word or empty, so it must stay unquoted.
 # shellcheck disable=SC2086
 if [ "${1:-}" = run ]; then
@@ -83,4 +87,4 @@ fi
 
 # shellcheck disable=SC2086
 exec env OPENCODE_CONFIG="$client_config" OPENCODE_CONFIG_CONTENT="$runtime_config" \
-  opencode $standalone_flag --model "$model" "$@"
+  opencode $standalone_flag "$@"
