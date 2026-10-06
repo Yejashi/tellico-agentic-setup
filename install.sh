@@ -5,7 +5,7 @@ script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 ssh_host=${TELLICO_SSH_HOST:-tellico}
 port0=${TELLICO_QWEN_PORT0:-18080}
 port1=${TELLICO_QWEN_PORT1:-18081}
-remote_key_path=${TELLICO_REMOTE_KEY_PATH:-/home/bbogale/qwen38-cluster/secrets/api-key}
+remote_key_path=${TELLICO_REMOTE_KEY_PATH:-/data/gclab/qwen38/secrets/api-key}
 start_client=true
 fix_path=false
 
@@ -19,7 +19,7 @@ Installs the Tellico OpenCode client for the current user.
   --ssh-host HOST  SSH hostname or config alias (default: tellico)
   --remote-key-path PATH
                    Path to the model API key on the cluster
-                   (default: /home/bbogale/qwen38-cluster/secrets/api-key).
+                   (default: /data/gclab/qwen38/secrets/api-key).
                    Set this when connecting under your own cluster account.
   --port0 PORT     Local port for tellico-compute0 (default: 18080)
   --port1 PORT     Local port for tellico-compute1 (default: 18081)

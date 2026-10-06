@@ -4,8 +4,19 @@
 # ssh_host before calling anything here. Every other value has a default that
 # an environment variable can override.
 
-: "${TELLICO_REMOTE_KEY_PATH:=/home/bbogale/qwen38-cluster/secrets/api-key}"
+# The key lives in the lab's shared space rather than the service owner's
+# home directory, which is not traversable by other accounts.
+: "${TELLICO_REMOTE_KEY_PATH:=/data/gclab/qwen38/secrets/api-key}"
 : "${TELLICO_CONNECT_TIMEOUT:=15}"
+
+# Who owns the Slurm allocation, and what the service job is called. Used to
+# read the queue, which any account on the cluster may do.
+: "${TELLICO_SERVICE_USER:=bbogale}"
+: "${TELLICO_JOB_NAME:=qwen38-api}"
+
+# Where the model servers answer, from the cluster's own network.
+: "${TELLICO_COMPUTE_NODES:=tellico-compute0 tellico-compute1}"
+: "${TELLICO_MODEL_PORT:=8000}"
 
 tellico_status_line() {
   printf '  %-12s %-5s %s\n' "$1" "$2" "$3"
@@ -203,12 +214,11 @@ Next step: SSH works, but the account you connect as
 
     $TELLICO_REMOTE_KEY_PATH
 
-  If you connect under a different cluster account, point the installer at
-  the key your account can read:
+  That path is the lab's shared copy. If your account cannot read it, ask
+  $TELLICO_SERVICE_USER to add you, or point the installer at a copy you can
+  read:
 
     ./install.sh --remote-key-path /path/to/api-key
-
-  Otherwise ask the allocation owner to grant read access to that file.
 EOF
 }
 
@@ -284,20 +294,68 @@ tellico_preflight() {
 # Reports whether the two model servers currently have an allocation.
 # Returns 0 when they are up, 1 otherwise.
 tellico_check_allocation() {
-  if tellico_allocation_output=$(ssh -o BatchMode=yes \
-    -o ConnectTimeout="$TELLICO_CONNECT_TIMEOUT" "$ssh_host" qwen38-status 2>&1); then
+  # squeue and an authenticated /v1/models probe are both available to any
+  # account on the cluster, unlike the service owner's qwen38-* helpers, which
+  # live in a home directory no other user can traverse.
+  tellico_alloc=$(ssh -o BatchMode=yes \
+    -o ConnectTimeout="$TELLICO_CONNECT_TIMEOUT" "$ssh_host" "
+      printf 'user %s\n' \"\$(id -un)\"
+      printf 'state %s\n' \"\$(squeue -h -u '$TELLICO_SERVICE_USER' \
+        -n '$TELLICO_JOB_NAME' -o '%T' 2>/dev/null | head -n 1)\"
+      for tellico_node in $TELLICO_COMPUTE_NODES; do
+        if curl -fsS --max-time 5 \
+          -H \"Authorization: Bearer \$(cat '$TELLICO_REMOTE_KEY_PATH')\" \
+          \"http://\$tellico_node:$TELLICO_MODEL_PORT/v1/models\" >/dev/null 2>&1
+        then
+          printf 'ready %s\n' \"\$tellico_node\"
+        fi
+      done
+    " 2>/dev/null)
+
+  tellico_alloc_user=$(printf '%s\n' "$tellico_alloc" | awk '$1 == "user" { print $2 }')
+  tellico_alloc_state=$(printf '%s\n' "$tellico_alloc" | awk '$1 == "state" { print $2 }')
+  tellico_alloc_ready=$(printf '%s\n' "$tellico_alloc" | grep -c '^ready ' || true)
+  tellico_alloc_total=$(printf '%s\n' $TELLICO_COMPUTE_NODES | grep -c .)
+
+  if [ "$tellico_alloc_ready" -eq "$tellico_alloc_total" ]; then
     tellico_status_line allocation OK 'model servers running'
     return 0
   fi
-  tellico_status_line allocation FAIL 'no running allocation'
-  cat <<EOF
 
-Next step: the model servers only exist while a Slurm allocation is active.
+  if [ "$tellico_alloc_ready" -gt 0 ]; then
+    tellico_status_line allocation WARN \
+      "only $tellico_alloc_ready of $tellico_alloc_total servers answering"
+  else
+    case $tellico_alloc_state in
+      RUNNING) tellico_status_line allocation WARN 'job running, servers still loading' ;;
+      PENDING) tellico_status_line allocation FAIL 'job queued, waiting for nodes' ;;
+      '') tellico_status_line allocation FAIL 'no allocation for the service job' ;;
+      *) tellico_status_line allocation FAIL "job state $tellico_alloc_state" ;;
+    esac
+  fi
 
-    ssh $ssh_host qwen38-submit
-    ssh $ssh_host 'qwen38-status --wait'
-    tellico-qwen-tunnel restart
-EOF
+  echo
+  case $tellico_alloc_state in
+    RUNNING|PENDING)
+      echo 'Next step: the allocation exists but the servers are not ready yet.'
+      echo 'A cold start loads the model onto both GPUs and takes a few minutes.'
+      echo 'Recheck with ./doctor.sh, then: tellico-qwen-tunnel restart'
+      ;;
+    *)
+      echo 'Next step: the model servers only exist while a Slurm allocation is'
+      echo 'active, and there is none right now.'
+      echo
+      if [ "$tellico_alloc_user" = "$TELLICO_SERVICE_USER" ]; then
+        echo "    ssh $ssh_host qwen38-submit"
+        echo "    ssh $ssh_host 'qwen38-status --wait'"
+        echo '    tellico-qwen-tunnel restart'
+      else
+        echo "Ask $TELLICO_SERVICE_USER to start it; only that account can submit"
+        echo 'the job. Then: tellico-qwen-tunnel restart'
+      fi
+      ;;
+  esac
+  echo
   return 1
 }
 
