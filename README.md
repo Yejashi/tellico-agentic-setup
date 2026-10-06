@@ -11,14 +11,24 @@ it only on the client device with mode 0600.
 
 | OpenCode provider | Cluster node | GPUs | Slots | Context per slot | Local endpoint |
 |---|---|---:|---:|---:|---|
-| `tellico-0/qwen3.8-27b` | `tellico-compute0` | 2 x V100 16 GB | 2 | 131,072 | `127.0.0.1:18080` |
-| `tellico-1/qwen3.8-27b` | `tellico-compute1` | 2 x V100 16 GB | 2 | 131,072 | `127.0.0.1:18081` |
+| `tellico-0/qwen3.8-27b` | `tellico-compute0` | 2 x V100 16 GB | 2 | 98,304 | `127.0.0.1:18080` |
+| `tellico-1/qwen3.8-27b` | `tellico-compute1` | 2 x V100 16 GB | 2 | 98,304 | `127.0.0.1:18081` |
 
-Each server divides one 262,144-token pool across its slots, so slots trade
+Each server divides one 196,608-token pool across its slots, so slots trade
 context for concurrency at no cost in GPU memory. Four concurrent requests fit
 cluster-wide; beyond that, requests queue. A single OpenCode session can issue
 several at once, because title, summary, compaction, and subagent calls all go
 to the same two servers.
+
+The pool is 196,608 rather than the GGUF's full 262,144 because each server also
+holds a DFlash2 draft model for speculative decoding, which needs about 560 MiB
+of VRAM per GPU. That buys roughly 2.7x generation speed on code and structured
+output and about 1.2x on free prose -- measured 87 tok/s versus a 33 tok/s
+baseline on a code prompt. The trade is set on the cluster side in
+`service.env` (`QWEN38_SPEC_TYPE`, `QWEN38_CTX`); `limit.context` in
+`opencode.json` has to match whatever per-slot figure that produces. Because
+speculation makes the target evaluate a block of tokens per pass, output is a
+valid sample but is not byte-identical to a non-speculative run.
 
 An SSH connection forwards the two private cluster endpoints to localhost.
 OpenCode gets a primary orchestration agent and two node-pinned subagents. For
