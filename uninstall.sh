@@ -23,9 +23,11 @@ rm -f \
   "$config_dir/client.env" \
   "$config_dir/opencode.json" \
   "$config_dir/prompts/orchestrate.md" \
-  "$config_dir/prompts/worker.md"
+  "$config_dir/prompts/worker.md" \
+  "$config_dir/lib/checks.sh"
 
 rmdir "$config_dir/prompts" 2>/dev/null || true
+rmdir "$config_dir/lib" 2>/dev/null || true
 rmdir "$config_dir" 2>/dev/null || true
 
 if command -v systemctl >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; then

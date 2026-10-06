@@ -15,6 +15,7 @@ ssh_host=${TELLICO_SSH_HOST:-tellico}
 port0=${TELLICO_QWEN_PORT0:-18080}
 port1=${TELLICO_QWEN_PORT1:-18081}
 key_file="$config_dir/api-key"
+: "${TELLICO_REMOTE_KEY_PATH:=/home/bbogale/qwen38-cluster/secrets/api-key}"
 runtime_parent=${XDG_RUNTIME_DIR:-"$HOME/.cache"}
 runtime_dir="$runtime_parent/tellico-qwen"
 control_socket="$runtime_dir/control"
@@ -36,7 +37,7 @@ refresh_key() {
   key_tmp="$config_dir/.api-key.tmp.$$"
   trap 'rm -f "$key_tmp"' EXIT HUP INT TERM
   ssh -o BatchMode=yes -o ConnectTimeout=15 "$ssh_host" \
-    'cat /home/bbogale/qwen38-cluster/secrets/api-key' >"$key_tmp"
+    "cat '$TELLICO_REMOTE_KEY_PATH'" >"$key_tmp"
   test -s "$key_tmp"
   mv "$key_tmp" "$key_file"
   chmod 600 "$key_file"
@@ -126,8 +127,33 @@ wait_healthy() {
   return 1
 }
 
+doctor_tunnel() {
+  checks="$config_dir/lib/checks.sh"
+  if [ ! -r "$checks" ]; then
+    echo "tellico-qwen-tunnel: missing $checks" >&2
+    echo 'Rerun install.sh from the tellico-agentic-setup repository.' >&2
+    exit 1
+  fi
+  # Installed by install.sh alongside this script.
+  # shellcheck disable=SC1090
+  . "$checks"
+
+  echo "Tellico client doctor (ssh host: $ssh_host)"
+  echo
+  doctor_status=0
+  if ! tellico_preflight; then
+    doctor_status=1
+  elif ! tellico_check_allocation; then
+    doctor_status=1
+  else
+    echo
+    status_tunnel || doctor_status=1
+  fi
+  return "$doctor_status"
+}
+
 usage() {
-  echo "usage: tellico-qwen-tunnel {start|stop|restart|status|refresh-key|cluster-status}" >&2
+  echo "usage: tellico-qwen-tunnel {start|stop|restart|status|doctor|refresh-key|cluster-status}" >&2
   exit 2
 }
 
@@ -158,6 +184,9 @@ case ${1:-} in
     ;;
   status)
     status_tunnel
+    ;;
+  doctor)
+    doctor_tunnel
     ;;
   refresh-key)
     refresh_key
