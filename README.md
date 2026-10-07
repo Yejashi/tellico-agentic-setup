@@ -1,7 +1,8 @@
 # Tellico agentic setup
 
-Portable OpenCode client setup for the two Qwen3.8-27B servers running on the
-Tellico cluster.
+Portable OpenCode client setup for the Qwen3.8 servers running on the Tellico
+cluster. Each compute node serves one model, and the two nodes need not serve
+the same one.
 
 The repository contains no API key or SSH private key. The installer retrieves
 the model API key through your authenticated Tellico SSH connection and stores
@@ -13,6 +14,11 @@ it only on the client device with mode 0600.
 |---|---|---:|---:|---:|---|
 | `tellico-0/qwen3.8-27b` | `tellico-compute0` | 2 x V100 16 GB | 2 | 98,304 | `127.0.0.1:18080` |
 | `tellico-1/qwen3.8-27b` | `tellico-compute1` | 2 x V100 16 GB | 2 | 98,304 | `127.0.0.1:18081` |
+
+That is the default layout, with both nodes on the 27B. Either node can be
+given a different model instead through a cluster-side profile; see
+[Switching the model on a node](#switching-the-model-on-a-node). The rest of
+this section describes the 27B profile.
 
 Each server divides one 196,608-token pool across its slots, so slots trade
 context for concurrency at no cost in GPU memory. Four concurrent requests fit
@@ -40,7 +46,88 @@ and the commands that start and inspect them -- lives in
 [qwen38-cluster](https://github.com/Yejashi/qwen38-cluster), and only the
 service owner needs it. The two repositories share the API key path, the port,
 the node names and the per-slot context, so a change to capacity on the cluster
-means a matching change to `config/opencode.json` here.
+means a matching change to `config/opencode.json` here. The model *name* is
+the exception: `opencode-tellico` reads it from each server at launch, so a
+profile change on the cluster needs no edit here.
+
+## Switching the model on a node
+
+Which model a node serves is a cluster-side choice, made per node by a profile
+in `/data/gclab/qwen38/service.env`. The `flashnext` profile serves
+Qwen3.8-Flash-Next, 180B total parameters with 6B active per token, at
+UD-IQ4_XS:
+
+| Profile | Model | Slots x context | Provider / model id |
+|---|---|---:|---|
+| `qwen27b` (default) | Qwen3.8-27B Q4_K_M | 2 x 98,304 | `tellico-N/qwen3.8-27b` |
+| `qwen27b-pool` | Qwen3.8-27B Q4_K_M | 3 x 65,536 | `tellico-N/qwen3.8-27b-pool` |
+| `flashnext` | Qwen3.8-Flash-Next UD-IQ4_XS | 2 x 131,072 | `tellico-N/qwen3.8-flash-next` |
+
+`qwen27b-pool` is the same weights and the same context pool as `qwen27b`,
+divided into three slots instead of two. Slots trade context for concurrency at
+no cost in GPU memory, so it is the right shape when the 27B is a worker pool
+rather than a lead: three concurrent consumers fit, which is the two worker
+agents plus the title, summary and compaction calls. It carries its own model
+id because `limit.context` must match `QWEN38_CTX / QWEN38_SLOTS`, and one id
+cannot be both 98,304 and 65,536.
+
+Flash-Next only fits 16 GB cards because it is sparse. Of its 87.2 GiB of
+tensors, 55.4 GiB are MoE experts that `-ncmoe` parks in host RAM and 26.8 GiB
+are an n-gram lookup table that llama.cpp gathers straight from the mmap;
+roughly 5 GiB has to be GPU-resident. The GPUs reach host RAM over the AC922's
+CPU-GPU NVLink at about 77 GiB/s, which is what makes the offload workable.
+
+To put Flash-Next on node 1 and a 27B worker pool on node 0, the service owner
+uncomments two lines in `service.env`:
+
+```bash
+QWEN38_PROFILE_TELLICO_COMPUTE1=flashnext
+QWEN38_PROFILE_TELLICO_COMPUTE0=qwen27b-pool
+```
+
+The second is optional. Without it node 0 stays at 2 x 98,304, which works but
+leaves the two workers and the housekeeping calls contending for two slots.
+
+then recycles the allocation, which is the only disruptive step:
+
+```bash
+ssh tellico 'qwen38-stop && qwen38-submit'
+ssh tellico 'qwen38-status --wait'
+```
+
+Each client then picks the change up with `tellico-qwen-tunnel restart`. No
+client file needs editing: `opencode-tellico` asks each node which model it has
+loaded and binds the lead, both workers, and the title, summary and compaction
+agents accordingly. With the two nodes differing it prints one line naming what
+it resolved.
+
+So in the split layout the node selector also selects the model, and
+`opencode-tellico 1` is the intended entry point:
+
+```bash
+opencode-tellico 1   # lead on Flash-Next, both workers on the 27B pool
+```
+
+That is the shape the setup is for: the lead spends its turns on planning,
+decisions and integration on the stronger model, while a pool of 27B workers
+absorbs the reading, searching and tracing at roughly 34 tok/s and 257 tok/s of
+prefill. `prompts/orchestrate.md` already argues for that division on grounds
+of context economy; in a split layout it is also true of capability.
+
+Worker placement follows from the layout. With both nodes on the same model,
+worker 0 stays on node 0 and worker 1 on node 1, so a parallel pair uses both
+servers. With the nodes on different models, both workers go to the node the
+lead is not on -- splitting the pair would put half the bulk reading on the
+large slow model and make that worker contend with the lead for its own node's
+slots.
+
+Housekeeping -- title, summary and compaction -- also goes to the node not
+hosting the lead, which keeps it off the lead's slots. Note the consequence for
+the inverse layout: `opencode-tellico 0` leads on the 27B but then puts both
+workers *and* the housekeeping on Flash-Next, whose prefill is the slow part.
+It works, but it is not what the split layout is tuned for.
+
+To go back, re-comment the line and recycle the allocation again.
 
 ## First run
 

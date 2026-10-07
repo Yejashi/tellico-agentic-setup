@@ -1,8 +1,9 @@
 # AGENTS.md
 
-Client-side setup that points OpenCode at two self-hosted Qwen3.8-27B servers on
-the Tellico cluster. This repo installs files onto the client device; it does not
-run the servers.
+Client-side setup that points OpenCode at the two self-hosted Qwen3.8 servers on
+the Tellico cluster. One model per compute node, and the two nodes need not run
+the same one. This repo installs files onto the client device; it does not run
+the servers.
 
 ## Commands
 
@@ -42,22 +43,47 @@ explicitly when handing back a config change.
 
 Each server divides one pool across slots, so the per-request limit is
 `QWEN38_CTX / QWEN38_SLOTS` on the cluster side. `limit.context` in
-`config/opencode.json` must equal that number for both providers. If it is too
-high, OpenCode builds a context the server rejects instead of compacting in
+`config/opencode.json` must equal that number for the matching model. If it is
+too high, OpenCode builds a context the server rejects instead of compacting in
 time; if too low, context is wasted. The model display names encode it too
-(`96k`), so they drift with it.
+(`96k`, `128k`), so they drift with it.
+
+The coupling is now per model, not per provider:
+
+| Model id | Per-slot context | From |
+|---|---:|---|
+| `qwen3.8-27b` | 98,304 | `QWEN38_CTX` 196,608 / 2 slots |
+| `qwen3.8-27b-pool` | 65,536 | `QWEN38_CTX` 196,608 / 3 slots |
+| `qwen3.8-flash-next` | 131,072 | `QWEN38_CTX_FLASHNEXT` 262,144 / 2 slots |
+
+All three ids are declared under both providers, because either node can serve
+any of them. `qwen3.8-27b-pool` exists only because a re-slotted 27B has a
+different per-slot figure from the default one and a single id cannot carry
+both; it is the same weights and the same pool, divided three ways.
 
 Those cluster-side values live in `/data/gclab/qwen38/service.env`, outside both
 repos. Changing speculative decoding there changes the context, which changes
 this repo.
 
+What does *not* need changing here is the model name. `opencode-tellico` reads
+it from each server's `/v1/models` at launch and rebinds the lead, both workers
+and the housekeeping agents to whatever is loaded. Do not reintroduce a
+hardcoded model id into that script.
+
 ## Architecture boundaries
 
 - `bin/tellico-qwen-tunnel` owns the SSH control socket and port forwards.
   Everything else goes through it; do not open ad-hoc tunnels.
-- `bin/opencode-tellico` selects the lead node and injects runtime config via
-  `OPENCODE_CONFIG_CONTENT`. OpenCode's interactive command rejects `--model`,
-  so the model and lead agent must travel through that env var.
+- `bin/opencode-tellico` selects the lead node, resolves each node's model by
+  asking it, and injects runtime config via `OPENCODE_CONFIG_CONTENT`.
+  OpenCode's interactive command rejects `--model`, so the model and lead agent
+  must travel through that env var. Two placement rules live there and are
+  deliberate, not incidental. Title, summary and compaction go to the node that
+  is *not* hosting the lead, keeping them off the lead's slots. And the two
+  workers stay pinned one per node only while both nodes serve the same model;
+  when the models differ, both move to the node the lead is not on, so the
+  bulk reading lands on one model and the lead keeps its own slots. Preserve
+  both if you touch `runtime_config`.
 - `lib/checks.sh` holds shared validation used by both `install.sh` and
   `doctor.sh`. Add checks there, not in one caller.
 - Agents: one lead (`orchestrate-tellico-0|1`) plus two node-pinned workers.

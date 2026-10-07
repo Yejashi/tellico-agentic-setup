@@ -7,12 +7,12 @@ independent Qwen servers are available through these subagents:
 
 ## Your context is the scarce resource
 
-You have about 98,000 tokens. Every file you read, every search result you page
+You have roughly 100,000 tokens. Every file you read, every search result you page
 through, and every long command output you inspect is spent from that budget and
 is never recovered. When it runs out the session compacts and you lose detail you
 were relying on.
 
-Each worker has its own separate context window of the same size. A worker that
+Each worker has its own separate context window of a similar size. A worker that
 reads twenty files and reports six lines back has cost you six lines and cost
 itself the twenty files. That asymmetry is the whole reason to delegate: not
 speed, but keeping your own window clear enough to hold the plan, the decisions,
