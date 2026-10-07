@@ -65,6 +65,14 @@ tellico_device_pubkey() {
   printf '%s\n' "$tellico_found_key.pub"
 }
 
+# The first IdentityFile for "$ssh_host" whose path ends in .pub, or empty.
+# ssh reads any IdentityFile as a private key and holds it to private-key
+# permissions, so naming the public half means no key is offered at all.
+tellico_pub_identityfile() {
+  ssh -G "$ssh_host" 2>/dev/null |
+    awk '$1 == "identityfile" && $2 ~ /\.pub$/ { print $2; exit }'
+}
+
 # Where a key for "$ssh_host" belongs: the first IdentityFile the config names
 # for it, or the usual default when it names none. Used to tell a device with
 # no key where to put one, so ssh-keygen and the config agree.
@@ -193,6 +201,18 @@ tellico_ssh_is_windows() {
 # Why "Permission denied" happened: nokey, nopub, locked, or unauthorized.
 # The status line and the explanation both read this, so the two agree.
 tellico_denied_reason() {
+  # ssh refusing to load a key is reported by the server as the same
+  # "Permission denied" an unauthorized key gets, so read ssh's own
+  # complaint before blaming the far end. Checked first: a key that cannot
+  # be loaded is never offered, whatever else is true of it.
+  case ${tellico_probe_output:-} in
+    *'bad permissions'*|*'are too open'*|*'This private key will be ignored'*|\
+    *'invalid format'*)
+      printf 'keyperms\n'
+      return 0
+      ;;
+  esac
+
   tellico_reason_key=$(tellico_device_key)
   if [ -z "$tellico_reason_key" ]; then
     printf 'nokey\n'
@@ -224,6 +244,45 @@ tellico_explain_denied() {
   tellico_key=$(tellico_device_key)
 
   case $(tellico_denied_reason) in
+    keyperms)
+      cat <<EOF
+
+Next step: ssh refused to load the key this device offers, so it offered no
+key at all. The server reports that as the same "Permission denied" an
+unauthorized key gets, so this is not about $tellico_account's
+authorized_keys. ssh said:
+
+EOF
+      printf '%s\n' "${tellico_probe_output:-}" |
+        grep -E 'Load key|too open|will be ignored|invalid format' |
+        sed 's/^/    /'
+      tellico_keyperms_pub=$(tellico_pub_identityfile)
+      if [ -n "$tellico_keyperms_pub" ]; then
+        cat <<EOF
+
+  IdentityFile names $tellico_keyperms_pub, the public half. ssh reads an
+  IdentityFile as a private key and requires private-key permissions, which
+  a public key correctly does not have. Point it at the private key in the
+  'Host $ssh_host' block of ~/.ssh/config:
+
+    IdentityFile ${tellico_keyperms_pub%.pub}
+
+  The public-key spelling only works when an agent is holding the private
+  key, which is not the case here.
+EOF
+      else
+        cat <<EOF
+
+  A private key must not be readable by anyone else:
+
+    chmod 600 ${tellico_key:-~/.ssh/id_ed25519}
+EOF
+      fi
+      cat <<EOF
+
+  Then rerun: ./doctor.sh
+EOF
+      ;;
     nokey)
       cat <<EOF
 
@@ -280,7 +339,7 @@ EOF
 
   From this machine, if the account still accepts passwords:
 
-    ssh-copy-id -i $tellico_key.pub $ssh_host
+    ssh-copy-id -o ControlPath=none -i $tellico_key.pub $ssh_host
 
   Or, from a machine that already works:
 
@@ -360,6 +419,9 @@ tellico_preflight() {
       denied)
         tellico_status_line network OK 'host reachable'
         case $(tellico_denied_reason) in
+          keyperms)
+            tellico_status_line 'ssh auth' FAIL 'ssh could not load this device'"'"'s key'
+            ;;
           nokey)
             tellico_status_line 'ssh auth' FAIL 'this device has no SSH key'
             ;;
