@@ -77,14 +77,14 @@
           }
         },
         "qwen3.8-27b-pool": {
-          "name": "Qwen3.8 27B 64k pool - Tellico 0",
+          "name": "Qwen3.8 27B 48k pool - Tellico 0",
           "temperature": true,
           "reasoning": true,
           "interleaved": {
             "field": "reasoning_content"
           },
           "limit": {
-            "context": 65536,
+            "context": 49152,
             "output": 32768
           },
           "options": {
@@ -186,14 +186,14 @@
           }
         },
         "qwen3.8-27b-pool": {
-          "name": "Qwen3.8 27B 64k pool - Tellico 1",
+          "name": "Qwen3.8 27B 48k pool - Tellico 1",
           "temperature": true,
           "reasoning": true,
           "interleaved": {
             "field": "reasoning_content"
           },
           "limit": {
-            "context": 65536,
+            "context": 49152,
             "output": 32768
           },
           "options": {

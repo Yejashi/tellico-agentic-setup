@@ -60,16 +60,24 @@ UD-IQ4_XS:
 | Profile | Model | Slots x context | Provider / model id |
 |---|---|---:|---|
 | `qwen27b` (default) | Qwen3.8-27B Q4_K_M | 2 x 98,304 | `tellico-N/qwen3.8-27b` |
-| `qwen27b-pool` | Qwen3.8-27B Q4_K_M | 3 x 65,536 | `tellico-N/qwen3.8-27b-pool` |
+| `qwen27b-pool` | Qwen3.8-27B Q4_K_M | 3 x 49,152 | `tellico-N/qwen3.8-27b-pool` |
 | `flashnext` | Qwen3.8-Flash-Next UD-IQ4_XS | 2 x 131,072 | `tellico-N/qwen3.8-flash-next` |
 
-`qwen27b-pool` is the same weights and the same context pool as `qwen27b`,
-divided into three slots instead of two. Slots trade context for concurrency at
-no cost in GPU memory, so it is the right shape when the 27B is a worker pool
-rather than a lead: three concurrent consumers fit, which is the two worker
-agents plus the title, summary and compaction calls. It carries its own model
-id because `limit.context` must match `QWEN38_CTX / QWEN38_SLOTS`, and one id
-cannot be both 98,304 and 65,536.
+`qwen27b-pool` is the same weights as `qwen27b` in three slots instead of two,
+which is the right shape when the 27B is a worker pool rather than a lead:
+three concurrent consumers fit, being the two worker agents plus the title,
+summary and compaction calls.
+
+A slot is not free, though, and this was measured the hard way. At three slots
+and the full 196,608-token pool the server loaded with about 500 MiB spare on
+one GPU and then died in `cudaMalloc` as soon as the third slot took a request.
+The profile therefore also drops `QWEN38_CTX` to 147,456, giving back a quarter
+of the KV cache to pay for the extra slot's buffers. Verified under three
+concurrent requests, which left ~1.5 GiB and ~900 MiB free. So the third slot
+costs context: 49,152 per worker rather than 98,304.
+
+It carries its own model id because `limit.context` must match
+`QWEN38_CTX / QWEN38_SLOTS`, and one id cannot be both 98,304 and 49,152.
 
 Flash-Next only fits 16 GB cards because it is sparse. Of its 87.2 GiB of
 tensors, 55.4 GiB are MoE experts that `-ncmoe` parks in host RAM and 26.8 GiB
@@ -128,6 +136,50 @@ workers *and* the housekeeping on Flash-Next, whose prefill is the slow part.
 It works, but it is not what the split layout is tuned for.
 
 To go back, re-comment the line and recycle the allocation again.
+
+## Measured performance
+
+All figures from `tellico-compute1`, single AC922 node, 2 x V100 16 GB.
+Generation rate per request, 300-token completions:
+
+| Concurrent requests on one node | 2 slots x 98,304 | 3 slots x 49,152 |
+|---|---:|---:|
+| 1 | **35.6 t/s** | **36.3 t/s** |
+| 2 | 25.0 / 24.0 | 28.0 / 27.4 |
+| 3 | -- | 23.2 / 22.7 / 22.8 |
+
+Two things follow. Slot count does not cost single-request speed, so extra
+slots are free capacity; and a node holds above 30 t/s only while it has one
+active request. Keeping both nodes on the same profile matters for that,
+because `opencode-tellico` then puts one worker on each node rather than
+stacking both on one.
+
+Prefill on the 27B is 383 tok/s on a cold 4.4k-token prompt.
+
+### Why Flash-Next is not the default
+
+It works, but it is too slow to lead interactively on this hardware. Measured
+with `llama-bench`, pp512 / tg32:
+
+| Configuration | prefill | generation |
+|---|---:|---:|
+| `-ncmoe 48` | 58.6 | 6.9 |
+| pure CPU, `-ngl 0` | 163.5 | 4.2 |
+| `-ncmoe 40 -ts 3/1` | 202.3 | 11.3 |
+| `-ncmoe 48 -lm mmap+mlock` | 232.2 | 9.7 |
+| `-ncmoe 32 -ts 3/1 -lm mmap+mlock` | **264.1** | **13.5** |
+
+Generation improves monotonically as experts move back onto the GPUs, so the
+ceiling is VRAM: the expert tensors alone are 55.4 GiB against 32 GiB on a
+node, and `-ncmoe 36` already dies in `cudaMalloc` at `ctx 262144`. Spanning
+both nodes by RPC would give 64 GiB, still short of the 87 GiB model, and no
+quant down to IQ1_S at 67.5 GiB fits either. MTP speculation works and helps
+-- 48.9% acceptance, mean draft length 3.44 -- but not by the factor needed to
+reach the 27B's 35 t/s.
+
+So the `flashnext` profile stays off. It remains a one-line switch for
+non-interactive work where 13 t/s and a much stronger model is the better
+trade, such as a long review run left to finish on its own.
 
 ## First run
 
