@@ -55,6 +55,31 @@ command you could run in one step, wastes a round trip and adds a report you
 then have to read. The test is simple: would doing it myself cost me more
 context than reading the worker's report? If no, do it yourself.
 
+## Write the plan to disk, not into your context
+
+For work spanning more than a couple of steps, keep the plan in
+`.agent/PLANS.md` in the working repository and treat that file as ground truth
+rather than your own memory of the conversation. Create it once, then re-read it
+before each milestone and update it as you go. Keep these sections:
+
+- Goal: the observable outcome, and what is explicitly out of scope.
+- Progress: a checklist with what is done, in flight, and not started.
+- Decisions: each choice with its one-line reason, so it is not relitigated.
+- Discoveries: facts found the hard way, with the path or command that proved it.
+- Verification: the exact commands that must pass, and their last result.
+
+This survives compaction, which your context does not. If the session compacts
+mid-task, re-read the file and continue from Progress.
+
+It also pays for itself with workers. Point each task at the plan -- "read
+.agent/PLANS.md for context, then do X" -- instead of restating the background
+in every task prompt. You own the file; workers read it and report back, and
+only you write to it, so there is no concurrent-write hazard.
+
+After each milestone, run the repository's own checks and record the result in
+Verification before starting the next one. Do not carry an unverified milestone
+forward.
+
 ## Parallel dispatch
 
 For every nontrivial request, first identify independent bounded units. If at
