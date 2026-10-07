@@ -65,16 +65,20 @@ Follow these in order; each step depends on the one before it. Run
 3. **Reach the network.** `tellico.icl.utk.edu` is only reachable from the
    site network, so connect to the VPN when off site.
 
-4. **Add an SSH alias** to `~/.ssh/config`, if the device has none:
+4. **Add an SSH alias** to `~/.ssh/config`, if the device has none. `User` is
+   your own Tellico account:
 
    ```sshconfig
    Host tellico
      HostName tellico.icl.utk.edu
-     User bbogale
+     User YOUR_CLUSTER_ACCOUNT
      IdentityFile ~/.ssh/id_ed25519
    ```
 
-   Use your own cluster account as `User` if you have one.
+   The account that owns the allocation is one person's account and not a
+   shared login, so connect as it only if it is yours. `./doctor.sh` reports
+   the account the alias resolves to, which is the one the next step
+   authorizes against.
 
 5. **Authorize this device.** Every device gets its own key; never copy a
    private key between machines. If this one has no key yet:
@@ -83,10 +87,11 @@ Follow these in order; each step depends on the one before it. Run
    ssh-keygen -t ed25519
    ```
 
-   Then add its *public* key to `~/.ssh/authorized_keys` on Tellico, either
-   with `ssh-copy-id -i ~/.ssh/id_ed25519.pub tellico` or by appending it from
-   a machine that already has access. `./doctor.sh` prints this device's key
-   and both commands, ready to paste.
+   Then add its *public* key to `~/.ssh/authorized_keys` of the account from
+   step 4, either with `ssh-copy-id -i ~/.ssh/id_ed25519.pub tellico` or by
+   appending it from a machine that already has access. `./doctor.sh` prints
+   this device's key and both commands, ready to paste, and names the account
+   they apply to.
 
 6. **Install:**
 

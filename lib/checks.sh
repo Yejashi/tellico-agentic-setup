@@ -32,24 +32,63 @@ tellico_ssh_target() {
   '
 }
 
-# Path of the public key this device would offer, or empty when it has none.
-tellico_device_pubkey() {
+# Account "$ssh_host" logs in as, or empty.
+tellico_ssh_account() {
+  tellico_ssh_target | sed 's/@.*//'
+}
+
+# Private key this device would offer for "$ssh_host", or empty when it has
+# none. ssh -G lists every candidate IdentityFile, including built-in defaults
+# that need not exist. An entry may name either half of the pair -- ssh_config
+# documents pointing IdentityFile at a public key, and real configs do -- so
+# strip .pub before deciding which files are actually there.
+tellico_device_key() {
   ssh -G "$ssh_host" 2>/dev/null | awk '$1 == "identityfile" { print $2 }' |
     while IFS= read -r tellico_identity; do
       case $tellico_identity in
         '~'/*) tellico_identity="$HOME/${tellico_identity#'~/'}" ;;
       esac
-      if [ -r "$tellico_identity.pub" ]; then
-        printf '%s\n' "$tellico_identity.pub"
+      tellico_identity=${tellico_identity%.pub}
+      if [ -r "$tellico_identity" ] || [ -r "$tellico_identity.pub" ]; then
+        printf '%s\n' "$tellico_identity"
         break
       fi
     done
 }
 
+# Path of the public key this device would offer, or empty when the device has
+# no key at all or has only the private half.
+tellico_device_pubkey() {
+  tellico_found_key=$(tellico_device_key)
+  [ -n "$tellico_found_key" ] || return 1
+  [ -r "$tellico_found_key.pub" ] || return 1
+  printf '%s\n' "$tellico_found_key.pub"
+}
+
+# Where a key for "$ssh_host" belongs: the first IdentityFile the config names
+# for it, or the usual default when it names none. Used to tell a device with
+# no key where to put one, so ssh-keygen and the config agree.
+tellico_intended_key() {
+  tellico_intended=$(ssh -G "$ssh_host" 2>/dev/null |
+    awk '$1 == "identityfile" { print $2; exit }')
+  case $tellico_intended in
+    '') tellico_intended="$HOME/.ssh/id_ed25519" ;;
+    '~'/*) tellico_intended="$HOME/${tellico_intended#'~/'}" ;;
+  esac
+  printf '%s\n' "${tellico_intended%.pub}"
+}
+
 # Classifies one non-interactive SSH attempt. Sets tellico_probe_result to
 # ok, dns, unreachable, hostkey, denied, or unknown.
+#
+# ControlPath=none is what makes the verdict mean anything. Plenty of people
+# carry "ControlMaster auto" in a Host * block, and a request that rides an
+# existing master never authenticates at all, so an unauthorized device gets
+# reported as authorized for as long as ControlPersist keeps that socket warm.
+# The tunnel opens a master of its own and does have to authenticate, so this
+# probe has to as well.
 tellico_probe_ssh() {
-  if tellico_probe_output=$(ssh -o BatchMode=yes \
+  if tellico_probe_output=$(ssh -o BatchMode=yes -o ControlPath=none \
     -o ConnectTimeout="$TELLICO_CONNECT_TIMEOUT" "$ssh_host" true 2>&1); then
     tellico_probe_result=ok
     return 0
@@ -82,13 +121,16 @@ tellico_explain_dns() {
 
 Next step: '$ssh_host' does not resolve.
 
-  Add an alias to ~/.ssh/config, using your own cluster account if you
-  have one and the key this device should offer:
+  Add an alias to ~/.ssh/config, naming your own cluster account and the
+  key this device should offer:
 
     Host $ssh_host
       HostName tellico.icl.utk.edu
-      User bbogale
+      User YOUR_CLUSTER_ACCOUNT
       IdentityFile ~/.ssh/id_ed25519
+
+  $TELLICO_SERVICE_USER owns the allocation but is not a shared login. Use
+  it as User only if it is your account.
 
   If the alias is already there, the name is resolved by the site DNS, so
   connect to the VPN first.
@@ -117,14 +159,21 @@ EOF
 }
 
 # True when the private key is encrypted and no agent is holding it, which
-# BatchMode reports as a plain "Permission denied".
+# BatchMode reports as a plain "Permission denied". Takes either half of the
+# pair.
 tellico_key_locked() {
   tellico_privkey=${1%.pub}
   [ -r "$tellico_privkey" ] || return 1
   if ssh-keygen -y -P '' -f "$tellico_privkey" >/dev/null 2>&1; then
     return 1
   fi
-  tellico_fingerprint=$(ssh-keygen -lf "$1" 2>/dev/null | awk '{print $2}')
+  if [ -r "$tellico_privkey.pub" ]; then
+    tellico_fingerprint=$(ssh-keygen -lf "$tellico_privkey.pub" 2>/dev/null |
+      awk '{print $2}')
+  else
+    tellico_fingerprint=$(ssh-keygen -lf "$tellico_privkey" 2>/dev/null |
+      awk '{print $2}')
+  fi
   [ -n "$tellico_fingerprint" ] || return 0
   if ssh-add -l 2>/dev/null | grep -qF "$tellico_fingerprint"; then
     return 1
@@ -141,60 +190,107 @@ tellico_ssh_is_windows() {
   esac
 }
 
+# Why "Permission denied" happened: nokey, nopub, locked, or unauthorized.
+# The status line and the explanation both read this, so the two agree.
+tellico_denied_reason() {
+  tellico_reason_key=$(tellico_device_key)
+  if [ -z "$tellico_reason_key" ]; then
+    printf 'nokey\n'
+  elif [ ! -r "$tellico_reason_key.pub" ]; then
+    printf 'nopub\n'
+  elif tellico_key_locked "$tellico_reason_key"; then
+    printf 'locked\n'
+  else
+    printf 'unauthorized\n'
+  fi
+}
+
+# Added when the account being used is the one that owns the allocation, which
+# is one person's account and not a shared login. Authorizing a device there
+# is the service owner's own case, so this is a note rather than a failure.
+tellico_note_service_account() {
+  [ "$(tellico_ssh_account)" = "$TELLICO_SERVICE_USER" ] || return 0
+  cat <<EOF
+
+  Note: you are connecting as $TELLICO_SERVICE_USER, the account that owns the
+  allocation. That is not a shared login. Unless it is your account, set
+  User to your own in the 'Host $ssh_host' block of ~/.ssh/config and
+  authorize this device there instead.
+EOF
+}
+
 tellico_explain_denied() {
-  tellico_pubkey=$(tellico_device_pubkey)
+  tellico_account=$(tellico_ssh_account)
+  tellico_key=$(tellico_device_key)
 
-  if [ -z "$tellico_pubkey" ]; then
-    cat <<EOF
+  case $(tellico_denied_reason) in
+    nokey)
+      cat <<EOF
 
-Next step: this device has no SSH key yet. Create one, then authorize it.
+Next step: this device has no SSH key yet. Create one, then authorize it for
+the $tellico_account account on Tellico.
 
-    ssh-keygen -t ed25519 -C "$(id -un)@$(uname -n)"
+    ssh-keygen -t ed25519 -f $(tellico_intended_key) -C "$(id -un)@$(uname -n)"
     ./doctor.sh
 
-  Never copy a private key from another device; each one gets its own.
+  That second run prints the new public key and the commands that authorize
+  it. Never copy a private key from another device; each one gets its own.
 EOF
-    return
-  fi
+      tellico_note_service_account
+      ;;
+    nopub)
+      cat <<EOF
 
-  if tellico_key_locked "$tellico_pubkey"; then
-    cat <<EOF
+Next step: this device has a private key but not its public half, so there is
+nothing to print or authorize yet. Recreate it from the private key:
+
+    ssh-keygen -y -f $tellico_key >$tellico_key.pub
+    ./doctor.sh
+
+  ssh-keygen asks for the passphrase if the key has one.
+EOF
+      ;;
+    locked)
+      cat <<EOF
 
 Next step: this device's key is encrypted and no SSH agent is holding it,
 so the non-interactive check cannot use it. The key may well already be
 authorized on Tellico.
 
-    ssh-add ${tellico_pubkey%.pub}
+    ssh-add $tellico_key
 
   On macOS, store the passphrase in the keychain so this persists:
 
-    ssh-add --apple-use-keychain ${tellico_pubkey%.pub}
+    ssh-add --apple-use-keychain $tellico_key
 
   Then rerun: ./doctor.sh
 EOF
-    return
-  fi
+      ;;
+    *)
+      cat <<EOF
 
-  cat <<EOF
+Next step: this device's SSH key is not authorized for $tellico_account on
+Tellico. It has to be in that account's ~/.ssh/authorized_keys.
 
-Next step: this device's SSH key is not authorized on Tellico.
-
-  Public key ($tellico_pubkey):
+  Public key ($tellico_key.pub):
 
 EOF
-  sed 's/^/    /' "$tellico_pubkey"
-  cat <<EOF
+      sed 's/^/    /' "$tellico_key.pub"
+      cat <<EOF
 
   From this machine, if the account still accepts passwords:
 
-    ssh-copy-id -i $tellico_pubkey $ssh_host
+    ssh-copy-id -i $tellico_key.pub $ssh_host
 
   Or, from a machine that already works:
 
-    ssh $ssh_host 'umask 077; mkdir -p ~/.ssh; echo "$(cat "$tellico_pubkey")" >> ~/.ssh/authorized_keys'
+    ssh $ssh_host 'umask 077; mkdir -p ~/.ssh; echo "$(cat "$tellico_key.pub")" >> ~/.ssh/authorized_keys'
 
   Then rerun: ./install.sh
 EOF
+      tellico_note_service_account
+      ;;
+  esac
 }
 
 tellico_explain_unknown() {
@@ -210,7 +306,7 @@ tellico_explain_key() {
   cat <<EOF
 
 Next step: SSH works, but the account you connect as
-($(tellico_ssh_target | sed 's/@.*//')) cannot read the model API key:
+($(tellico_ssh_account)) cannot read the model API key:
 
     $TELLICO_REMOTE_KEY_PATH
 
@@ -263,12 +359,21 @@ tellico_preflight() {
         ;;
       denied)
         tellico_status_line network OK 'host reachable'
-        tellico_denied_key=$(tellico_device_pubkey)
-        if [ -n "$tellico_denied_key" ] && tellico_key_locked "$tellico_denied_key"; then
-          tellico_status_line 'ssh auth' FAIL 'key is encrypted and not in an agent'
-        else
-          tellico_status_line 'ssh auth' FAIL 'key not authorized on Tellico'
-        fi
+        case $(tellico_denied_reason) in
+          nokey)
+            tellico_status_line 'ssh auth' FAIL 'this device has no SSH key'
+            ;;
+          nopub)
+            tellico_status_line 'ssh auth' FAIL 'private key has no public half'
+            ;;
+          locked)
+            tellico_status_line 'ssh auth' FAIL 'key is encrypted and not in an agent'
+            ;;
+          *)
+            tellico_status_line 'ssh auth' FAIL \
+              "key not authorized for $(tellico_ssh_account)"
+            ;;
+        esac
         tellico_explain_denied
         ;;
       *)
