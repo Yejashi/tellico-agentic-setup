@@ -90,6 +90,17 @@
       }
     }
   },
+  "tool_output": {
+    "max_lines": 300,
+    "max_bytes": 8192
+  },
+  "compaction": {
+    "auto": true,
+    "prune": true,
+    "reserved": 12000,
+    "tail_turns": 4,
+    "preserve_recent_tokens": 8000
+  },
   "subagent_depth": 1,
   "agent": {
     "orchestrate-tellico-0": {
