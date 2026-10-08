@@ -67,6 +67,11 @@ this repo.
 
 - `bin/tellico-qwen-tunnel` owns the SSH control socket and port forwards.
   Everything else goes through it; do not open ad-hoc tunnels.
+- `bin/opencode-tellico` derives the default lead node from `$USER@$(uname -n)`
+  so concurrent users spread across both servers instead of all leading on
+  node 0. It must stay *stable* per device: the point is prompt-cache affinity,
+  which a random choice each session would destroy. An explicit `0`/`1` and
+  `TELLICO_LEAD_NODE` still win.
 - `bin/opencode-tellico` selects the lead node and injects runtime config via
   `OPENCODE_CONFIG_CONTENT`. OpenCode's interactive command rejects `--model`,
   so the model and lead agent must travel through that env var.

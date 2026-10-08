@@ -68,9 +68,17 @@ and binding wider puts an unencrypted endpoint on your LAN.
 ```bash
 tellico-gateway add-user alice          # default: 1 request at a time
 tellico-gateway add-user bob 2          # let bob hold two slots
+tellico-gateway set-limit alice 2       # resize, keeping their key
 tellico-gateway list-users
 tellico-gateway revoke alice
 ```
+
+Use `set-limit` rather than revoke-and-re-add to change someone's concurrency.
+Rotating a key makes the operator redistribute a credential to fix their own
+sizing decision.
+
+Give anyone running `opencode-tellico` at least **2**: one session issues
+several requests at a time, so a one-slot key makes it queue against itself.
 
 The key is printed once and never stored: the keys file keeps only a SHA-256
 hash, so a copy of it cannot be replayed against the gateway. Add and revoke
@@ -102,6 +110,7 @@ SSH tunnel itself and the design is otherwise identical.
 tellico-gateway status     # service, both nodes, in-flight, public URL, users
 tellico-gateway doctor     # python, cluster key, tunnel, keys, service, funnel
 tellico-gateway monitor    # live usage and load
+tellico-gateway set-limit NAME N   # resize a user, keeping their key
 tellico-gateway logs       # one line per request
 tellico-gateway restart
 ```

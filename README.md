@@ -258,6 +258,17 @@ opencode-tellico 1
 Both commands can use both node-pinned subagents. The number only chooses the
 model that hosts the lightweight lead conversation.
 
+With no number, the lead node is derived from the device, so that several users
+do not all lead on node 0 and compete for one server's prompt cache. It is
+stable for a given device, which keeps that cache warm across sessions;
+`TELLICO_LEAD_NODE=0` or `=1` overrides it.
+
+Why it matters: the servers run a 91% prompt-cache hit rate, and a miss on a
+large agentic context costs minutes of reprocessing. Spreading the leads is
+free and protects it. See
+[`docs/flash-next-evaluation.md`](docs/flash-next-evaluation.md) for why the
+window cannot simply be made bigger instead.
+
 Non-interactive example:
 
 ```bash
