@@ -67,6 +67,14 @@ this repo.
 
 - `bin/tellico-qwen-tunnel` owns the SSH control socket and port forwards.
   Everything else goes through it; do not open ad-hoc tunnels.
+- Thinking level is a model *variant*, not a model or an agent. The four
+  variants in `config/opencode.json` (`off`, `low`, `medium`, `xhigh`) are the
+  only values the chat template accepts -- it raises `Unexpected reasoning
+  effort` on anything else, which is how `high` was ruled out. Each carries
+  `chat_template_kwargs`, the channel proven to reach the template; a
+  top-level `reasoning_effort` works against llama.cpp directly but is not
+  what OpenCode forwards. `--think` sets the variant per agent at runtime; the
+  `/think-*` commands set it per request.
 - `bin/opencode-tellico` derives the default lead node from `$USER@$(uname -n)`
   so concurrent users spread across both servers instead of all leading on
   node 0. It must stay *stable* per device: the point is prompt-cache affinity,

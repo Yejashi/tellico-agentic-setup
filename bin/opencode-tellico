@@ -32,10 +32,11 @@ default_lead_node() {
 }
 
 node=
+think=${TELLICO_THINK:-}
 
 usage() {
   cat <<'EOF'
-usage: opencode-tellico [0|1] [OPENCODE_ARGS...]
+usage: opencode-tellico [0|1] [--think LEVEL] [OPENCODE_ARGS...]
 
 Starts OpenCode with dual-node Tellico orchestration. The optional 0 or 1
 selects the lead model; both node-pinned workers remain available.
@@ -44,12 +45,24 @@ With no number, the lead node is derived from this device, so that several
 users do not all lead on node 0 and compete for one server's prompt cache.
 It is stable for a given device. TELLICO_LEAD_NODE overrides it.
 
+How much the model thinks is a model variant. --think sets it for the whole
+session, for the lead and both workers; inside a session the /think-off,
+/think-low, /think-medium and /think-xhigh commands set it for one request.
+
+  off      no reasoning at all, fastest
+  low      brief reasoning
+  medium   the server's default
+  xhigh    the most the chat template allows
+
 examples:
   opencode-tellico 0
+  opencode-tellico 1 --think low
   opencode-tellico 1 /path/to/project
   opencode-tellico 0 run 'Review this repository'
 
 environment:
+  TELLICO_THINK    Default thinking level, same values as --think, which
+                   overrides it.
   TELLICO_LEAD_NODE
                    Force the lead node to 0 or 1 instead of deriving it from
                    this device.
@@ -69,6 +82,25 @@ case ${1:-} in
   -h|--help)
     usage
     exit 0
+    ;;
+esac
+
+# After the node, so "opencode-tellico 1 --think low" reads naturally.
+if [ "${1:-}" = --think ]; then
+  if [ "$#" -lt 2 ]; then
+    echo 'opencode-tellico: --think requires a level' >&2
+    exit 2
+  fi
+  think=$2
+  shift 2
+fi
+
+case $think in
+  ''|off|low|medium|xhigh) ;;
+  *)
+    echo "opencode-tellico: unknown thinking level '$think'" >&2
+    echo 'Use one of: off, low, medium, xhigh' >&2
+    exit 2
     ;;
 esac
 
@@ -106,7 +138,17 @@ fi
 
 model="tellico-${node}/qwen3.8-27b"
 lead_agent="orchestrate-tellico-${node}"
-runtime_config="{\"model\":\"${model}\",\"small_model\":\"${model}\",\"default_agent\":\"${lead_agent}\",\"agent\":{\"compaction\":{\"model\":\"${model}\"},\"summary\":{\"model\":\"${model}\"},\"title\":{\"model\":\"${model}\"}}}"
+# A thinking level is a model variant, so it is set per agent. Only the lead
+# and the workers get it: title, summary and compaction are the session's own
+# overhead and keep whatever the config gives them.
+think_overrides=""
+if [ -n "$think" ]; then
+  think_overrides=",\"${lead_agent}\":{\"variant\":\"${think}\"}"
+  think_overrides="${think_overrides},\"tellico-worker-0\":{\"variant\":\"${think}\"}"
+  think_overrides="${think_overrides},\"tellico-worker-1\":{\"variant\":\"${think}\"}"
+fi
+
+runtime_config="{\"model\":\"${model}\",\"small_model\":\"${model}\",\"default_agent\":\"${lead_agent}\",\"agent\":{\"compaction\":{\"model\":\"${model}\"},\"summary\":{\"model\":\"${model}\"},\"title\":{\"model\":\"${model}\"}${think_overrides}}}"
 
 # OpenCode's interactive command takes no --model (v2.0.24 rejects the flag
 # outright), so the lead model and agent reach the session through

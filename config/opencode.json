@@ -31,14 +31,27 @@
             }
           },
           "variants": {
-            "thinking": {
-              "chat_template_kwargs": {
-                "enable_thinking": true
-              }
-            },
             "off": {
               "chat_template_kwargs": {
                 "enable_thinking": false
+              }
+            },
+            "low": {
+              "chat_template_kwargs": {
+                "enable_thinking": true,
+                "reasoning_effort": "low"
+              }
+            },
+            "medium": {
+              "chat_template_kwargs": {
+                "enable_thinking": true,
+                "reasoning_effort": "medium"
+              }
+            },
+            "xhigh": {
+              "chat_template_kwargs": {
+                "enable_thinking": true,
+                "reasoning_effort": "xhigh"
               }
             }
           }
@@ -75,14 +88,27 @@
             }
           },
           "variants": {
-            "thinking": {
-              "chat_template_kwargs": {
-                "enable_thinking": true
-              }
-            },
             "off": {
               "chat_template_kwargs": {
                 "enable_thinking": false
+              }
+            },
+            "low": {
+              "chat_template_kwargs": {
+                "enable_thinking": true,
+                "reasoning_effort": "low"
+              }
+            },
+            "medium": {
+              "chat_template_kwargs": {
+                "enable_thinking": true,
+                "reasoning_effort": "medium"
+              }
+            },
+            "xhigh": {
+              "chat_template_kwargs": {
+                "enable_thinking": true,
+                "reasoning_effort": "xhigh"
               }
             }
           }
@@ -194,6 +220,28 @@
         "task": "deny",
         "doom_loop": "deny"
       }
+    }
+  },
+  "command": {
+    "think-off": {
+      "description": "Run this one request with no reasoning at all -- fastest, for mechanical edits",
+      "variant": "off",
+      "template": "$ARGUMENTS"
+    },
+    "think-low": {
+      "description": "Run this one request with brief reasoning",
+      "variant": "low",
+      "template": "$ARGUMENTS"
+    },
+    "think-medium": {
+      "description": "Run this one request with the default amount of reasoning",
+      "variant": "medium",
+      "template": "$ARGUMENTS"
+    },
+    "think-xhigh": {
+      "description": "Run this one request with the most reasoning the template allows -- for hard problems",
+      "variant": "xhigh",
+      "template": "$ARGUMENTS"
     }
   }
 }

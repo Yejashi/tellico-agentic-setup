@@ -269,10 +269,45 @@ free and protects it. See
 [`docs/flash-next-evaluation.md`](docs/flash-next-evaluation.md) for why the
 window cannot simply be made bigger instead.
 
+### Controlling how much it thinks
+
+The model is a reasoning model, and how much it reasons is a model variant.
+Four levels exist, which are what the chat template accepts:
+
+| Level | Meaning |
+|---|---|
+| `off` | no reasoning at all; fastest, for mechanical edits |
+| `low` | brief reasoning |
+| `medium` | the server's own default |
+| `xhigh` | the most the template allows |
+
+For a whole session, at launch:
+
+```bash
+opencode-tellico 0 --think low
+TELLICO_THINK=off opencode-tellico 1      # same thing, as an environment variable
+```
+
+For one request, inside a running session:
+
+```text
+/think-off    fix the import order in this file
+/think-xhigh  why does this lock order deadlock under two writers?
+```
+
+`--think` applies to the lead and both workers. Title, summary and compaction
+keep whatever the config gives them, since they are the session's own overhead
+rather than work you asked for.
+
+Note that `medium` is what you get today whether or not you ask: the cluster
+starts `llama-server` with `--reasoning-effort medium`, so it is the floor
+these levels move away from. The template's own default is `xhigh`.
+
 Non-interactive example:
 
 ```bash
 opencode-tellico 0 run 'Review this repository and fix the highest-impact issue'
+opencode-tellico 0 --think off run 'Rename this symbol across the repository'
 ```
 
 Tunnel and cluster checks:
