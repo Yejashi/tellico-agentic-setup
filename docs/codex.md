@@ -69,3 +69,10 @@ the two servers the same way `opencode-tellico` does.
 | `TELLICO_CODEX_NODE` | Force node 0 or 1 instead of deriving it |
 | `TELLICO_CODEX_PROFILE` | Profile name, default `tellico` |
 | `TELLICO_THINK` | Default thinking level |
+
+## Known wart
+
+Codex logs `warning: Model metadata for 'qwen3.8-27b' not found` on every
+session. That is its internal model registry, not the profile:
+`model_context_window` and `model_max_output_tokens` are set correctly and the
+session behaves. It is noise, not a misconfiguration.

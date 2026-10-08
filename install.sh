@@ -12,6 +12,7 @@ fix_path=false
 mode=
 gateway_url=
 api_key_file=
+ssh_identity=${TELLICO_SSH_IDENTITY:-}
 
 config_home=${XDG_CONFIG_HOME:-"$HOME/.config"}
 config_dir="$config_home/tellico-qwen"
@@ -51,6 +52,11 @@ Both modes give the same dual-node session with the same two workers.
                    File holding the gateway API key. Without it the key is
                    read from standard input when piped, or prompted for.
   --ssh-host HOST  SSH hostname or config alias (default: tellico)
+  --ssh-identity PATH
+                   Private key to authenticate with, passed as IdentityFile
+                   with IdentitiesOnly. Use this when ~/.ssh/config names a
+                   key ssh cannot use and you cannot edit it, which is the
+                   case when home-manager or NixOS generates it.
   --remote-key-path PATH
                    Path to the model API key on the cluster
                    (default: /data/gclab/qwen38/secrets/api-key).
@@ -90,6 +96,11 @@ while [ "$#" -gt 0 ]; do
     --ssh-host)
       [ "$#" -ge 2 ] || { echo 'install: --ssh-host requires a value' >&2; exit 2; }
       ssh_host=$2
+      shift 2
+      ;;
+    --ssh-identity)
+      [ "$#" -ge 2 ] || { echo 'install: --ssh-identity requires a value' >&2; exit 2; }
+      ssh_identity=$2
       shift 2
       ;;
     --port0)
@@ -296,8 +307,25 @@ for command_name in $required_commands; do
   fi
 done
 
+if [ -n "$ssh_identity" ]; then
+  case $ssh_identity in
+    '~'/*) ssh_identity="$HOME/${ssh_identity#'~/'}" ;;
+  esac
+  if [ ! -r "$ssh_identity" ]; then
+    echo "install: cannot read the key at $ssh_identity" >&2
+    exit 2
+  fi
+  case $ssh_identity in
+    *.pub)
+      echo 'install: --ssh-identity wants the private key, not the .pub half.' >&2
+      exit 2
+      ;;
+  esac
+fi
+
 TELLICO_REMOTE_KEY_PATH=$remote_key_path
-export TELLICO_REMOTE_KEY_PATH
+TELLICO_SSH_IDENTITY=$ssh_identity
+export TELLICO_REMOTE_KEY_PATH TELLICO_SSH_IDENTITY
 . "$script_dir/lib/checks.sh"
 
 if [ "$start_client" = true ] && [ "$mode" = tunnel ]; then
@@ -404,6 +432,7 @@ trap 'rm -f "$env_tmp"' EXIT HUP INT TERM
   printf "TELLICO_QWEN_PORT0='%s'\n" "$port0"
   printf "TELLICO_QWEN_PORT1='%s'\n" "$port1"
   printf "TELLICO_REMOTE_KEY_PATH='%s'\n" "$remote_key_path"
+  printf "TELLICO_SSH_IDENTITY='%s'\n" "$ssh_identity"
 } >"$env_tmp"
 mv "$env_tmp" "$config_dir/client.env"
 chmod 600 "$config_dir/client.env"
@@ -482,7 +511,13 @@ if [ "$mode" = tunnel ] &&
   mkdir -p "$systemd_dir"
   unit_tmp="$systemd_dir/.tellico-qwen-tunnel.service.tmp.$$"
   trap 'rm -f "$unit_tmp"' EXIT HUP INT TERM
+  if [ -n "$ssh_identity" ]; then
+    identity_opts="-o IdentityFile=$ssh_identity -o IdentitiesOnly=yes"
+  else
+    identity_opts=""
+  fi
   sed \
+    -e "s|__TELLICO_SSH_IDENTITY_OPTS__|$identity_opts|g" \
     -e "s|__TELLICO_SSH_HOST__|$ssh_host|g" \
     -e "s|__TELLICO_QWEN_PORT0__|$port0|g" \
     -e "s|__TELLICO_QWEN_PORT1__|$port1|g" \

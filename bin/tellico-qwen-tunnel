@@ -22,6 +22,14 @@ control_socket="$runtime_dir/control"
 unit_name=tellico-qwen-tunnel.service
 mode=${TELLICO_MODE:-tunnel}
 
+# An explicit key, for when ssh_config names one ssh cannot use and cannot be
+# edited -- a NixOS or otherwise managed ~/.ssh/config, for instance. Without
+# IdentitiesOnly ssh would still offer the broken one first.
+identity_opts=''
+if [ -n "${TELLICO_SSH_IDENTITY:-}" ]; then
+  identity_opts="-o IdentityFile=$TELLICO_SSH_IDENTITY -o IdentitiesOnly=yes"
+fi
+
 load_checks() {
   checks="$config_dir/lib/checks.sh"
   if [ ! -r "$checks" ]; then
@@ -49,7 +57,8 @@ refresh_key() {
   umask 077
   key_tmp="$config_dir/.api-key.tmp.$$"
   trap 'rm -f "$key_tmp"' EXIT HUP INT TERM
-  ssh -o BatchMode=yes -o ConnectTimeout=15 "$ssh_host" \
+  # shellcheck disable=SC2086
+  ssh -o BatchMode=yes -o ConnectTimeout=15 $identity_opts "$ssh_host" \
     "cat '$TELLICO_REMOTE_KEY_PATH'" >"$key_tmp"
   test -s "$key_tmp"
   mv "$key_tmp" "$key_file"
@@ -71,7 +80,8 @@ start_tunnel() {
   fi
 
   rm -f "$control_socket"
-  ssh -o BatchMode=yes -fN -M -S "$control_socket" \
+  # shellcheck disable=SC2086
+  ssh -o BatchMode=yes -fN -M -S "$control_socket" $identity_opts \
     -o ExitOnForwardFailure=yes \
     -o ControlPersist=no \
     -o ServerAliveInterval=30 \

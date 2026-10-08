@@ -7,7 +7,7 @@ Wants=network-online.target
 Type=simple
 RuntimeDirectory=tellico-qwen
 RuntimeDirectoryMode=0700
-ExecStart=/usr/bin/env ssh -o BatchMode=yes -N -M -S %t/tellico-qwen/control -o ExitOnForwardFailure=yes -o ControlPersist=no -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -L 127.0.0.1:__TELLICO_QWEN_PORT0__:tellico-compute0:8000 -L 127.0.0.1:__TELLICO_QWEN_PORT1__:tellico-compute1:8000 __TELLICO_SSH_HOST__
+ExecStart=/usr/bin/env ssh -o BatchMode=yes __TELLICO_SSH_IDENTITY_OPTS__ -N -M -S %t/tellico-qwen/control -o ExitOnForwardFailure=yes -o ControlPersist=no -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -L 127.0.0.1:__TELLICO_QWEN_PORT0__:tellico-compute0:8000 -L 127.0.0.1:__TELLICO_QWEN_PORT1__:tellico-compute1:8000 __TELLICO_SSH_HOST__
 Restart=always
 RestartSec=10
 

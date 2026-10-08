@@ -9,6 +9,15 @@
 : "${TELLICO_REMOTE_KEY_PATH:=/data/gclab/qwen38/secrets/api-key}"
 : "${TELLICO_CONNECT_TIMEOUT:=15}"
 
+# An explicit private key, for when ssh_config names one ssh cannot use and is
+# itself not editable -- a home-manager or otherwise managed ~/.ssh/config.
+: "${TELLICO_SSH_IDENTITY:=}"
+tellico_identity_opts() {
+  if [ -n "$TELLICO_SSH_IDENTITY" ]; then
+    printf '%s' "-o IdentityFile=$TELLICO_SSH_IDENTITY -o IdentitiesOnly=yes"
+  fi
+}
+
 # Who owns the Slurm allocation, and what the service job is called. Used to
 # read the queue, which any account on the cluster may do.
 : "${TELLICO_SERVICE_USER:=bbogale}"
@@ -96,7 +105,9 @@ tellico_intended_key() {
 # The tunnel opens a master of its own and does have to authenticate, so this
 # probe has to as well.
 tellico_probe_ssh() {
+  # shellcheck disable=SC2046
   if tellico_probe_output=$(ssh -o BatchMode=yes -o ControlPath=none \
+    $(tellico_identity_opts) \
     -o ConnectTimeout="$TELLICO_CONNECT_TIMEOUT" "$ssh_host" true 2>&1); then
     tellico_probe_result=ok
     return 0
@@ -446,7 +457,9 @@ tellico_preflight() {
     return 1
   fi
 
+  # shellcheck disable=SC2046
   if ssh -o BatchMode=yes -o ConnectTimeout="$TELLICO_CONNECT_TIMEOUT" \
+    $(tellico_identity_opts) \
     "$ssh_host" "test -r '$TELLICO_REMOTE_KEY_PATH'" 2>/dev/null; then
     tellico_status_line 'api key' OK 'readable on the cluster'
   else

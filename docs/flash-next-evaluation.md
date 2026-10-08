@@ -92,6 +92,26 @@ This is why the swap is not a config edit. It is a trade of prompt-cache
 capacity and per-token expert streaming against context and slots, and the
 sign of the result is genuinely unknown.
 
+## It is not a config edit: the cluster repo has no MoE knob
+
+`lib/service.sh` in `qwen38-cluster` defines these and nothing else:
+
+```text
+QWEN38_CTX  QWEN38_SLOTS  QWEN38_MODEL  QWEN38_MODEL_ALIAS  QWEN38_PORT
+QWEN38_SPEC_TYPE  QWEN38_SPEC_DRAFT_MODEL  QWEN38_SPEC_DRAFT_NGL
+QWEN38_SPEC_N_MAX  QWEN38_CACHE_RAM  QWEN38_CACHE_IDLE_SLOTS
+QWEN38_CTX_CHECKPOINTS  QWEN38_CHECKPOINT_MIN_STEP  ...
+```
+
+There is no `--n-cpu-moe` equivalent, and no override-tensor option either. An
+88 GB model on 32 GiB of VRAM cannot run without one, so adopting Flash-Next
+needs a code change in `qwen38-cluster` to add that flag -- not a line in
+`service.env`. Budget for that before planning the swap.
+
+Also worth knowing before starting: `qwen38-submit` refuses to run while a job
+of the same name is active, so the swap means `qwen38-stop` first and a real
+outage for everyone, not an overlap.
+
 ## What to measure, in order
 
 All of this needs the GPUs, so it needs an allocation where nobody is working.
