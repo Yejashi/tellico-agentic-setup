@@ -122,6 +122,39 @@ add_user() {
   fi
 }
 
+# Changing a limit must not rotate a key: the user is not at fault for the
+# operator resizing them, and a new key means redistributing a credential.
+set_limit() {
+  name=${1:-}
+  max_parallel=${2:-}
+  if [ -z "$name" ] || [ -z "$max_parallel" ]; then
+    echo 'usage: tellico-gateway set-limit NAME MAX_PARALLEL' >&2
+    exit 2
+  fi
+  case $max_parallel in
+    ''|*[!0-9]*|0)
+      echo 'tellico-gateway: MAX_PARALLEL must be a positive integer.' >&2
+      exit 2
+      ;;
+  esac
+  if ! user_exists "$name"; then
+    echo "tellico-gateway: no key for $name" >&2
+    exit 1
+  fi
+  umask 077
+  tmp="$keys_file.tmp.$$"
+  trap 'rm -f "$tmp"' EXIT HUP INT TERM
+  awk -v u="$name" -v n="$max_parallel" '
+    /^#/ { print; next }
+    $2 == u { printf "%s %s %s\n", $1, $2, n; next }
+    { print }
+  ' "$keys_file" >"$tmp"
+  mv "$tmp" "$keys_file"
+  chmod 600 "$keys_file"
+  trap - EXIT HUP INT TERM
+  echo "$name may now hold $max_parallel concurrent request(s). Their key is unchanged."
+}
+
 revoke_user() {
   name=${1:-}
   if [ -z "$name" ]; then
@@ -427,6 +460,7 @@ usage: tellico-gateway <command>
   run                                 run in the foreground (no systemd)
   doctor                              check every dependency in order
   add-user NAME [MAX_PARALLEL]        mint a key and print it once
+  set-limit NAME N                    change concurrency, keeping the key
   revoke NAME                         delete a key
   list-users                          who has a key
   url                                 base URL to hand out
@@ -455,6 +489,10 @@ case ${1:-} in
   add-user)
     shift
     add_user "${1:-}" "${2:-1}"
+    ;;
+  set-limit)
+    shift
+    set_limit "${1:-}" "${2:-}"
     ;;
   revoke)
     shift

@@ -7,7 +7,31 @@ client_config="$config_dir/opencode.json"
 checks="$config_dir/lib/checks.sh"
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 tunnel_command="$script_dir/tellico-qwen-tunnel"
-node=0
+
+# Which server hosts the lead conversation. Left to itself every device would
+# pick node 0, piling every user's always-on lead onto one server and costing
+# it the prompt-cache affinity that makes a long session cheap. Derive it from
+# the device instead: stable, so this device always leads on the same node and
+# keeps its cache, but spread across users.
+default_lead_node() {
+  if [ -n "${TELLICO_LEAD_NODE:-}" ]; then
+    case $TELLICO_LEAD_NODE in
+      0|1)
+        printf '%s\n' "$TELLICO_LEAD_NODE"
+        return 0
+        ;;
+      *)
+        echo "opencode-tellico: TELLICO_LEAD_NODE must be 0 or 1," \
+          "got '$TELLICO_LEAD_NODE'" >&2
+        exit 2
+        ;;
+    esac
+  fi
+  seed=$(printf '%s' "${USER:-unknown}@$(uname -n)" | cksum | cut -d' ' -f1)
+  printf '%s\n' "$((seed % 2))"
+}
+
+node=
 
 usage() {
   cat <<'EOF'
@@ -16,12 +40,19 @@ usage: opencode-tellico [0|1] [OPENCODE_ARGS...]
 Starts OpenCode with dual-node Tellico orchestration. The optional 0 or 1
 selects the lead model; both node-pinned workers remain available.
 
+With no number, the lead node is derived from this device, so that several
+users do not all lead on node 0 and compete for one server's prompt cache.
+It is stable for a given device. TELLICO_LEAD_NODE overrides it.
+
 examples:
   opencode-tellico 0
   opencode-tellico 1 /path/to/project
   opencode-tellico 0 run 'Review this repository'
 
 environment:
+  TELLICO_LEAD_NODE
+                   Force the lead node to 0 or 1 instead of deriving it from
+                   this device.
   TELLICO_OPENCODE_STANDALONE
                    Force OpenCode's --standalone flag on (1) or off (0).
                    Unset, the flag is used when this OpenCode supports it,
@@ -40,6 +71,10 @@ case ${1:-} in
     exit 0
     ;;
 esac
+
+if [ -z "$node" ]; then
+  node=$(default_lead_node)
+fi
 
 if ! command -v opencode >/dev/null 2>&1; then
   echo 'opencode-tellico: opencode is not installed or not on PATH' >&2
