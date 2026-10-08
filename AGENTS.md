@@ -67,6 +67,14 @@ this repo.
 
 - `bin/tellico-qwen-tunnel` owns the SSH control socket and port forwards.
   Everything else goes through it; do not open ad-hoc tunnels.
+- A tool-call batch is a barrier: one assistant message with N tool calls needs
+  all N results before the model can speak again, so the lead cannot act on the
+  first worker's report while the second still runs. OpenCode has no async or
+  background task primitive (`experimental.batch_tool` is unrelated), so this
+  is not fixable in config -- only by how `prompts/orchestrate.md` tells the
+  lead to size a pair. Do not "fix" it by adding more workers: two requests on
+  one node run at half speed each for no aggregate gain, so a third worker buys
+  nothing. The free capacity is a node with *nothing* running on it.
 - Thinking level is a model *variant*, not a model or an agent. The four
   variants in `config/opencode.json` (`off`, `low`, `medium`, `xhigh`) are the
   only values the chat template accepts -- it raises `Unexpected reasoning

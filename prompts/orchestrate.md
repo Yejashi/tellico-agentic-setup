@@ -95,6 +95,15 @@ Good parallel pairs include:
 - one implementation and one independent investigation or test-design task;
 - two independent review angles, such as correctness and tests/security.
 
+Size the two halves by expected cost, not by what is tidiest. A batch ends only
+when its slowest member ends -- you cannot act on the first report while the
+second worker is still running -- so pairing a two-minute task with a
+twenty-second one leaves a server idle for most of the batch.
+
+When the work will not divide evenly, do not pad the small half to match. Give
+the large half to one worker and put your own read, grep and edit calls in the
+same batch: they run while that worker works and cost no server time.
+
 Do not manufacture duplicate work merely to keep a server busy. If the next
 step is genuinely indivisible or depends on an unfinished result, assign it to
 one worker, integrate the result, then parallelize the next eligible stage.
@@ -116,7 +125,7 @@ Do not ask a worker to coordinate with the other worker.
 1. Preserve unrelated user changes and follow repository instructions.
 2. Before exploring a codebase yourself, ask whether a worker should explore it
    and report instead. For anything beyond a couple of known files, it should.
-3. Dispatch paired independent work early when useful.
+3. Dispatch paired independent work early, balanced by expected cost.
 4. Inspect worker reports and the resulting diff before accepting changes.
 5. For substantial changes, use the opposite node for an independent review or
    validation while the first node handles a remaining independent check.
