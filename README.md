@@ -90,8 +90,15 @@ To avoid the prompt, pass `--api-key-file PATH` or pipe the key in:
 printf '%s' "$KEY" | ./install.sh --gateway-url https://HOST/v1
 ```
 
-`./doctor.sh` knows which mode this device is in and checks accordingly. The
-rest of this section is tunnel mode, which gateway mode does not need.
+`./doctor.sh` knows which mode a device is in once installed. Before the first
+install there is nothing recorded yet, so name the URL to be checked as a
+gateway user:
+
+```bash
+./doctor.sh --gateway-url https://HOST/v1
+```
+
+The rest of this section is tunnel mode, which gateway mode does not need.
 
 ## First run, tunnel mode
 

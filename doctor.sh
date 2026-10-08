@@ -8,18 +8,28 @@ env_file="$config_dir/client.env"
 
 usage() {
   cat <<'EOF'
-usage: ./doctor.sh [--ssh-host HOST] [--remote-key-path PATH]
+usage: ./doctor.sh [--gateway-url URL] [--ssh-host HOST]
+                   [--remote-key-path PATH]
 
 Checks everything the Tellico client needs, in dependency order, and prints
 the single next step when something is missing. Safe to run before install.sh.
 Values recorded by a previous install are used unless overridden here.
+
+  --gateway-url URL  Check gateway mode against this base URL. Needed only
+                     before the first install, which records the mode.
 EOF
 }
 
 ssh_host=
 remote_key_path=
+gateway_url=
 while [ "$#" -gt 0 ]; do
   case $1 in
+    --gateway-url)
+      [ "$#" -ge 2 ] || { echo 'doctor: --gateway-url requires a value' >&2; exit 2; }
+      gateway_url=$2
+      shift 2
+      ;;
     --ssh-host)
       [ "$#" -ge 2 ] || { echo 'doctor: --ssh-host requires a value' >&2; exit 2; }
       ssh_host=$2
@@ -52,6 +62,12 @@ fi
 ssh_host=${ssh_host:-${TELLICO_SSH_HOST:-tellico}}
 if [ -n "$remote_key_path" ]; then
   TELLICO_REMOTE_KEY_PATH=$remote_key_path
+fi
+# Before the first install there is no client.env to record the mode, so a
+# gateway user has to name the URL to be checked as one.
+if [ -n "$gateway_url" ]; then
+  TELLICO_MODE=gateway
+  TELLICO_GATEWAY_URL=${gateway_url%/}
 fi
 
 . "$script_dir/lib/checks.sh"
