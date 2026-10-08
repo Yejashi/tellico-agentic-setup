@@ -67,35 +67,40 @@ means a matching change to `config/opencode.json` here.
 
 ## First run, gateway mode
 
-If someone gave you a URL and an API key, this is the whole setup. You need
-Linux, macOS, or WSL with `curl`, `sed`, `install`, and
-[OpenCode](https://opencode.ai/docs/) on `PATH` -- no `ssh`, no VPN, no
-cluster account.
+If someone gave you an API key, that key is all you need. The gateway URL is
+built into this repository. You need Linux, macOS, or WSL with `curl`, `sed`,
+`install`, and [OpenCode](https://opencode.ai/docs/) on `PATH` -- no `ssh`, no
+VPN, no cluster account.
 
 ```bash
 git clone https://github.com/Yejashi/tellico-agentic-setup.git
 cd tellico-agentic-setup
-./install.sh --gateway-url https://HOST/v1
+./install.sh
 ```
 
-It asks for the key and stores it with mode 0600. Then:
+With no mode flag it asks which way you want in; choose **1) API key**, paste
+the key when prompted, and that is the install. Then:
 
 ```bash
 opencode-tellico 0
 ```
 
-To avoid the prompt, pass `--api-key-file PATH` or pipe the key in:
+`./install.sh --gateway` skips the question. To avoid the key prompt too, pass
+`--api-key-file PATH` or pipe the key in:
 
 ```bash
-printf '%s' "$KEY" | ./install.sh --gateway-url https://HOST/v1
+printf '%s' "$KEY" | ./install.sh --gateway
 ```
 
+Rerunning `./install.sh` later keeps both the mode and the key, so an update
+after `git pull` asks nothing. Pass `--api-key-file` to replace the key, or
+`--gateway-url URL` to point at a different gateway.
+
 `./doctor.sh` knows which mode a device is in once installed. Before the first
-install there is nothing recorded yet, so name the URL to be checked as a
-gateway user:
+install there is nothing recorded yet, so say which mode to check:
 
 ```bash
-./doctor.sh --gateway-url https://HOST/v1
+./doctor.sh --gateway
 ```
 
 The rest of this section is tunnel mode, which gateway mode does not need.
@@ -171,10 +176,16 @@ Follow these in order; each step depends on the one before it. Run
 
 ## Installer options
 
+With no mode flag, an interactive run asks which mode to install, defaulting
+to the mode already recorded on the device.
+
 ```text
---gateway-url URL        Use gateway mode against this base URL, for example
-                         https://host.example.ts.net/v1
---api-key-file PATH      File holding the gateway API key (gateway mode)
+--gateway                Gateway mode against the built-in URL
+--ssh, --tunnel          Tunnel mode over your own SSH connection
+--gateway-url URL        Gateway mode against a different base URL, for
+                         example https://host.example.ts.net/v1
+--api-key-file PATH      File holding the gateway API key. Without it the key
+                         is piped in, typed, or kept from a previous install.
 --ssh-host HOST          SSH hostname or config alias (default: tellico)
 --remote-key-path PATH   Model API key path on the cluster, for accounts that
                          read it from somewhere other than the default

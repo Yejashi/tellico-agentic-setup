@@ -59,9 +59,12 @@ needs no SSH and no cluster account either.
 ```bash
 git clone https://github.com/Yejashi/tellico-agentic-setup.git
 cd tellico-agentic-setup
-./install.sh --gateway-url https://HOST/v1      # asks for your key
+./install.sh            # choose "1) API key", then paste your key
 opencode-tellico 0
 ```
+
+The URL is already in the repository, so your key is the only thing you need
+to have at hand.
 
 `./doctor.sh` checks the whole path if something looks wrong. Ask the operator
 for a key allowing 2-3 concurrent requests before you use this: one OpenCode

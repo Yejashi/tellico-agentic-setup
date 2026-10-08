@@ -8,9 +8,22 @@ port1=${TELLICO_QWEN_PORT1:-18081}
 remote_key_path=${TELLICO_REMOTE_KEY_PATH:-/data/gclab/qwen38/secrets/api-key}
 start_client=true
 fix_path=false
-mode=tunnel
+# Empty until a flag, a previous install, or the user chooses one.
+mode=
 gateway_url=
 api_key_file=
+
+config_home=${XDG_CONFIG_HOME:-"$HOME/.config"}
+config_dir="$config_home/tellico-qwen"
+
+# The gateway this repository is set up for, so a user needs only a key. An
+# operator running their own gateway edits that one file; --gateway-url and
+# TELLICO_GATEWAY_URL still win over it.
+default_gateway_url=${TELLICO_GATEWAY_URL:-}
+if [ -z "$default_gateway_url" ] && [ -r "$script_dir/config/gateway-url" ]; then
+  default_gateway_url=$(sed -e 's/[[:space:]]*$//' -e '/^$/d' -e '1q' \
+    "$script_dir/config/gateway-url")
+fi
 
 usage() {
   cat <<'EOF'
@@ -19,22 +32,24 @@ usage: ./install.sh [--gateway-url URL [--api-key-file PATH]]
                     [--remote-key-path PATH] [--fix-path] [--no-start]
 
 Installs the Tellico OpenCode client for the current user, in one of two
-modes.
+modes. Run with no mode flag and it asks which one you want.
 
-Tunnel mode (the default) forwards the private cluster endpoints over your own
-SSH connection, and needs a Tellico account with an authorized key.
+Gateway mode needs only an API key: no SSH, no cluster account, no tunnel.
+The gateway URL is built in, so the key is the only thing to have at hand.
 
-Gateway mode needs neither: it talks to the API gateway with the URL and key
-the service operator gave you, so no SSH, no cluster account, and no tunnel.
+Tunnel mode forwards the private cluster endpoints over your own SSH
+connection, and needs a Tellico account with an authorized key.
+
 Both modes give the same dual-node session with the same two workers.
 
+  --gateway        Gateway mode against the built-in URL
+  --ssh, --tunnel  Tunnel mode over your own SSH connection
   --gateway-url URL
-                   Use gateway mode against this base URL, for example
-                   https://host.example.ts.net/v1. The key is read from
-                   --api-key-file, from standard input when piped, or
-                   prompted for.
+                   Gateway mode against a different base URL, for example
+                   https://host.example.ts.net/v1
   --api-key-file PATH
-                   File holding the gateway API key (gateway mode only)
+                   File holding the gateway API key. Without it the key is
+                   read from standard input when piped, or prompted for.
   --ssh-host HOST  SSH hostname or config alias (default: tellico)
   --remote-key-path PATH
                    Path to the model API key on the cluster
@@ -53,6 +68,14 @@ EOF
 
 while [ "$#" -gt 0 ]; do
   case $1 in
+    --gateway)
+      mode=gateway
+      shift
+      ;;
+    --ssh|--tunnel)
+      mode=tunnel
+      shift
+      ;;
     --gateway-url)
       [ "$#" -ge 2 ] || { echo 'install: --gateway-url requires a value' >&2; exit 2; }
       mode=gateway
@@ -104,8 +127,81 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
+# A device that is already installed keeps its mode unless asked to change,
+# so rerunning install.sh after a git pull never switches it by accident.
+recorded_mode=
+if [ -r "$config_dir/client.env" ]; then
+  recorded_mode=$(sed -n "s/^TELLICO_MODE='\(.*\)'$/\1/p" "$config_dir/client.env")
+fi
+
+# Echoes a mode name. Takes one too, so that an answer and a fallback on EOF
+# cannot disagree about what the default meant.
+choose_mode() {
+  default_mode=$1
+  case $default_mode in
+    gateway) default_choice=1 ;;
+    *) default_choice=2 ;;
+  esac
+  echo 'How should this device reach the Tellico models?' >&2
+  echo >&2
+  echo '  1) API key     no SSH and no cluster account. You need a key from' >&2
+  echo '                 whoever runs the gateway, and nothing else.' >&2
+  echo '  2) SSH tunnel  for a Tellico account with an authorized key.' >&2
+  echo >&2
+  while :; do
+    printf 'Choice [%s]: ' "$default_choice" >&2
+    if ! IFS= read -r reply; then
+      printf '%s\n' "$default_mode"
+      return 0
+    fi
+    [ -n "$reply" ] || reply=$default_choice
+    case $reply in
+      1|api|key|gateway)
+        printf 'gateway\n'
+        return 0
+        ;;
+      2|ssh|tunnel)
+        printf 'tunnel\n'
+        return 0
+        ;;
+      *)
+        echo 'Enter 1 or 2.' >&2
+        ;;
+    esac
+  done
+}
+
+# A key file is only meaningful to gateway mode, so it names the mode too.
+if [ -z "$mode" ] && [ -n "$api_key_file" ]; then
+  mode=gateway
+fi
+
+if [ -z "$mode" ]; then
+  if [ -n "$recorded_mode" ]; then
+    mode=$recorded_mode
+  elif [ -t 0 ]; then
+    case $(choose_mode gateway) in
+      gateway) mode=gateway ;;
+      *) mode=tunnel ;;
+    esac
+    echo >&2
+  else
+    # Nobody to ask and nothing recorded: keep the historical default.
+    mode=tunnel
+  fi
+fi
+
+if [ "$mode" = gateway ] && [ -z "$gateway_url" ]; then
+  gateway_url=$default_gateway_url
+  if [ -z "$gateway_url" ]; then
+    echo 'install: no gateway URL is configured for this checkout.' >&2
+    echo 'Pass one with --gateway-url https://HOST/v1' >&2
+    exit 2
+  fi
+fi
+
 if [ "$mode" = tunnel ] && [ -n "$api_key_file" ]; then
-  echo 'install: --api-key-file applies to gateway mode; pass --gateway-url too' >&2
+  echo 'install: --api-key-file applies to gateway mode; pass --gateway too' >&2
   exit 2
 fi
 
@@ -226,8 +322,6 @@ if [ "$start_client" = true ] && [ "$mode" = tunnel ]; then
   echo
 fi
 
-config_home=${XDG_CONFIG_HOME:-"$HOME/.config"}
-config_dir="$config_home/tellico-qwen"
 bin_dir="$HOME/.local/bin"
 systemd_dir="$config_home/systemd/user"
 
@@ -259,6 +353,11 @@ if [ "$mode" = gateway ]; then
     tr -d '\r\n' <"$api_key_file" >"$key_tmp"
   elif [ ! -t 0 ]; then
     tr -d '\r\n' >"$key_tmp"
+  elif [ -s "$config_dir/api-key" ]; then
+    # Rerunning after a git pull must not demand the key again. Replace it by
+    # passing --api-key-file, or by piping a new one in.
+    cat "$config_dir/api-key" >"$key_tmp"
+    echo 'Keeping the API key already on this device.'
   else
     printf 'Gateway API key for %s: ' "$gateway_url" >&2
     stty -echo 2>/dev/null || true

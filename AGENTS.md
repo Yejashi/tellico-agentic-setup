@@ -75,6 +75,11 @@ this repo.
 - Agents: one lead (`orchestrate-tellico-0|1`) plus two node-pinned workers.
   `prompts/orchestrate.md` is always-on context for the lead, so every line
   added costs tokens on every turn. Keep it tight.
+- `config/gateway-url` is the single source of the built-in gateway URL, read
+  by both `install.sh` and `doctor.sh` so a user supplies only a key. It is a
+  plain file rather than a value in `lib/checks.sh` because both scripts need
+  it while parsing arguments, before they source that library. Never duplicate
+  the URL into a script.
 - The client installs in one of two modes, recorded as `TELLICO_MODE` in
   `client.env`. `tunnel` forwards the cluster endpoints over SSH; `gateway`
   points the same two providers at the gateway's `/v1/node0` and `/v1/node1`

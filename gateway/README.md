@@ -160,9 +160,13 @@ with both node-pinned workers -- with no SSH and no cluster account. Send the
 person the repository, the base URL and their key; they run:
 
 ```bash
-./install.sh --gateway-url https://HOST/v1
+./install.sh --gateway      # or just ./install.sh and pick "API key"
 opencode-tellico 0
 ```
+
+They never type the URL: `config/gateway-url` in the repository holds it, and
+that is the one file to edit if your gateway moves or you run your own. A
+`--gateway-url` flag or `TELLICO_GATEWAY_URL` still overrides it per run.
 
 That is why the node paths above exist. The installer points provider
 `tellico-0` at `/v1/node0` and `tellico-1` at `/v1/node1`, so the agents,
