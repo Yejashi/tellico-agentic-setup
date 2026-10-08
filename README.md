@@ -317,8 +317,14 @@ On a host that also runs the API gateway, `gateway/install-gateway.sh` adds:
 ~/.config/tellico-gateway/keys
 ~/.config/systemd/user/tellico-gateway.service
 ~/.local/lib/tellico-gateway/tellico_gateway.py
+~/.local/lib/tellico-gateway/tellico_monitor.py
 ~/.local/bin/tellico-gateway
 ```
+
+`tellico-gateway monitor` on that host shows who is using the models, how much
+of the cluster is busy, and whether anything is queueing -- including sessions
+that come down an SSH tunnel instead of through the gateway. See
+[`gateway/README.md`](gateway/README.md#watching-usage-and-load).
 
 OpenCode loads `opencode.json` through its supported `OPENCODE_CONFIG` merge
 layer, so the device's normal providers and settings remain available. Runtime

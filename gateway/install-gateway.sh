@@ -117,6 +117,7 @@ case $inflight in ''|*[!0-9]*) fail "--max-inflight must be a number" ;; esac
 umask 022
 mkdir -p "$lib_dir" "$bin_dir"
 install -m 0644 "$repo_dir/gateway/tellico_gateway.py" "$lib_dir/tellico_gateway.py"
+install -m 0644 "$repo_dir/gateway/tellico_monitor.py" "$lib_dir/tellico_monitor.py"
 install -m 0755 "$repo_dir/gateway/bin/tellico-gateway" "$bin_dir/tellico-gateway"
 
 mkdir -p "$config_dir"
@@ -146,6 +147,7 @@ TELLICO_GATEWAY_CONTEXT="$context"
 EOF
 chmod 600 "$env_file"
 echo "Installed $lib_dir/tellico_gateway.py"
+echo "Installed $lib_dir/tellico_monitor.py"
 echo "Installed $bin_dir/tellico-gateway"
 echo "Wrote     $env_file"
 
@@ -193,3 +195,4 @@ echo 'Next:'
 echo "  tellico-gateway add-user alice      # mint a key, printed once"
 echo "  tellico-gateway expose              # publish it over Tailscale Funnel"
 echo "  tellico-gateway doctor              # check the whole path"
+echo "  tellico-gateway monitor             # watch users and load"

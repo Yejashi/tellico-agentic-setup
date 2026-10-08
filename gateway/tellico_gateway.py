@@ -60,6 +60,19 @@ MAX_BODY = _env_int("TELLICO_GATEWAY_MAX_BODY", 32 * 1024 * 1024)
 HEALTH_INTERVAL = _env_int("TELLICO_GATEWAY_HEALTH_INTERVAL", 10)
 
 MODEL = _env("TELLICO_GATEWAY_MODEL", "qwen3.8-27b")
+
+# Live state for tellico-gateway monitor. A file rather than an HTTP endpoint
+# because the port is published to the internet and this carries user names.
+RUNTIME_DIR = os.path.expanduser(
+    _env(
+        "TELLICO_GATEWAY_RUNTIME",
+        os.path.join(
+            os.environ.get("XDG_RUNTIME_DIR") or os.path.expanduser("~/.cache"),
+            "tellico-gateway",
+        ),
+    )
+)
+STATE_PATH = os.path.join(RUNTIME_DIR, "state.json")
 CONTEXT = _env_int("TELLICO_GATEWAY_CONTEXT", 98304)
 
 PROXY_PATHS = ("/v1/chat/completions", "/v1/completions", "/v1/embeddings")
@@ -200,6 +213,7 @@ class Pool:
             return {
                 "inflight": self._inflight,
                 "max_inflight": self.max_inflight,
+                "users": dict(self._per_user),
                 "nodes": {
                     label: {
                         "status": "up" if self._healthy[label] else "down",
@@ -252,6 +266,28 @@ class Pool:
 def read_upstream_key():
     with open(UPSTREAM_KEY_FILE, "r", encoding="utf-8") as handle:
         return handle.read().strip()
+
+
+def write_state(pool):
+    """Publish a snapshot for the monitor. Best effort: never break a request."""
+    try:
+        os.makedirs(RUNTIME_DIR, mode=0o700, exist_ok=True)
+        payload = pool.snapshot()
+        payload["time"] = time.time()
+        payload["model"] = MODEL
+        temporary = STATE_PATH + ".tmp"
+        with open(temporary, "w", encoding="utf-8") as handle:
+            json.dump(payload, handle)
+        os.chmod(temporary, 0o600)
+        os.replace(temporary, STATE_PATH)
+    except OSError:
+        pass
+
+
+def state_loop(pool, stop):
+    while not stop.is_set():
+        write_state(pool)
+        stop.wait(1.0)
 
 
 def health_loop(pool, nodes, stop):
@@ -638,6 +674,11 @@ def main():
         target=health_loop, args=(POOL, NODES, stop), name="health", daemon=True
     )
     poller.start()
+
+    publisher = threading.Thread(
+        target=state_loop, args=(POOL, stop), name="state", daemon=True
+    )
+    publisher.start()
 
     ThreadingHTTPServer.allow_reuse_address = True
     ThreadingHTTPServer.daemon_threads = True

@@ -101,6 +101,7 @@ SSH tunnel itself and the design is otherwise identical.
 ```bash
 tellico-gateway status     # service, both nodes, in-flight, public URL, users
 tellico-gateway doctor     # python, cluster key, tunnel, keys, service, funnel
+tellico-gateway monitor    # live usage and load
 tellico-gateway logs       # one line per request
 tellico-gateway restart
 ```
@@ -113,6 +114,61 @@ user=alice model=qwen3.8-27b node=node0 status=200 queued=1.0s dur=0.9s stream=0
 
 `queued` is the time spent waiting for a slot. If it is routinely seconds,
 the cluster is the bottleneck, not the gateway.
+
+## Watching usage and load
+
+```bash
+tellico-gateway monitor                  # live, refreshes every 2s
+tellico-gateway monitor --once           # one snapshot, for a script
+tellico-gateway monitor --window 1h      # widen the per-user history
+```
+
+```text
+Tellico models   15:21:28   window 15min
+
+  CLUSTER    4 of 4 slots busy  ##########   job 15991, 6:25:23 left
+             2 request(s) queued inside the servers
+    node0    2/2 busy   gen  39.0 tok/s   prompt 177.5 tok/s   ctx 48% (47.2k)
+    node1    2/2 busy   gen  41.1 tok/s   prompt 179.1 tok/s   ctx 12% (11.8k)
+
+  GATEWAY    2 in flight of 3   2 user(s) active now
+
+  USER             NOW    REQ MED WAIT P95 WAIT   TOK OUT   ERRS
+  dana               2     41     0.4s     9.8s    18,204      2
+  chandler           -      4     0.0s     6.9s       440      0
+
+  DIRECT     1 slot(s) in use by session(s) not going through the gateway
+
+  STRESS     servers are queueing (2 deferred); every slot busy
+             node0 spec 46%   cache 91%   node1 spec 47%   cache 90%
+```
+
+It reads three sources, because none of them sees everything:
+
+- **each server's `/metrics` and `/slots`**, which is ground truth for load and
+  counts work the gateway never saw;
+- **the gateway's state file** in `$XDG_RUNTIME_DIR/tellico-gateway/state.json`,
+  for exact per-user concurrency now. A file rather than an HTTP route because
+  the gateway's port is published to the internet and this carries user names;
+- **the gateway's journal**, for per-user history, queue waits and rejections.
+
+Whatever is missing is omitted rather than guessed, so it still works on a host
+with the tunnel but no gateway.
+
+Two lines are worth understanding. **DIRECT** is server-side busy slots minus
+the gateway's own in-flight count: load from someone on an SSH tunnel, usually
+you. **STRESS** is the summary to act on -- `queued inside the servers` means
+llama.cpp itself is deferring work, which is the real saturation signal, while
+a high `P95 WAIT` for one user usually just means their key's concurrency cap
+is too low rather than that the cluster is full.
+
+`ctx` is the share of a slot's 98,304-token window the live sequence occupies,
+prompt plus everything generated so far. `spec` is speculative-decoding
+acceptance and `cache` the prompt-cache hit rate: both are efficiency, not
+load, so they stay dim.
+
+The `job ... left` figure comes from `squeue` over SSH, refreshed once a
+minute, and is simply absent on a host with no cluster account.
 
 ## Concurrency is the real limit
 

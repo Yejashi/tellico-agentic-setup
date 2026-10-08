@@ -88,6 +88,12 @@ this repo.
   `doctor.sh` and `tellico-qwen-tunnel` all branch on it, and in gateway mode
   `tellico-qwen-tunnel start` only probes the gateway -- which is why
   `opencode-tellico` needs no mode logic of its own.
+- `gateway/tellico_monitor.py` is read-only and reports from three sources:
+  each server's `/metrics` and `/slots` (ground truth, includes tunnel users),
+  the gateway's runtime state file (exact per-user concurrency), and the
+  gateway's journal (history). Per-user data is deliberately not on an HTTP
+  route: the gateway's port is published to the internet. It must degrade to
+  whatever is available rather than require the gateway.
 - `gateway/` is the second, independent way in: an OpenAI-compatible endpoint
   with per-user keys, for users who have no cluster account. It sits *on top
   of* the client install on one host, reading `~/.config/tellico-qwen/api-key`
