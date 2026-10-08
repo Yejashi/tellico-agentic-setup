@@ -75,7 +75,14 @@ RUNTIME_DIR = os.path.expanduser(
 STATE_PATH = os.path.join(RUNTIME_DIR, "state.json")
 CONTEXT = _env_int("TELLICO_GATEWAY_CONTEXT", 98304)
 
-PROXY_PATHS = ("/v1/chat/completions", "/v1/completions", "/v1/embeddings")
+# /v1/responses is what Codex speaks: its wire_api accepts only "responses",
+# and llama.cpp implements that endpoint.
+PROXY_PATHS = (
+    "/v1/chat/completions",
+    "/v1/completions",
+    "/v1/embeddings",
+    "/v1/responses",
+)
 HOP_BY_HOP = {
     "connection",
     "keep-alive",
@@ -337,6 +344,59 @@ for _label in ALL_LABELS:
     MODEL_ROUTES["%s-%s" % (MODEL, _label)] = [_label]
 
 
+def _item_text(item):
+    """Plain text of one Responses input item, whatever shape it uses."""
+    content = item.get("content")
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for piece in content:
+            if isinstance(piece, dict) and piece.get("text"):
+                parts.append(piece["text"])
+            elif isinstance(piece, str):
+                parts.append(piece)
+        return "\n".join(parts)
+    return ""
+
+
+def fold_system_items(payload):
+    """Merge developer and system input items into `instructions`.
+
+    llama.cpp turns `instructions` and any developer item into separate system
+    messages, and the Qwen chat template raises "System message must be at the
+    beginning" on the second one. Codex always sends both, so every Codex
+    request would fail. Folding them into one leading system message is the
+    smallest change that keeps the content and satisfies the template.
+    """
+    items = payload.get("input")
+    if not isinstance(items, list):
+        return payload
+
+    folded, kept = [], []
+    for item in items:
+        if (
+            isinstance(item, dict)
+            and item.get("role") in ("developer", "system")
+            and item.get("type") in (None, "message")
+        ):
+            text = _item_text(item)
+            if text:
+                folded.append(text)
+        else:
+            kept.append(item)
+
+    if not folded:
+        return payload
+
+    merged = dict(payload)
+    existing = (payload.get("instructions") or "").rstrip()
+    joined = "\n\n".join(folded)
+    merged["instructions"] = (existing + "\n\n" + joined) if existing else joined
+    merged["input"] = kept
+    return merged
+
+
 def split_node_prefix(path):
     """"/v1/node0/chat/completions" -> (["node0"], "/v1/chat/completions").
 
@@ -402,7 +462,21 @@ class Handler(BaseHTTPRequestHandler):
                 }
             )
         data.sort(key=lambda entry: entry["id"])
-        return {"object": "list", "data": data}
+        # Codex's model lister insists on a "models" array alongside "data",
+        # and llama.cpp's own /v1/models carries both; mirror that so it does
+        # not log a decode error on every session.
+        models = [
+            {
+                "name": entry["id"],
+                "model": entry["id"],
+                "type": "model",
+                "description": "",
+                "tags": [],
+                "capabilities": ["completion"],
+            }
+            for entry in data
+        ]
+        return {"object": "list", "data": data, "models": models}
 
     def do_GET(self):
         path = self.path.split("?", 1)[0]
@@ -524,7 +598,7 @@ class Handler(BaseHTTPRequestHandler):
             # Send upstream whatever name that server advertises; the pinned
             # and pooled names are ours, not llama.cpp's.
             upstream_model = POOL.upstream_model(label)
-            sent = dict(payload)
+            sent = fold_system_items(payload) if path == "/v1/responses" else dict(payload)
             if upstream_model:
                 sent["model"] = upstream_model
             wire = json.dumps(sent).encode("utf-8")

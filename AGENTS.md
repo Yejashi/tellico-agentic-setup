@@ -67,6 +67,15 @@ this repo.
 
 - `bin/tellico-qwen-tunnel` owns the SSH control socket and port forwards.
   Everything else goes through it; do not open ad-hoc tunnels.
+- `bin/codex-tellico` runs Codex against the same servers. Four constraints
+  make it work and none are obvious: `wire_api` must be `"responses"` (the only
+  value Codex 0.153 accepts, and llama.cpp does implement that endpoint);
+  `model_reasoning_effort` must be overridden because Codex passes it to the
+  chat template, which rejects its usual `high`; Codex must go through the
+  gateway, because it sends `instructions` plus a `developer` message and the
+  template refuses the second system message llama.cpp makes of that; and the
+  gateway needs a per-user key, which the cluster key is not. `fold_system_items`
+  in the gateway is what makes the third one work -- do not remove it.
 - A tool-call batch is a barrier: one assistant message with N tool calls needs
   all N results before the model can speak again, so the lead cannot act on the
   first worker's report while the second still runs. OpenCode has no async or
