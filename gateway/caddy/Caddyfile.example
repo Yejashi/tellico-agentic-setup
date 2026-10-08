@@ -1,0 +1,41 @@
+# Caddy in front of the Tellico gateway, as an alternative to Tailscale Funnel.
+#
+# Use this when you want a custom domain, or the endpoint to be independent of
+# your tailnet -- typically on a small VPS that also holds the SSH tunnel:
+#
+#   1. Install this repository on the VPS and run ./install.sh, so
+#      tellico-qwen-tunnel keeps 127.0.0.1:18080/18081 forwarded to Tellico.
+#   2. Run ./gateway/install-gateway.sh there. Keep the default loopback bind.
+#   3. Point an A/AAAA record at the VPS, put this file at /etc/caddy/Caddyfile
+#      with your own hostname, and: systemctl reload caddy
+#
+# Caddy gets the certificate itself; nothing else needs configuring. Auth,
+# admission control and routing stay in the gateway, which is the only thing
+# that knows the users' keys.
+
+qwen.example.com {
+	encode zstd gzip
+
+	# Long generations: do not cut a request off mid-answer. This must be at
+	# least TELLICO_GATEWAY_REQUEST_TIMEOUT.
+	reverse_proxy 127.0.0.1:4000 {
+		transport http {
+			read_timeout 3700s
+			write_timeout 3700s
+			# Stream tokens through instead of buffering the response.
+			response_header_timeout 120s
+		}
+		header_up X-Forwarded-For {remote_host}
+	}
+
+	# 32 MiB covers a full 98k-token prompt with room to spare.
+	request_body {
+		max_size 32MB
+	}
+
+	log {
+		output file /var/log/caddy/qwen.log
+		# The Authorization header must never reach a log file.
+		format json
+	}
+}

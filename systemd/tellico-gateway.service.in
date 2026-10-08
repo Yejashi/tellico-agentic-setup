@@ -1,0 +1,15 @@
+[Unit]
+Description=Tellico Qwen API gateway (per-user keys in front of the SSH tunnel)
+After=network-online.target tellico-qwen-tunnel.service
+Wants=network-online.target tellico-qwen-tunnel.service
+
+[Service]
+Type=simple
+EnvironmentFile=__TELLICO_GATEWAY_ENV__
+ExecStart=__TELLICO_GATEWAY_PYTHON__ __TELLICO_GATEWAY_SCRIPT__
+Restart=always
+RestartSec=5
+SyslogIdentifier=tellico-gateway
+
+[Install]
+WantedBy=default.target

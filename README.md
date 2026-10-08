@@ -7,6 +7,17 @@ The repository contains no API key or SSH private key. The installer retrieves
 the model API key through your authenticated Tellico SSH connection and stores
 it only on the client device with mode 0600.
 
+There are two ways to reach the models:
+
+| | Who it is for | What the user needs |
+|---|---|---|
+| **OpenCode client** (this README) | People doing agentic work, who want the dual-node lead-and-workers setup | A Tellico account, an authorized SSH key, and this repository installed |
+| **API gateway** ([`gateway/`](gateway/README.md)) | Anyone who just wants an OpenAI-compatible endpoint | A URL and an API key. No SSH, no cluster account, no install |
+
+The gateway runs on one always-on host that itself uses the client setup
+below, so the two share the tunnel, the cluster key and the per-slot context.
+Set up the client first; the gateway builds on it.
+
 ## Architecture
 
 | OpenCode provider | Cluster node | GPUs | Slots | Context per slot | Local endpoint |
@@ -228,6 +239,16 @@ On systems with a working systemd user manager, the installer also enables:
 On macOS and other non-systemd systems, the tunnel helper uses a controlled
 background SSH master instead.
 
+On a host that also runs the API gateway, `gateway/install-gateway.sh` adds:
+
+```text
+~/.config/tellico-gateway/gateway.env
+~/.config/tellico-gateway/keys
+~/.config/systemd/user/tellico-gateway.service
+~/.local/lib/tellico-gateway/tellico_gateway.py
+~/.local/bin/tellico-gateway
+```
+
 OpenCode loads `opencode.json` through its supported `OPENCODE_CONFIG` merge
 layer, so the device's normal providers and settings remain available. Runtime
 overrides pin title, summary, compaction, lead, and worker calls to Tellico for
@@ -307,9 +328,11 @@ git pull --ff-only
 ./uninstall.sh
 ```
 
-The uninstaller removes only files installed by this repository. It does not
-remove OpenCode, SSH configuration, any cluster files, or a PATH line added by
-`--fix-path`, since other tools in `~/.local/bin` may depend on it.
+The uninstaller removes only files installed by this repository, including the
+gateway if it is present. It does not remove OpenCode, SSH configuration, any
+cluster files, a PATH line added by `--fix-path` (other tools in
+`~/.local/bin` may depend on it), or the gateway's keys file, which holds
+other people's credentials.
 
 ## Security model
 
@@ -318,6 +341,9 @@ remove OpenCode, SSH configuration, any cluster files, or a PATH line added by
 - No API key is written into OpenCode JSON or the systemd unit.
 - The repository contains no private credentials and can safely be cloned.
 - Access still requires both Tellico SSH authorization and the cluster API key.
-- The API key is shared by every user, so it identifies the service rather than
-  the caller. `llama-server --api-key-file` accepts one key per line, so moving
-  to per-user keys is the way to get revocation and attribution.
+- The API key is shared by every user of the OpenCode client, so it identifies
+  the service rather than the caller. `llama-server --api-key-file` accepts one
+  key per line, so moving to per-user keys is the way to get revocation and
+  attribution. Users who come in through [`gateway/`](gateway/README.md) already
+  get this: each holds only their own key, and the shared cluster key never
+  leaves the gateway host.
