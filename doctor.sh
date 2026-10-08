@@ -56,19 +56,30 @@ fi
 
 . "$script_dir/lib/checks.sh"
 
-echo "Tellico client doctor (ssh host: $ssh_host)"
+# Gateway mode has no SSH, no tunnel and no cluster account, so the whole
+# middle of this script does not apply to it.
+if tellico_is_gateway; then
+  echo "Tellico client doctor (gateway mode: $(tellico_gateway_url))"
+else
+  echo "Tellico client doctor (ssh host: $ssh_host)"
+fi
 echo
 
 missing=
-for command_name in ssh curl sed install opencode; do
+if tellico_is_gateway; then
+  doctor_commands='curl sed install opencode'
+else
+  doctor_commands='ssh curl sed install opencode'
+fi
+for command_name in $doctor_commands; do
   command -v "$command_name" >/dev/null 2>&1 || missing="$missing $command_name"
 done
 if [ -n "$missing" ]; then
   tellico_status_line tools FAIL "missing:$missing"
-elif tellico_ssh_is_windows; then
+elif ! tellico_is_gateway && tellico_ssh_is_windows; then
   tellico_status_line tools WARN "ssh comes from Windows ($(command -v ssh))"
 else
-  tellico_status_line tools OK 'ssh, curl, sed, install, opencode'
+  tellico_status_line tools OK "$(echo "$doctor_commands" | tr ' ' ',' | sed 's/,/, /g')"
 fi
 
 # Only meaningful once the commands exist.
@@ -95,10 +106,14 @@ if [ -r "$config_dir/opencode.json" ]; then
 fi
 
 status=0
-tellico_preflight || status=1
+if tellico_is_gateway; then
+  tellico_check_gateway "$config_dir/api-key" || status=1
+else
+  tellico_preflight || status=1
 
-if [ "$status" -eq 0 ]; then
-  tellico_check_allocation || status=1
+  if [ "$status" -eq 0 ]; then
+    tellico_check_allocation || status=1
+  fi
 fi
 
 if [ "$config_failed" = true ]; then
@@ -121,7 +136,7 @@ Next step: install the missing tools:$missing
   OpenCode comes from https://opencode.ai/docs/ and must be on PATH.
 EOF
   status=1
-elif tellico_ssh_is_windows; then
+elif ! tellico_is_gateway && tellico_ssh_is_windows; then
   cat <<EOF
 
 Next step: this WSL session is using Windows' ssh.exe, which does not share
@@ -152,7 +167,12 @@ if [ "$status" -eq 0 ]; then
     echo
   fi
   if [ ! -r "$config_dir/opencode.json" ]; then
-    echo 'Everything checks out. Install the client: ./install.sh'
+    if tellico_is_gateway; then
+      echo 'Everything checks out. Install the client:'
+      echo "  ./install.sh --gateway-url $(tellico_gateway_url)"
+    else
+      echo 'Everything checks out. Install the client: ./install.sh'
+    fi
   elif [ "$path_warning" = true ]; then
     echo 'Everything else checks out.'
   else

@@ -630,3 +630,150 @@ tellico_check_config() {
 
   [ "$tellico_config_ok" = true ]
 }
+
+# --- Gateway mode -----------------------------------------------------------
+#
+# A device reaches the models one of two ways, recorded as TELLICO_MODE in
+# client.env: "tunnel" forwards the private cluster endpoints over SSH, and
+# "gateway" talks to the API gateway with a per-user key and needs no cluster
+# account at all. Everything above this line is for tunnel mode.
+
+tellico_is_gateway() {
+  [ "${TELLICO_MODE:-tunnel}" = gateway ]
+}
+
+# Base URL with any trailing slash removed, so joining a path is predictable.
+tellico_gateway_url() {
+  tellico_url=${TELLICO_GATEWAY_URL:-}
+  printf '%s\n' "${tellico_url%/}"
+}
+
+# One authenticated probe of the gateway. Sets tellico_gateway_result to ok,
+# unconfigured, nokey, unreachable, unauthorized, no_allocation, or unknown.
+tellico_gateway_probe() {
+  tellico_gateway_key_file=$1
+  tellico_gateway_base=$(tellico_gateway_url)
+
+  if [ -z "$tellico_gateway_base" ]; then
+    tellico_gateway_result=unconfigured
+    return 1
+  fi
+  if [ ! -s "$tellico_gateway_key_file" ]; then
+    tellico_gateway_result=nokey
+    return 1
+  fi
+
+  tellico_gateway_code=$(curl -s -o /dev/null -w '%{http_code}' \
+    --max-time "$TELLICO_CONNECT_TIMEOUT" \
+    -H "Authorization: Bearer $(cat "$tellico_gateway_key_file")" \
+    "$tellico_gateway_base/models" 2>/dev/null) || tellico_gateway_code=000
+
+  case $tellico_gateway_code in
+    200)
+      tellico_gateway_result=ok
+      return 0
+      ;;
+    000) tellico_gateway_result=unreachable ;;
+    401|403) tellico_gateway_result=unauthorized ;;
+    502|503) tellico_gateway_result=no_allocation ;;
+    *) tellico_gateway_result=unknown ;;
+  esac
+  return 1
+}
+
+# Prints the one next step for whatever tellico_gateway_probe found.
+tellico_explain_gateway() {
+  tellico_gateway_key_file=$1
+  tellico_gateway_base=$(tellico_gateway_url)
+
+  case ${tellico_gateway_result:-unknown} in
+    unconfigured)
+      cat <<EOF
+
+Next step: this device has no gateway URL recorded. Install gateway mode with
+the URL and key the service operator gave you:
+
+    ./install.sh --gateway-url https://HOST/v1
+
+EOF
+      ;;
+    nokey)
+      cat <<EOF
+
+Next step: there is no API key at $tellico_gateway_key_file.
+Ask the operator for one, then:
+
+    ./install.sh --gateway-url $tellico_gateway_base
+
+EOF
+      ;;
+    unreachable)
+      cat <<EOF
+
+Next step: nothing answered at $tellico_gateway_base.
+The gateway is a host the operator runs, so this is usually on their side.
+Check it yourself, since /health needs no key:
+
+    curl ${tellico_gateway_base%/v1}/health
+
+If that fails too, tell the operator the gateway is down. If it succeeds, the
+recorded URL is wrong; reinstall with the correct one.
+
+EOF
+      ;;
+    unauthorized)
+      cat <<EOF
+
+Next step: $tellico_gateway_base rejected this device's API key.
+Keys can be revoked individually, so ask the operator for a new one and
+reinstall:
+
+    ./install.sh --gateway-url $tellico_gateway_base
+
+EOF
+      ;;
+    no_allocation)
+      cat <<EOF
+
+Next step: the gateway is up but has no model server behind it. The cluster's
+Slurm allocation has ended; only the service owner can submit another. Tell
+them, then retry. Nothing on this device needs changing.
+
+EOF
+      ;;
+    *)
+      cat <<EOF
+
+Next step: $tellico_gateway_base answered
+HTTP ${tellico_gateway_code:-?}, which this check does not recognise. Send that
+to the operator along with:
+
+    curl -i -H "Authorization: Bearer \$(cat $tellico_gateway_key_file)" \\
+      $tellico_gateway_base/models
+
+EOF
+      ;;
+  esac
+}
+
+# Status line plus explanation. Returns non-zero when the gateway is not usable.
+tellico_check_gateway() {
+  tellico_gateway_key_file=$1
+  tellico_gateway_base=$(tellico_gateway_url)
+
+  if tellico_gateway_probe "$tellico_gateway_key_file"; then
+    tellico_status_line gateway OK "$tellico_gateway_base"
+    return 0
+  fi
+
+  case $tellico_gateway_result in
+    unconfigured) tellico_status_line gateway FAIL 'no gateway URL recorded' ;;
+    nokey) tellico_status_line gateway FAIL 'no API key on this device' ;;
+    unreachable) tellico_status_line gateway FAIL "no answer from $tellico_gateway_base" ;;
+    unauthorized) tellico_status_line gateway FAIL 'API key rejected' ;;
+    no_allocation) tellico_status_line gateway WARN 'gateway up, no model server behind it' ;;
+    *) tellico_status_line gateway FAIL "HTTP ${tellico_gateway_code:-?}" ;;
+  esac
+  tellico_explain_gateway "$tellico_gateway_key_file"
+  return 1
+}

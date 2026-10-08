@@ -50,6 +50,24 @@ export OPENAI_BASE_URL="https://HOST/v1"
 export OPENAI_API_KEY="sk-tellico-..."
 ```
 
+## Using it with OpenCode
+
+Your key also runs the full agentic setup this cluster was configured for: a
+lead model that dispatches work to two node-pinned workers in parallel. It
+needs no SSH and no cluster account either.
+
+```bash
+git clone https://github.com/Yejashi/tellico-agentic-setup.git
+cd tellico-agentic-setup
+./install.sh --gateway-url https://HOST/v1      # asks for your key
+opencode-tellico 0
+```
+
+`./doctor.sh` checks the whole path if something looks wrong. Ask the operator
+for a key allowing 2-3 concurrent requests before you use this: one OpenCode
+session issues several at a time, and a single-slot key makes it wait on
+itself.
+
 ## What the model is
 
 Qwen3.8-27B, self-hosted on two nodes of the Tellico cluster. It is a

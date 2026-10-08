@@ -7,16 +7,23 @@ The repository contains no API key or SSH private key. The installer retrieves
 the model API key through your authenticated Tellico SSH connection and stores
 it only on the client device with mode 0600.
 
-There are two ways to reach the models:
+There are three ways to reach the models:
 
 | | Who it is for | What the user needs |
 |---|---|---|
-| **OpenCode client** (this README) | People doing agentic work, who want the dual-node lead-and-workers setup | A Tellico account, an authorized SSH key, and this repository installed |
-| **API gateway** ([`gateway/`](gateway/README.md)) | Anyone who just wants an OpenAI-compatible endpoint | A URL and an API key. No SSH, no cluster account, no install |
+| **Client, tunnel mode** (this README) | People with a cluster account | A Tellico account, an authorized SSH key, and this repository |
+| **Client, gateway mode** (this README) | The same agentic setup, without a cluster account | A URL, an API key, and this repository |
+| **Raw API** ([`gateway/`](gateway/README.md)) | Any OpenAI-compatible tool or script | A URL and an API key. Nothing installed |
 
-The gateway runs on one always-on host that itself uses the client setup
-below, so the two share the tunnel, the cluster key and the per-slot context.
-Set up the client first; the gateway builds on it.
+The two client modes give an identical session: the same two node-pinned
+workers, the same models, the same context. They differ only in how the
+requests travel. Tunnel mode forwards the private cluster endpoints over your
+own SSH connection. Gateway mode sends them to the API gateway instead, which
+needs no SSH, no cluster account and no tunnel at all -- just the URL and key
+whoever runs the gateway gave you.
+
+The gateway itself runs on one always-on host in tunnel mode, so all three
+paths share the same tunnel, cluster key and per-slot context.
 
 ## Architecture
 
@@ -41,6 +48,11 @@ baseline on a code prompt. The trade is set on the cluster side in
 speculation makes the target evaluate a block of tokens per pass, output is a
 valid sample but is not byte-identical to a non-speculative run.
 
+In gateway mode the local endpoints are replaced by the gateway's node-pinned
+paths -- `https://HOST/v1/node0` and `.../node1` -- which route to the same two
+servers. Everything else in the table, including the per-slot context, is
+identical.
+
 An SSH connection forwards the two private cluster endpoints to localhost.
 OpenCode gets a primary orchestration agent and two node-pinned subagents. For
 parallelizable work, the primary dispatches one bounded task to each server in
@@ -53,7 +65,35 @@ service owner needs it. The two repositories share the API key path, the port,
 the node names and the per-slot context, so a change to capacity on the cluster
 means a matching change to `config/opencode.json` here.
 
-## First run
+## First run, gateway mode
+
+If someone gave you a URL and an API key, this is the whole setup. You need
+Linux, macOS, or WSL with `curl`, `sed`, `install`, and
+[OpenCode](https://opencode.ai/docs/) on `PATH` -- no `ssh`, no VPN, no
+cluster account.
+
+```bash
+git clone https://github.com/Yejashi/tellico-agentic-setup.git
+cd tellico-agentic-setup
+./install.sh --gateway-url https://HOST/v1
+```
+
+It asks for the key and stores it with mode 0600. Then:
+
+```bash
+opencode-tellico 0
+```
+
+To avoid the prompt, pass `--api-key-file PATH` or pipe the key in:
+
+```bash
+printf '%s' "$KEY" | ./install.sh --gateway-url https://HOST/v1
+```
+
+`./doctor.sh` knows which mode this device is in and checks accordingly. The
+rest of this section is tunnel mode, which gateway mode does not need.
+
+## First run, tunnel mode
 
 Follow these in order; each step depends on the one before it. Run
 `./doctor.sh` at any point to see which step you are on.
@@ -125,6 +165,9 @@ Follow these in order; each step depends on the one before it. Run
 ## Installer options
 
 ```text
+--gateway-url URL        Use gateway mode against this base URL, for example
+                         https://host.example.ts.net/v1
+--api-key-file PATH      File holding the gateway API key (gateway mode)
 --ssh-host HOST          SSH hostname or config alias (default: tellico)
 --remote-key-path PATH   Model API key path on the cluster, for accounts that
                          read it from somewhere other than the default
@@ -138,6 +181,9 @@ Follow these in order; each step depends on the one before it. Run
 ```
 
 ## Platform notes
+
+These notes are about holding the SSH tunnel open, so they apply to tunnel
+mode only. Gateway mode has no tunnel and behaves the same everywhere.
 
 **Linux.** The installer enables a systemd user unit, so the tunnel starts at
 login and restarts on failure.
@@ -166,14 +212,16 @@ in `/etc/wsl.conf`; both work.
 
 ## Troubleshooting
 
-`./doctor.sh` checks tools, SSH config, network, device authorization, the API
-key, and the allocation, in that order, and prints the one next step for the
-first thing that fails. It is safe to run before installing. After installing,
-the same checks plus tunnel health are available as:
+`./doctor.sh` reads the mode this device was installed in and checks
+accordingly, printing the one next step for the first thing that fails. It is
+safe to run before installing. After installing, the same checks are available
+as `tellico-qwen-tunnel doctor`.
 
-```bash
-tellico-qwen-tunnel doctor
-```
+In tunnel mode it checks tools, SSH config, network, device authorization, the
+API key, the allocation, and tunnel health, in that order. In gateway mode
+none of that applies, so it checks tools, the config, and one authenticated
+probe of the gateway, which distinguishes an unreachable gateway from a
+rejected key from a gateway with no model server behind it.
 
 ## Use
 
@@ -280,6 +328,10 @@ That check needs no privileged access: it reads the queue with `squeue` and
 probes each server's authenticated `/v1/models`, both of which any cluster
 account may do.
 
+In gateway mode there is no cluster account to run `squeue` with, so
+`tellico-qwen-tunnel status` reports what the gateway says instead: `models
+no_allocation` means the gateway is healthy but has nothing behind it.
+
 When an allocation has expired, the owner of the service account submits
 another one:
 
@@ -293,6 +345,9 @@ Everyone else then picks the new servers up with:
 ```bash
 tellico-qwen-tunnel restart
 ```
+
+Gateway-mode devices need no such step: the gateway notices the new servers
+within ten seconds by itself.
 
 Using a custom SSH alias requires replacing `tellico` in the submit commands or
 setting `TELLICO_SSH_HOST` for that shell.
@@ -342,6 +397,11 @@ other people's credentials.
 ## Security model
 
 - Both model forwards bind only to `127.0.0.1`.
+- Gateway mode never holds the shared cluster key, never opens an SSH
+  connection, and needs no cluster account; it holds one per-user API key,
+  which the operator can revoke on its own.
+- A gateway-mode device sends its key to whatever `--gateway-url` names, so
+  that URL should be `https://`. The installer warns when it is not.
 - The model API key is fetched over SSH and stored with mode 0600.
 - No API key is written into OpenCode JSON or the systemd unit.
 - The repository contains no private credentials and can safely be cloned.

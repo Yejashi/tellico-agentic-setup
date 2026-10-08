@@ -141,6 +141,46 @@ naming the allocation, rather than waiting out the queue.
 Use the pooled name unless the caller is driving both nodes itself, the way
 `opencode-tellico`'s lead and workers do.
 
+A node can also be pinned by base URL instead of by model name:
+
+| Base URL | Routes to |
+|---|---|
+| `https://HOST/v1` | either node |
+| `https://HOST/v1/node0` | `tellico-compute0` only |
+| `https://HOST/v1/node1` | `tellico-compute1` only |
+
+Both paths serve the same model id, which is what a client with one base URL
+per provider needs. If a URL and a model name disagree, the request is
+refused rather than quietly sent somewhere.
+
+## Giving someone the full OpenCode setup
+
+A gateway key is enough to run `opencode-tellico` itself -- the dual-node lead
+with both node-pinned workers -- with no SSH and no cluster account. Send the
+person the repository, the base URL and their key; they run:
+
+```bash
+./install.sh --gateway-url https://HOST/v1
+opencode-tellico 0
+```
+
+That is why the node paths above exist. The installer points provider
+`tellico-0` at `/v1/node0` and `tellico-1` at `/v1/node1`, so the agents,
+model ids and per-slot context are identical to a tunnel-mode device and
+nothing else in the config changes.
+
+Such a session opens several requests at once (lead, title, summary,
+compaction, workers), so give an opencode user more than one slot or they will
+serialize against themselves:
+
+```bash
+tellico-gateway add-user dana 3
+```
+
+With `--max-inflight 3`, one user at 3 can saturate the gateway's whole
+budget. That is a deliberate trade: an agentic session wants parallelism, a
+scripted caller does not.
+
 ## Settings
 
 `~/.config/tellico-gateway/gateway.env`, written by the installer. Edit, then

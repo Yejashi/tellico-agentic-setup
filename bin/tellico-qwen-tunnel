@@ -20,6 +20,19 @@ runtime_parent=${XDG_RUNTIME_DIR:-"$HOME/.cache"}
 runtime_dir="$runtime_parent/tellico-qwen"
 control_socket="$runtime_dir/control"
 unit_name=tellico-qwen-tunnel.service
+mode=${TELLICO_MODE:-tunnel}
+
+load_checks() {
+  checks="$config_dir/lib/checks.sh"
+  if [ ! -r "$checks" ]; then
+    echo "tellico-qwen-tunnel: missing $checks" >&2
+    echo 'Rerun install.sh from the tellico-agentic-setup repository.' >&2
+    exit 1
+  fi
+  # Installed by install.sh alongside this script.
+  # shellcheck disable=SC1090
+  . "$checks"
+}
 
 have_user_unit() {
   command -v systemctl >/dev/null 2>&1 &&
@@ -128,15 +141,7 @@ wait_healthy() {
 }
 
 doctor_tunnel() {
-  checks="$config_dir/lib/checks.sh"
-  if [ ! -r "$checks" ]; then
-    echo "tellico-qwen-tunnel: missing $checks" >&2
-    echo 'Rerun install.sh from the tellico-agentic-setup repository.' >&2
-    exit 1
-  fi
-  # Installed by install.sh alongside this script.
-  # shellcheck disable=SC1090
-  . "$checks"
+  load_checks
 
   echo "Tellico client doctor (ssh host: $ssh_host)"
   echo
@@ -152,10 +157,66 @@ doctor_tunnel() {
   return "$doctor_status"
 }
 
+gateway_status() {
+  load_checks
+  base=$(tellico_gateway_url)
+  printf '%-20s %s\n' mode gateway
+  printf '%-20s %s\n' endpoint "${base:-unset}"
+  if tellico_gateway_probe "$key_file"; then
+    printf '%-20s %s\n' models ready
+    return 0
+  fi
+  printf '%-20s %s\n' models "$tellico_gateway_result"
+  return 1
+}
+
+gateway_doctor() {
+  load_checks
+  echo 'Tellico client doctor (gateway mode)'
+  echo
+  tellico_check_gateway "$key_file"
+}
+
 usage() {
+  if [ "$mode" = gateway ]; then
+    echo 'usage: tellico-qwen-tunnel {start|stop|restart|status|doctor}' >&2
+    echo >&2
+    echo 'This device is in gateway mode: there is no SSH tunnel, so start' >&2
+    echo 'and restart only check that the gateway answers.' >&2
+    exit 2
+  fi
   echo "usage: tellico-qwen-tunnel {start|stop|restart|status|doctor|refresh-key|cluster-status}" >&2
   exit 2
 }
+
+if [ "$mode" = gateway ]; then
+  case ${1:-} in
+    start|restart)
+      # opencode-tellico calls this before a session; reachability is the
+      # only precondition gateway mode has.
+      gateway_status
+      ;;
+    stop)
+      echo 'Gateway mode holds no tunnel, so there is nothing to stop.'
+      ;;
+    status)
+      gateway_status
+      ;;
+    doctor|cluster-status)
+      gateway_doctor
+      ;;
+    refresh-key)
+      echo 'tellico-qwen-tunnel: gateway mode cannot refresh its own key.' >&2
+      echo 'The key comes from whoever runs the gateway. With a new one:' >&2
+      echo "  ./install.sh --gateway-url ${TELLICO_GATEWAY_URL:-https://HOST/v1}" >&2
+      exit 1
+      ;;
+    *)
+      usage
+      ;;
+  esac
+  exit
+fi
 
 case ${1:-} in
   start)
@@ -196,15 +257,7 @@ case ${1:-} in
     # qwen38-status lives in the service owner's home directory and is not
     # readable by other accounts, so report the allocation through the shared
     # check instead: squeue plus an authenticated probe of each server.
-    checks="$config_dir/lib/checks.sh"
-    if [ ! -r "$checks" ]; then
-      echo "tellico-qwen-tunnel: missing $checks" >&2
-      echo 'Rerun install.sh from the tellico-agentic-setup repository.' >&2
-      exit 1
-    fi
-    # Installed by install.sh alongside this script.
-    # shellcheck disable=SC1090
-    . "$checks"
+    load_checks
     tellico_check_allocation
     ;;
   *)

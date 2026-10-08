@@ -42,7 +42,10 @@ that way and never inline a key into JSON or a unit file.
 ## Editing config or prompts does nothing until you install
 
 `config/opencode.json` and `prompts/*.md` are templates. OpenCode reads the
-installed copies under `~/.config/tellico-qwen/`. A change to this repo has no
+installed copies under `~/.config/tellico-qwen/`. `config/opencode.json` is
+substituted rather than copied: `__TELLICO_BASE_URL_0__` and
+`__TELLICO_BASE_URL_1__` become loopback tunnel ports or gateway node paths
+depending on the mode, so never hardcode a URL back into it. A change to this repo has no
 effect until `./install.sh --no-start` copies it across, and OpenCode loads
 config once at startup, so the user must then restart their session. Say so
 explicitly when handing back a config change.
@@ -72,6 +75,14 @@ this repo.
 - Agents: one lead (`orchestrate-tellico-0|1`) plus two node-pinned workers.
   `prompts/orchestrate.md` is always-on context for the lead, so every line
   added costs tokens on every turn. Keep it tight.
+- The client installs in one of two modes, recorded as `TELLICO_MODE` in
+  `client.env`. `tunnel` forwards the cluster endpoints over SSH; `gateway`
+  points the same two providers at the gateway's `/v1/node0` and `/v1/node1`
+  paths and needs no cluster account. The session is identical either way, so
+  a change to agents, prompts or context must hold for both. `install.sh`,
+  `doctor.sh` and `tellico-qwen-tunnel` all branch on it, and in gateway mode
+  `tellico-qwen-tunnel start` only probes the gateway -- which is why
+  `opencode-tellico` needs no mode logic of its own.
 - `gateway/` is the second, independent way in: an OpenAI-compatible endpoint
   with per-user keys, for users who have no cluster account. It sits *on top
   of* the client install on one host, reading `~/.config/tellico-qwen/api-key`

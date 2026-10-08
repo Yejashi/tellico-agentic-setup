@@ -301,6 +301,20 @@ for _label in ALL_LABELS:
     MODEL_ROUTES["%s-%s" % (MODEL, _label)] = [_label]
 
 
+def split_node_prefix(path):
+    """"/v1/node0/chat/completions" -> (["node0"], "/v1/chat/completions").
+
+    Lets a caller pin a node by base URL instead of by model name, which is
+    what an OpenAI-compatible client with one base URL per provider needs.
+    Returns (None, path) when there is no node prefix.
+    """
+    if path.startswith("/v1/"):
+        head, _, rest = path[4:].partition("/")
+        if head in NODE_BY_LABEL and rest:
+            return [head], "/v1/" + rest
+    return None, path
+
+
 class Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
     server_version = "tellico-gateway"
@@ -356,6 +370,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         path = self.path.split("?", 1)[0]
+        _, path = split_node_prefix(path)
         if path == "/health":
             snapshot = POOL.snapshot()
             healthy = any(n["status"] == "up" for n in snapshot["nodes"].values())
@@ -379,6 +394,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = self.path.split("?", 1)[0]
+        prefix_labels, path = split_node_prefix(path)
         if path not in PROXY_PATHS:
             self.send_error_json(
                 404, "Unknown path: %s" % path, "invalid_request_error"
@@ -436,6 +452,19 @@ class Handler(BaseHTTPRequestHandler):
                 "invalid_request_error",
             )
             return
+
+        if prefix_labels is not None:
+            # The URL pinned a node and the model name may pin one too; honour
+            # both, and say so rather than silently picking one.
+            labels = [label for label in labels if label in prefix_labels]
+            if not labels:
+                self.send_error_json(
+                    400,
+                    "Model %r cannot run on %s, which this URL pins."
+                    % (requested, ", ".join(prefix_labels)),
+                    "invalid_request_error",
+                )
+                return
 
         stream = bool(payload.get("stream"))
         try:

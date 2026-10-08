@@ -8,14 +8,33 @@ port1=${TELLICO_QWEN_PORT1:-18081}
 remote_key_path=${TELLICO_REMOTE_KEY_PATH:-/data/gclab/qwen38/secrets/api-key}
 start_client=true
 fix_path=false
+mode=tunnel
+gateway_url=
+api_key_file=
 
 usage() {
   cat <<'EOF'
-usage: ./install.sh [--ssh-host HOST] [--port0 PORT] [--port1 PORT]
+usage: ./install.sh [--gateway-url URL [--api-key-file PATH]]
+                    [--ssh-host HOST] [--port0 PORT] [--port1 PORT]
                     [--remote-key-path PATH] [--fix-path] [--no-start]
 
-Installs the Tellico OpenCode client for the current user.
+Installs the Tellico OpenCode client for the current user, in one of two
+modes.
 
+Tunnel mode (the default) forwards the private cluster endpoints over your own
+SSH connection, and needs a Tellico account with an authorized key.
+
+Gateway mode needs neither: it talks to the API gateway with the URL and key
+the service operator gave you, so no SSH, no cluster account, and no tunnel.
+Both modes give the same dual-node session with the same two workers.
+
+  --gateway-url URL
+                   Use gateway mode against this base URL, for example
+                   https://host.example.ts.net/v1. The key is read from
+                   --api-key-file, from standard input when piped, or
+                   prompted for.
+  --api-key-file PATH
+                   File holding the gateway API key (gateway mode only)
   --ssh-host HOST  SSH hostname or config alias (default: tellico)
   --remote-key-path PATH
                    Path to the model API key on the cluster
@@ -34,6 +53,17 @@ EOF
 
 while [ "$#" -gt 0 ]; do
   case $1 in
+    --gateway-url)
+      [ "$#" -ge 2 ] || { echo 'install: --gateway-url requires a value' >&2; exit 2; }
+      mode=gateway
+      gateway_url=$2
+      shift 2
+      ;;
+    --api-key-file)
+      [ "$#" -ge 2 ] || { echo 'install: --api-key-file requires a value' >&2; exit 2; }
+      api_key_file=$2
+      shift 2
+      ;;
     --ssh-host)
       [ "$#" -ge 2 ] || { echo 'install: --ssh-host requires a value' >&2; exit 2; }
       ssh_host=$2
@@ -73,6 +103,44 @@ while [ "$#" -gt 0 ]; do
       ;;
   esac
 done
+
+if [ "$mode" = tunnel ] && [ -n "$api_key_file" ]; then
+  echo 'install: --api-key-file applies to gateway mode; pass --gateway-url too' >&2
+  exit 2
+fi
+
+if [ "$mode" = gateway ]; then
+  case $gateway_url in
+    http://*|https://*) ;;
+    *)
+      echo 'install: --gateway-url must start with http:// or https://' >&2
+      exit 2
+      ;;
+  esac
+  case $gateway_url in
+    *[\'\"\$\`]*|*' '*)
+      echo 'install: --gateway-url may not contain quotes, spaces, $, or backticks' >&2
+      exit 2
+      ;;
+  esac
+  # Strip a trailing slash so joining /models or /node0 is predictable.
+  gateway_url=${gateway_url%/}
+  case $gateway_url in
+    */v1) ;;
+    *)
+      echo "install: --gateway-url should end in /v1, got $gateway_url" >&2
+      echo 'The operator hands out a base URL like https://HOST/v1.' >&2
+      exit 2
+      ;;
+  esac
+  case $gateway_url in
+    https://*|http://127.0.0.1*|http://localhost*) ;;
+    *)
+      echo "install: warning: $gateway_url is plaintext HTTP, so the API key" >&2
+      echo 'travels unencrypted. Ask the operator for an https:// URL.' >&2
+      ;;
+  esac
+fi
 
 case $ssh_host in
   ''|*[!A-Za-z0-9._:-]*)
@@ -117,7 +185,12 @@ if [ "$port0" = "$port1" ]; then
   exit 2
 fi
 
-for command_name in ssh curl sed install opencode; do
+required_commands='ssh curl sed install opencode'
+if [ "$mode" = gateway ]; then
+  required_commands='curl sed install opencode'
+fi
+
+for command_name in $required_commands; do
   if ! command -v "$command_name" >/dev/null 2>&1; then
     echo "install: required command not found: $command_name" >&2
     if [ "$command_name" = opencode ]; then
@@ -131,7 +204,7 @@ TELLICO_REMOTE_KEY_PATH=$remote_key_path
 export TELLICO_REMOTE_KEY_PATH
 . "$script_dir/lib/checks.sh"
 
-if [ "$start_client" = true ]; then
+if [ "$start_client" = true ] && [ "$mode" = tunnel ]; then
   if tellico_ssh_is_windows; then
     echo "install: ssh resolves to $(command -v ssh)" >&2
     echo 'This WSL session is using Windows ssh.exe, which does not share' >&2
@@ -158,9 +231,63 @@ config_dir="$config_home/tellico-qwen"
 bin_dir="$HOME/.local/bin"
 systemd_dir="$config_home/systemd/user"
 
+# Each provider gets one base URL. In tunnel mode those are the forwarded
+# loopback ports; in gateway mode they are the gateway's node-pinned paths, so
+# the model ids, agents and display names stay identical between modes.
+if [ "$mode" = gateway ]; then
+  base_url0="$gateway_url/node0"
+  base_url1="$gateway_url/node1"
+else
+  base_url0="http://127.0.0.1:$port0/v1"
+  base_url1="http://127.0.0.1:$port1/v1"
+fi
+
 mkdir -p "$config_dir/prompts" "$config_dir/lib" "$bin_dir"
 chmod 700 "$config_dir"
-install -m 600 "$script_dir/config/opencode.json" "$config_dir/opencode.json"
+
+# In gateway mode the key comes from the operator rather than over SSH, so it
+# is written here; tunnel mode fetches it in tellico-qwen-tunnel.
+if [ "$mode" = gateway ]; then
+  umask 077
+  key_tmp="$config_dir/.api-key.tmp.$$"
+  trap 'rm -f "$key_tmp"' EXIT HUP INT TERM
+  if [ -n "$api_key_file" ]; then
+    if [ ! -r "$api_key_file" ]; then
+      echo "install: cannot read $api_key_file" >&2
+      exit 1
+    fi
+    tr -d '\r\n' <"$api_key_file" >"$key_tmp"
+  elif [ ! -t 0 ]; then
+    tr -d '\r\n' >"$key_tmp"
+  else
+    printf 'Gateway API key for %s: ' "$gateway_url" >&2
+    stty -echo 2>/dev/null || true
+    IFS= read -r key_input || key_input=
+    stty echo 2>/dev/null || true
+    printf '\n' >&2
+    printf '%s' "$key_input" >"$key_tmp"
+    key_input=
+  fi
+  if [ ! -s "$key_tmp" ]; then
+    echo 'install: no API key was supplied.' >&2
+    echo 'Pass one with --api-key-file PATH, pipe it in, or type it when asked.' >&2
+    exit 1
+  fi
+  mv "$key_tmp" "$config_dir/api-key"
+  chmod 600 "$config_dir/api-key"
+  trap - EXIT HUP INT TERM
+  umask 022
+fi
+
+config_tmp="$config_dir/.opencode.json.tmp.$$"
+trap 'rm -f "$config_tmp"' EXIT HUP INT TERM
+sed \
+  -e "s|__TELLICO_BASE_URL_0__|$base_url0|g" \
+  -e "s|__TELLICO_BASE_URL_1__|$base_url1|g" \
+  "$script_dir/config/opencode.json" >"$config_tmp"
+mv "$config_tmp" "$config_dir/opencode.json"
+chmod 600 "$config_dir/opencode.json"
+trap - EXIT HUP INT TERM
 install -m 644 "$script_dir/lib/checks.sh" "$config_dir/lib/checks.sh"
 install -m 600 "$script_dir/prompts/orchestrate.md" "$config_dir/prompts/orchestrate.md"
 install -m 600 "$script_dir/prompts/worker.md" "$config_dir/prompts/worker.md"
@@ -171,6 +298,8 @@ umask 077
 env_tmp="$config_dir/.client.env.tmp.$$"
 trap 'rm -f "$env_tmp"' EXIT HUP INT TERM
 {
+  printf "TELLICO_MODE='%s'\n" "$mode"
+  printf "TELLICO_GATEWAY_URL='%s'\n" "$gateway_url"
   printf "TELLICO_SSH_HOST='%s'\n" "$ssh_host"
   printf "TELLICO_QWEN_PORT0='%s'\n" "$port0"
   printf "TELLICO_QWEN_PORT1='%s'\n" "$port1"
@@ -180,7 +309,9 @@ mv "$env_tmp" "$config_dir/client.env"
 chmod 600 "$config_dir/client.env"
 trap - EXIT HUP INT TERM
 
-if command -v systemctl >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; then
+if [ "$mode" = tunnel ] &&
+  command -v systemctl >/dev/null 2>&1 &&
+  systemctl --user show-environment >/dev/null 2>&1; then
   mkdir -p "$systemd_dir"
   unit_tmp="$systemd_dir/.tellico-qwen-tunnel.service.tmp.$$"
   trap 'rm -f "$unit_tmp"' EXIT HUP INT TERM
@@ -205,7 +336,15 @@ if [ "$start_client" = true ]; then
   fi
 
   # A missing allocation is a cluster state, not an installation failure.
-  "$bin_dir/tellico-qwen-tunnel" restart || servers_ready=false
+  if [ "$mode" = gateway ]; then
+    TELLICO_MODE=$mode
+    TELLICO_GATEWAY_URL=$gateway_url
+    echo 'Checking the gateway...'
+    echo
+    tellico_check_gateway "$config_dir/api-key" || servers_ready=false
+  else
+    "$bin_dir/tellico-qwen-tunnel" restart || servers_ready=false
+  fi
 fi
 
 echo
@@ -245,6 +384,12 @@ if [ "$start_client" != true ]; then
 fi
 
 if [ "$servers_ready" != true ]; then
+  if [ "$mode" = gateway ]; then
+    echo
+    echo 'The client is installed, but the step above has to be resolved'
+    echo 'before a session will work.'
+    exit 0
+  fi
   echo
   echo 'The client is ready, but the model servers are not running yet.'
   echo 'They exist only while a Slurm allocation is active:'
@@ -257,5 +402,13 @@ fi
 
 echo 'Start dual-node orchestration: opencode-tellico 0'
 echo 'Alternative lead node:        opencode-tellico 1'
-echo 'Check connectivity:           tellico-qwen-tunnel status'
-echo 'Diagnose problems:            tellico-qwen-tunnel doctor'
+if [ "$mode" = gateway ]; then
+  echo 'Check connectivity:           tellico-qwen-tunnel status'
+  echo 'Diagnose problems:            ./doctor.sh'
+  echo
+  echo "This device is in gateway mode against $gateway_url."
+  echo 'It uses no SSH and holds no cluster credential beyond your own API key.'
+else
+  echo 'Check connectivity:           tellico-qwen-tunnel status'
+  echo 'Diagnose problems:            tellico-qwen-tunnel doctor'
+fi
