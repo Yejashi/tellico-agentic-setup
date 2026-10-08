@@ -4,6 +4,10 @@ client.env
 *.tmp
 *.log
 
+# Python bytecode from the gateway script.
+__pycache__/
+*.pyc
+
 # Editor and operating-system noise.
 .DS_Store
 *.swp

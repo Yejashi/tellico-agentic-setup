@@ -16,6 +16,10 @@ run the servers.
   installing it.
 - `opencode debug config` — show the config OpenCode actually resolved.
 - `tellico-qwen-tunnel status` / `doctor` — check the live tunnel.
+- `gateway/install-gateway.sh` — install the API gateway on this host. Safe
+  while a session is live: it never restarts the tunnel.
+- `tellico-gateway status` / `doctor` / `logs` — check the live gateway.
+- `python3 -m py_compile gateway/tellico_gateway.py` — syntax check the gateway.
 
 `shellcheck -s sh` is the intended linter and the scripts carry
 `# shellcheck disable=` directives, but it is not installed here. Do not claim a
@@ -23,9 +27,14 @@ shellcheck result without running it.
 
 ## Hard constraints
 
-Everything here is `#!/bin/sh`. Write POSIX shell, not bash: no arrays, no
-`[[ ]]`, no `local`, no `${var,,}`. The cluster-side repo (`qwen38-cluster`) is
-bash and its nodes run bash 4.2 — keep the two straight.
+Every shell script here is `#!/bin/sh`. Write POSIX shell, not bash: no arrays,
+no `[[ ]]`, no `local`, no `${var,,}`. The cluster-side repo (`qwen38-cluster`)
+is bash and its nodes run bash 4.2 — keep the two straight.
+
+`gateway/tellico_gateway.py` is the one exception, and it is standard library
+only. Adding a dependency to it means a virtualenv on every gateway host, so
+do not. It never runs on the cluster, which is ppc64le on RHEL 7.6, so normal
+x86 Python is fine there.
 
 Never commit credentials. `api-key` and `client.env` are gitignored; keep it
 that way and never inline a key into JSON or a unit file.
@@ -63,3 +72,16 @@ this repo.
 - Agents: one lead (`orchestrate-tellico-0|1`) plus two node-pinned workers.
   `prompts/orchestrate.md` is always-on context for the lead, so every line
   added costs tokens on every turn. Keep it tight.
+- `gateway/` is the second, independent way in: an OpenAI-compatible endpoint
+  with per-user keys, for users who have no cluster account. It sits *on top
+  of* the client install on one host, reading `~/.config/tellico-qwen/api-key`
+  and the tunnel's loopback ports. It must never start, stop or restart the
+  tunnel — `tellico-qwen-tunnel` still owns that, and a live session depends
+  on it.
+- The gateway's job is admission control, not throughput. The cluster serves
+  about four concurrent requests, so `TELLICO_GATEWAY_MAX_INFLIGHT` defaults to
+  3 to leave one slot for a direct `opencode-tellico` session. Raising it does
+  not add capacity; it only moves the queue.
+- `TELLICO_GATEWAY_CONTEXT` is derived from `config/opencode.json` at install
+  time, so it is bound by the same context coupling described above. A change
+  to the cluster's per-slot context means rerunning the gateway installer too.
