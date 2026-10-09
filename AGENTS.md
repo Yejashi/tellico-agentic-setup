@@ -67,6 +67,11 @@ this repo.
 
 - `bin/tellico-qwen-tunnel` owns the SSH control socket and port forwards.
   Everything else goes through it; do not open ad-hoc tunnels.
+- Codex cannot delegate: 0.153.4 exposes no spawn, task or agent tool to the
+  model, even with `multi_agent_v2` enabled, and `enable_fanout` is removed. It
+  parallelises shell commands inside one conversation, which costs no model
+  slots. So a Codex session is one node, and `codex-tellico` pins one rather
+  than using the gateway's pooled path. Do not add worker agents to it.
 - `bin/codex-tellico` runs Codex against the same servers. Four constraints
   make it work and none are obvious: `wire_api` must be `"responses"` (the only
   value Codex 0.153 accepts, and llama.cpp does implement that endpoint);

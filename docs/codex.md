@@ -60,6 +60,43 @@ Codex is a single-agent tool, so none of the dual-node orchestration applies.
 One session uses one node, which is why `codex-tellico` spreads devices across
 the two servers the same way `opencode-tellico` does.
 
+## It cannot use subagents
+
+Codex 0.153.4 gives the model no way to delegate. Asked to enumerate its own
+tools, with `multi_agent_v2` additionally enabled, it reports exactly:
+
+```text
+exec_command  write_stdin  list_mcp_resources  list_mcp_resource_templates
+read_mcp_resource  request_user_input  request_plugin_install  view_image
+get_goal  create_goal  update_goal
+```
+
+No spawn, task or delegate tool. The feature flags that sound relevant are not:
+`multi_agent` is stable and on but governs the app-server's independent
+sessions -- what `codex agents` browses -- not model-spawned children, and
+`enable_fanout` and `multi_agent_mode` are both marked removed.
+
+What Codex does run in parallel is **shell commands**, inside one model
+conversation. Asked to delegate two counts to parallel subagents, it said so
+itself and did the sensible thing:
+
+> this run has no subagent-spawning primitive, so I executed the two counts as
+> independent parallel commands rather than literally delegating to named
+> subagents
+
+That is useful, but it is not the same resource: parallel `exec_command` calls
+cost no model slots, so they use neither the second slot nor the second node.
+A Codex session is one conversation on one node, start to finish.
+
+So Codex is **strictly less parallel than OpenCode here**. It avoids the
+tool-call barrier by having nothing to batch, not by filling the gap. For work
+that genuinely splits in two, `opencode-tellico` still finishes sooner;
+`codex-tellico` is the better tool for one focused thread.
+
+This is also why `codex-tellico` pins a node rather than using the gateway's
+pooled path: with no fan-out there is nothing to spread, and pinning keeps the
+session's prompt cache warm on one server.
+
 ## Settings
 
 | Variable | Meaning |

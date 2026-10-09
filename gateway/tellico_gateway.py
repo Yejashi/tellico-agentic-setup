@@ -469,6 +469,9 @@ class Handler(BaseHTTPRequestHandler):
             {
                 "name": entry["id"],
                 "model": entry["id"],
+                # Codex's decoder requires slug; llama.cpp omits it, which is
+                # why its own /v1/models fails to decode there too.
+                "slug": entry["id"],
                 "type": "model",
                 "description": "",
                 "tags": [],
