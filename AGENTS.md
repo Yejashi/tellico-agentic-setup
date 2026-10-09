@@ -67,20 +67,14 @@ this repo.
 
 - `bin/tellico-qwen-tunnel` owns the SSH control socket and port forwards.
   Everything else goes through it; do not open ad-hoc tunnels.
-- Codex cannot delegate: 0.153.4 exposes no spawn, task or agent tool to the
-  model, even with `multi_agent_v2` enabled, and `enable_fanout` is removed. It
-  parallelises shell commands inside one conversation, which costs no model
-  slots. So a Codex session is one node, and `codex-tellico` pins one rather
-  than using the gateway's pooled path. Do not add worker agents to it.
-- `bin/codex-tellico` runs Codex against the same servers. Four constraints
-  make it work and none are obvious: `wire_api` must be `"responses"` (the only
-  value Codex 0.153 accepts, and llama.cpp does implement that endpoint);
-  `model_reasoning_effort` must be overridden because Codex passes it to the
-  chat template, which rejects its usual `high`; Codex must go through the
-  gateway, because it sends `instructions` plus a `developer` message and the
-  template refuses the second system message llama.cpp makes of that; and the
-  gateway needs a per-user key, which the cluster key is not. `fold_system_items`
-  in the gateway is what makes the third one work -- do not remove it.
+- Codex was evaluated and rejected, so do not reach for it again: 0.153.4
+  exposes no spawn, task or agent tool to the model even with
+  `multi_agent_v2` enabled, and `enable_fanout` is removed. It parallelises
+  shell commands inside one conversation, which costs no model slots, so a
+  Codex session is one node and cannot use the two workers this setup exists
+  for -- strictly less parallel than OpenCode here. The gateway keeps
+  `/v1/responses` and `fold_system_items` because they are generic
+  Responses-API support, not Codex-specific.
 - A tool-call batch is a barrier: one assistant message with N tool calls needs
   all N results before the model can speak again, so the lead cannot act on the
   first worker's report while the second still runs. OpenCode has no async or

@@ -55,6 +55,10 @@ command you could run in one step, wastes a round trip and adds a report you
 then have to read. The test is simple: would doing it myself cost me more
 context than reading the worker's report? If no, do it yourself.
 
+Bigger is not safer. An oversized task is the more common and more expensive
+mistake: it fails late, it fails having already edited files, and its report
+is too long to check. Size every task before you send it.
+
 ## Write the plan to disk, not into your context
 
 For work spanning more than a couple of steps, keep the plan in
@@ -80,6 +84,44 @@ After each milestone, run the repository's own checks and record the result in
 Verification before starting the next one. Do not carry an unverified milestone
 forward.
 
+## Size a task before you send it
+
+One task is one objective with one done-condition and one verification, inside
+one subsystem. If you cannot state what done looks like in a single sentence,
+the task is too big; split it into stages and send only the first.
+
+Signs a task is too large, any one of which means split it:
+
+- it needs two verifications, or passes through two subsystems;
+- it will touch more than roughly five files;
+- its description contains "and then", or the words "investigate and
+  implement";
+- it leaves the worker a design decision you have not made.
+
+That last one matters most here. Workers cannot see each other's reasoning or
+yours, so every decision you leave inside a task gets made twice and
+differently -- one worker's naming, interface or convention will not match the
+other's, and you will find out only at integration. Decide anything shared
+yourself and state it in both briefs.
+
+Do not over-shred either. Merge work that shares a subsystem, files or
+conventions: each extra worker pays the cost of orienting itself again, so two
+coherent tasks beat five fragments. Two coherent tasks is what this setup runs in
+parallel; the useful question is not "how small" but "how self-contained".
+
+Every brief states four things. A worker that drifts is almost always missing
+one of them:
+
+1. Objective, with the done-condition.
+2. Output format: what the report must contain.
+3. Where to look: the paths, commands or symbols to start from, and the write
+   scope it owns.
+4. Out of scope: what it must not touch or decide, and that it should stop and
+   report rather than widen the task.
+
+When in doubt send the smaller task. You keep the next stage, and you spend one
+extra round trip instead of discarding a worker's twenty minutes.
+
 ## Parallel dispatch
 
 For every nontrivial request, first identify independent bounded units. If at
@@ -95,14 +137,11 @@ Good parallel pairs include:
 - one implementation and one independent investigation or test-design task;
 - two independent review angles, such as correctness and tests/security.
 
-Size the two halves by expected cost, not by what is tidiest. A batch ends only
-when its slowest member ends -- you cannot act on the first report while the
-second worker is still running -- so pairing a two-minute task with a
-twenty-second one leaves a server idle for most of the batch.
-
-When the work will not divide evenly, do not pad the small half to match. Give
-the large half to one worker and put your own read, grep and edit calls in the
-same batch: they run while that worker works and cost no server time.
+Pair halves of similar expected cost. A batch ends only when its slowest member
+ends, so a two-minute task beside a twenty-second one idles a server for most of
+the batch. When the work will not divide evenly, do not pad the small half:
+give the large half to one worker and put your own read, grep and edit calls in
+the same batch, where they run alongside it and cost no server time.
 
 Do not manufacture duplicate work merely to keep a server busy. If the next
 step is genuinely indivisible or depends on an unfinished result, assign it to

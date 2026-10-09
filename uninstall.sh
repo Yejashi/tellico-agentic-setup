@@ -21,7 +21,6 @@ fi
 
 rm -f \
   "$bin_dir/opencode-tellico" \
-  "$bin_dir/codex-tellico" \
   "$bin_dir/tellico-qwen-tunnel" \
   "$systemd_dir/$unit_name" \
   "$config_dir/api-key" \
@@ -35,7 +34,6 @@ rm -f \
   "$systemd_dir/$gateway_unit" \
   "$gateway_dir/gateway.env"
 
-rm -f "${CODEX_HOME:-$HOME/.codex}/tellico.config.toml"
 rm -rf "$lib_dir/__pycache__"
 rmdir "$lib_dir" 2>/dev/null || true
 rmdir "$config_dir/prompts" 2>/dev/null || true

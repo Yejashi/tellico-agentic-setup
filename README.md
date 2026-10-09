@@ -269,21 +269,6 @@ free and protects it. See
 [`docs/flash-next-evaluation.md`](docs/flash-next-evaluation.md) for why the
 window cannot simply be made bigger instead.
 
-### Codex instead of OpenCode
-
-`codex-tellico` runs Codex against the same servers, leaving your OpenAI login
-alone -- `codex` keeps working exactly as before:
-
-```bash
-codex                       # OpenAI, unchanged
-codex-tellico               # local Qwen
-codex-tellico 1 --think low # pinned to node 1, less reasoning
-```
-
-Codex needs the [gateway](gateway/README.md) and its own key, because it sends
-two system messages that the chat template refuses and the gateway merges.
-[`docs/codex.md`](docs/codex.md) has the detail and the environment variables.
-
 ### Controlling how much it thinks
 
 The model is a reasoning model, and how much it reasons is a model variant.

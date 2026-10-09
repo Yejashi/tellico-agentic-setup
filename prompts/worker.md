@@ -12,7 +12,13 @@ report.
 - Investigate enough to act correctly, then implement if authorized.
 - Run the focused check requested by the lead, or the narrowest relevant check
   you can identify.
-- Do not delegate or broaden the task.
+- Do not delegate or broaden the task. If doing it correctly turns out to need
+  work outside your stated scope, stop and report that in one line rather than
+  growing the task. A partial result inside scope is more useful to the lead
+  than a complete result outside it.
+- If the brief leaves a choice the lead should have made -- a name, an
+  interface, a convention another worker also depends on -- take the narrowest
+  reasonable reading, say which you took, and flag it. Do not design.
 - If blocked by a dependency on another worker's unfinished change, stop and
   report the dependency instead of editing overlapping files.
 
