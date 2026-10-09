@@ -99,23 +99,44 @@ this repo.
   aggregate gain, so a third worker buys nothing. The free capacity is a node
   with *nothing* running on it, and that part does not change -- the cluster
   serves about four concurrent requests however they are dispatched.
-- The barrier itself, however, is no longer absolute, and the older claim here
-  that OpenCode has no background task primitive is wrong.
-  `OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS` and `backgroundSubagents` are
-  both present in the 1.18.30 binary, which also carries OpenCode's own
-  instruction to the model: "For background tasks, you will be notified
-  automatically when the result is ready." OpenCode V2 has it natively, which
-  is why `kdcokenny/opencode-background-agents` retired itself, and
-  `@vheins/opencode-asynchronous-agent` forces every subagent background on
-  either line. None of this is verified against this setup yet: test it by
-  exporting the flag in `bin/opencode-tellico`, which already builds its own
-  `env`, and watching whether the lead really regains control while a worker
-  runs. Upstream issue 48826 reports a subagent with pending background work
-  being marked complete early and its result never collected, so treat it as
-  promising rather than ready. If it does work here, the pairing advice in
-  `prompts/orchestrate.md` and the imbalance nudge in
-  `plugins/dispatch-balance.js` both lose most of their point and should be
-  revisited together.
+- The barrier is not absolute, and `bin/opencode-tellico` now removes it. The
+  older claim here that OpenCode has no background task primitive was wrong:
+  the 1.18.30 binary defines the task tool twice, once as `{description,
+  prompt, subagent_type, task_id, command}` and once with `background` added
+  -- "Run the agent in the background. You will be notified when it completes.
+  DO NOT sleep, poll, or proactively check on its progress" -- and
+  `OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS` is what selects the second. So
+  the launcher exports it, and `prompts/orchestrate.md` tells the lead to pass
+  `background: true` and to refill the server that just came free. Without
+  both halves nothing changes: the flag only offers the parameter, and the
+  model has to ask for it.
+- `task_id` is the other half of that schema and is not used yet: it resumes a
+  prior subagent session instead of creating a fresh one, which would keep a
+  worker's prompt cache warm across dispatches. Worth trying once background
+  dispatch has settled.
+- Background dispatch is off for `opencode run` and the launcher enforces that,
+  because a one-shot run loses every background result. Measured with the same
+  two-worker dispatch both ways: in the foreground the lead collects both
+  reports and answers; in the background both workers finish, the lead regains
+  control immediately -- which is the feature working -- and then ends its turn
+  saying "Waiting for their reports", having lost both. A background result
+  arrives as a notification and needs a later turn to land in, and a run has
+  none. This is the shape of upstream issue 48826.
+- So the interactive path is the only one that can deliver a result, and it is
+  live but not yet proven end to end: a TUI session cannot be driven from a
+  script, so nobody has watched a notification actually land. If a worker's
+  report ever goes missing, `TELLICO_BACKGROUND_SUBAGENTS=0` is the first
+  thing to try, and the symptom to look for is a lead that announces it is
+  waiting for reports and then stops.
+- The capacity argument above is untouched either way: four concurrent
+  requests is still four, and a third worker still buys nothing. What changed
+  is only that a finished worker's slot can now be refilled.
+- Sizing a pair by cost was advice for the barrier, so it is gone from
+  `prompts/orchestrate.md` and `plugins/dispatch-balance.js` suppresses its
+  imbalance nudge when the flag is set, keeping the same-node and
+  serial-dispatch nudges, which hold either way. The plugin reads the variable
+  from its own environment, which works because the launcher exports it into
+  the process OpenCode runs in.
 - Thinking level is a model *variant*, not a model or an agent. The four
   variants in `config/opencode.json` (`off`, `low`, `medium`, `xhigh`) are the
   only values the chat template accepts -- it raises `Unexpected reasoning

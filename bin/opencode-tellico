@@ -66,6 +66,13 @@ environment:
   TELLICO_LEAD_NODE
                    Force the lead node to 0 or 1 instead of deriving it from
                    this device.
+  TELLICO_BACKGROUND_SUBAGENTS
+                   Set to 0 to dispatch workers in the foreground, the way
+                   this setup worked before background subagents. On by
+                   default for an interactive session, where the lead is
+                   notified as each worker finishes instead of waiting for
+                   the whole batch. Never on for "run", which has no later
+                   turn for a result to arrive in.
   TELLICO_OPENCODE_STANDALONE
                    Force OpenCode's --standalone flag on (1) or off (0).
                    Unset, the flag is used when this OpenCode supports it,
@@ -136,6 +143,34 @@ if ! "$tunnel_command" start >/dev/null; then
   exit 1
 fi
 
+# A finished worker's slot cannot be reused while the lead is still blocked on
+# the rest of its tool-call batch, so a lopsided pair idles a server until its
+# slowest member ends. Background subagents remove that barrier: the lead is
+# notified as each worker lands and can dispatch into the freed slot. The task
+# tool only grows its "background" parameter when this is set, which is why it
+# travels with the session rather than living in the config.
+#
+# It is experimental, and TELLICO_BACKGROUND_SUBAGENTS=0 turns it off without
+# an edit. That is the first thing to try if a worker's report ever goes
+# missing: upstream issue 48826 reports a subagent with pending background
+# work being marked complete early and its result never collected.
+#
+# "opencode run" never gets it, whatever the variable says. A one-shot run
+# ends its turn as soon as the model stops speaking, and a background result
+# arrives as a notification that needs a *later* turn to land in, so there is
+# nowhere for it to go. Measured, not assumed: the same two-worker dispatch
+# that reports both lines in the foreground ends with "Waiting for their
+# reports" and loses both when run in the background. An interactive session
+# has further turns and is the only place the notification can be delivered.
+case ${TELLICO_BACKGROUND_SUBAGENTS:-1} in
+  0|false|no|off)
+    background_env=
+    ;;
+  *)
+    background_env=OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS=true
+    ;;
+esac
+
 model="tellico-${node}/qwen3.8-27b"
 lead_agent="orchestrate-tellico-${node}"
 # A thinking level is a model variant, so it is set per agent. Only the lead
@@ -154,14 +189,19 @@ runtime_config="{\"model\":\"${model}\",\"small_model\":\"${model}\",\"default_a
 # outright), so the lead model and agent reach the session through
 # $runtime_config. "opencode run" does accept it, and passing it there keeps a
 # non-interactive run from depending on config precedence alone.
-# $standalone_flag is one word or empty, so it must stay unquoted.
+# $standalone_flag and $background_env are each one word or empty, so both
+# must stay unquoted.
 # shellcheck disable=SC2086
 if [ "${1:-}" = run ]; then
   shift
-  exec env OPENCODE_CONFIG="$client_config" OPENCODE_CONFIG_CONTENT="$runtime_config" \
+  # No later turn to deliver a background result into; see above.
+  background_env=
+  exec env $background_env OPENCODE_CONFIG="$client_config" \
+    OPENCODE_CONFIG_CONTENT="$runtime_config" \
     opencode run $standalone_flag --model "$model" "$@"
 fi
 
 # shellcheck disable=SC2086
-exec env OPENCODE_CONFIG="$client_config" OPENCODE_CONFIG_CONTENT="$runtime_config" \
+exec env $background_env OPENCODE_CONFIG="$client_config" \
+  OPENCODE_CONFIG_CONTENT="$runtime_config" \
   opencode $standalone_flag "$@"

@@ -25,6 +25,16 @@ const IMBALANCE_RATIO = 3;
 // the lead is allowed to make.
 const SOLO_RUN_LIMIT = 2;
 
+// With background dispatch a short task no longer holds its server until a
+// long one ends -- the lead is notified as each lands and can refill the slot
+// -- so telling it to pair halves by cost would be advice for a barrier that
+// is no longer there. The other two nudges still hold: an empty server is
+// wasted either way, and two tasks on one node still halve each other.
+function backgroundDispatchEnabled() {
+  const value = process.env.OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS;
+  return value === "true" || value === "1";
+}
+
 function stateFor(states, sessionID) {
   let state = states.get(sessionID);
   if (!state) {
@@ -60,6 +70,7 @@ function otherNode(agent) {
 
 export const DispatchBalancePlugin = async () => {
   const states = new Map();
+  const backgroundDispatch = backgroundDispatchEnabled();
 
   return {
     "tool.execute.before": async (input, output) => {
@@ -116,6 +127,7 @@ export const DispatchBalancePlugin = async () => {
           // slowest member ends.
           const partner = state.lastPaired;
           if (
+            !backgroundDispatch &&
             partner &&
             Math.max(duration, partner) >= IMBALANCE_MIN_MS &&
             Math.max(duration, partner) > Math.min(duration, partner) * IMBALANCE_RATIO

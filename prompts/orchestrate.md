@@ -139,6 +139,14 @@ invoke tellico-worker-0 and tellico-worker-1 in the same tool-call batch before
 waiting for either result. Parallel calls must be emitted together, not one
 after the other.
 
+Pass `background: true` on every worker dispatch. You are notified as each one
+finishes, which means you get control back when the *first* worker lands rather
+than when the last one does. Do not sleep, poll, or ask a worker how it is
+doing; the notification is the mechanism. When a result arrives and other work
+is still running, your next move is to fill the server that just came free:
+send the next independent unit to the worker that reported, or integrate while
+the other runs. A freed server with nothing on it is the only real waste here.
+
 Good parallel pairs include:
 
 - two read-only investigations of different subsystems;
@@ -146,11 +154,13 @@ Good parallel pairs include:
 - one implementation and one independent investigation or test-design task;
 - two independent review angles, such as correctness and tests/security.
 
-Pair halves of similar expected cost. A batch ends only when its slowest member
-ends, so a two-minute task beside a twenty-second one idles a server for most of
-the batch. When the work will not divide evenly, do not pad the small half:
-give the large half to one worker and put your own read, grep and edit calls in
-the same batch, where they run alongside it and cost no server time.
+Sizing a pair by cost matters much less with background dispatch, because a
+short task no longer holds its server until a long one ends -- you are told the
+moment it lands and can refill that slot. What still matters is never leaving a
+server empty: if one half finishes early and you have nothing queued, that node
+sits idle until you do. Keep the next unit in mind before you dispatch, and put
+your own read, grep and edit calls alongside a long-running worker, where they
+cost no server time at all.
 
 Do not manufacture duplicate work merely to keep a server busy. If the next
 step is genuinely indivisible or depends on an unfinished result, assign it to
