@@ -356,15 +356,11 @@ systemd_dir="$config_home/systemd/user"
 # Each provider gets one base URL. In tunnel mode those are the forwarded
 # loopback ports; in gateway mode they are the gateway's node-pinned paths, so
 # the model ids, agents and display names stay identical between modes.
-if [ "$mode" = gateway ]; then
-  base_url0="$gateway_url/node0"
-  base_url1="$gateway_url/node1"
-else
-  base_url0="http://127.0.0.1:$port0/v1"
-  base_url1="http://127.0.0.1:$port1/v1"
-fi
+base_url0=$(tellico_base_url "$mode" "$gateway_url" 0 "$port0")
+base_url1=$(tellico_base_url "$mode" "$gateway_url" 1 "$port1")
+plugin_dir="$config_dir/plugins"
 
-mkdir -p "$config_dir/prompts" "$config_dir/lib" "$bin_dir"
+mkdir -p "$config_dir/prompts" "$config_dir/lib" "$config_dir/plugins" "$bin_dir"
 chmod 700 "$config_dir"
 
 # In gateway mode the key comes from the operator rather than over SSH, so it
@@ -408,16 +404,18 @@ fi
 
 config_tmp="$config_dir/.opencode.json.tmp.$$"
 trap 'rm -f "$config_tmp"' EXIT HUP INT TERM
-sed \
-  -e "s|__TELLICO_BASE_URL_0__|$base_url0|g" \
-  -e "s|__TELLICO_BASE_URL_1__|$base_url1|g" \
-  "$script_dir/config/opencode.json" >"$config_tmp"
+tellico_render_config "$script_dir/config/opencode.json" \
+  "$base_url0" "$base_url1" "$plugin_dir" >"$config_tmp"
 mv "$config_tmp" "$config_dir/opencode.json"
 chmod 600 "$config_dir/opencode.json"
 trap - EXIT HUP INT TERM
 install -m 644 "$script_dir/lib/checks.sh" "$config_dir/lib/checks.sh"
 install -m 600 "$script_dir/prompts/orchestrate.md" "$config_dir/prompts/orchestrate.md"
 install -m 600 "$script_dir/prompts/worker.md" "$config_dir/prompts/worker.md"
+# OpenCode loads these itself, with its own bundled runtime: no npm install
+# and no build step. They enforce what the prompts can only ask for.
+install -m 644 "$script_dir/plugins/secret-guard.js" "$plugin_dir/secret-guard.js"
+install -m 644 "$script_dir/plugins/dispatch-balance.js" "$plugin_dir/dispatch-balance.js"
 install -m 755 "$script_dir/bin/opencode-tellico" "$bin_dir/opencode-tellico"
 
 # Codex support was removed: it exposes no delegation tool, so it could not

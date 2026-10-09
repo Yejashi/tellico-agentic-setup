@@ -7,7 +7,9 @@ run the servers.
 ## Commands
 
 - `./doctor.sh` — check everything the client needs, in dependency order. Run
-  this first when something is broken.
+  this first when something is broken. Its `installed` line reports whether the
+  installed copies still match this checkout; a `stale:` or `absent:` there
+  means something was changed here and never installed.
 - `./install.sh --no-start` — install files only. Use this when a session is
   live: plain `./install.sh` restarts the SSH tunnel and drops it.
 - `./install.sh` — full install, including tunnel restart and validation.
@@ -31,24 +33,38 @@ Every shell script here is `#!/bin/sh`. Write POSIX shell, not bash: no arrays,
 no `[[ ]]`, no `local`, no `${var,,}`. The cluster-side repo (`qwen38-cluster`)
 is bash and its nodes run bash 4.2 — keep the two straight.
 
-`gateway/tellico_gateway.py` is the one exception, and it is standard library
-only. Adding a dependency to it means a virtualenv on every gateway host, so
-do not. It never runs on the cluster, which is ppc64le on RHEL 7.6, so normal
-x86 Python is fine there.
+`plugins/*.js` and `gateway/tellico_gateway.py` are the two exceptions.
+
+The plugins are plain ES-module JavaScript with no imports beyond node's own
+builtins. Keep them that way: OpenCode loads them with its own bundled runtime,
+so there is no npm install, no build step and no node on the client, and
+`install.sh` only has to copy the files. A TypeScript plugin, or one with a
+dependency, would mean a toolchain on every client device. They must also never
+throw except where a throw is the point: a bug in a plugin that runs on every
+tool call would break every session.
+
+`gateway/tellico_gateway.py` is standard library only. Adding a dependency to
+it means a virtualenv on every gateway host, so do not. It never runs on the
+cluster, which is ppc64le on RHEL 7.6, so normal x86 Python is fine there.
 
 Never commit credentials. `api-key` and `client.env` are gitignored; keep it
 that way and never inline a key into JSON or a unit file.
 
 ## Editing config or prompts does nothing until you install
 
-`config/opencode.json` and `prompts/*.md` are templates. OpenCode reads the
-installed copies under `~/.config/tellico-qwen/`. `config/opencode.json` is
-substituted rather than copied: `__TELLICO_BASE_URL_0__` and
-`__TELLICO_BASE_URL_1__` become loopback tunnel ports or gateway node paths
-depending on the mode, so never hardcode a URL back into it. A change to this repo has no
-effect until `./install.sh --no-start` copies it across, and OpenCode loads
-config once at startup, so the user must then restart their session. Say so
-explicitly when handing back a config change.
+`config/opencode.json`, `prompts/*.md` and `plugins/*.js` are templates.
+OpenCode reads the installed copies under `~/.config/tellico-qwen/`.
+`config/opencode.json` is substituted rather than copied:
+`__TELLICO_BASE_URL_0__` and `__TELLICO_BASE_URL_1__` become loopback tunnel
+ports or gateway node paths depending on the mode, and `__TELLICO_PLUGIN_DIR__`
+becomes the installed plugin directory, so never hardcode either back into it. A
+change to this repo has no effect until `./install.sh --no-start` copies it
+across, and OpenCode loads config and plugins once at startup, so the user must
+then restart their session. Say so explicitly when handing back a change to any
+of them.
+
+`./doctor.sh` now detects this: `tellico_check_drift` compares every installed
+copy with the checkout and its `installed` line says which ones are stale.
 
 ## The context coupling
 
@@ -77,12 +93,29 @@ this repo.
   Responses-API support, not Codex-specific.
 - A tool-call batch is a barrier: one assistant message with N tool calls needs
   all N results before the model can speak again, so the lead cannot act on the
-  first worker's report while the second still runs. OpenCode has no async or
-  background task primitive (`experimental.batch_tool` is unrelated), so this
-  is not fixable in config -- only by how `prompts/orchestrate.md` tells the
-  lead to size a pair. Do not "fix" it by adding more workers: two requests on
-  one node run at half speed each for no aggregate gain, so a third worker buys
-  nothing. The free capacity is a node with *nothing* running on it.
+  first worker's report while the second still runs. That shapes how
+  `prompts/orchestrate.md` tells the lead to size a pair. Do not "fix" it by
+  adding more workers: two requests on one node run at half speed each for no
+  aggregate gain, so a third worker buys nothing. The free capacity is a node
+  with *nothing* running on it, and that part does not change -- the cluster
+  serves about four concurrent requests however they are dispatched.
+- The barrier itself, however, is no longer absolute, and the older claim here
+  that OpenCode has no background task primitive is wrong.
+  `OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS` and `backgroundSubagents` are
+  both present in the 1.18.30 binary, which also carries OpenCode's own
+  instruction to the model: "For background tasks, you will be notified
+  automatically when the result is ready." OpenCode V2 has it natively, which
+  is why `kdcokenny/opencode-background-agents` retired itself, and
+  `@vheins/opencode-asynchronous-agent` forces every subagent background on
+  either line. None of this is verified against this setup yet: test it by
+  exporting the flag in `bin/opencode-tellico`, which already builds its own
+  `env`, and watching whether the lead really regains control while a worker
+  runs. Upstream issue 48826 reports a subagent with pending background work
+  being marked complete early and its result never collected, so treat it as
+  promising rather than ready. If it does work here, the pairing advice in
+  `prompts/orchestrate.md` and the imbalance nudge in
+  `plugins/dispatch-balance.js` both lose most of their point and should be
+  revisited together.
 - Thinking level is a model *variant*, not a model or an agent. The four
   variants in `config/opencode.json` (`off`, `low`, `medium`, `xhigh`) are the
   only values the chat template accepts -- it raises `Unexpected reasoning
@@ -100,7 +133,36 @@ this repo.
   `OPENCODE_CONFIG_CONTENT`. OpenCode's interactive command rejects `--model`,
   so the model and lead agent must travel through that env var.
 - `lib/checks.sh` holds shared validation used by both `install.sh` and
-  `doctor.sh`. Add checks there, not in one caller.
+  `doctor.sh`. Add checks there, not in one caller. `tellico_base_url` and
+  `tellico_render_config` live there for the same reason: they are the only
+  places that know which placeholders `config/opencode.json` has, and
+  `install.sh` renders with them while `tellico_check_drift` compares against
+  them. A new placeholder goes in `tellico_render_config`, never in a caller's
+  own `sed`.
+- `tellico_check_drift` compares the installed copies with this checkout and is
+  what makes the install gap above visible instead of merely documented. It
+  compares `opencode.json` through `tellico_config_fingerprint`, which puts the
+  per-device substitutions back, so drift means "no longer this repository's
+  config" and not "installed for a different mode or port". Whether the
+  endpoints are the right ones is `tellico_check_config`'s job and the gateway
+  probe's.
+- `plugins/` enforces what the prompts can only ask for, and exists only for
+  things config cannot express. `secret-guard.js` blocks reads of the API key,
+  `client.env` and SSH private keys: OpenCode's permission schema gates
+  `edit`, `bash`, `webfetch`, `doom_loop` and `external_directory` but has no
+  pattern gate for `read` at all, and both workers run `"*": "allow"`, so
+  without it a credential can reach a worker report and from there the lead's
+  context and `.agent/PLANS.md`. `dispatch-balance.js` counts task overlap and
+  nudges once per session when the lead serialises, puts both halves of a pair
+  on one node, or pairs a long task with a short one -- the three ways to idle
+  a server, none of which the lead can see for itself. Both are allowlist-first
+  like every check here: a form they cannot recognise is allowed through rather
+  than guessed at. They are registered through `__TELLICO_PLUGIN_DIR__` in
+  `config/opencode.json`, substituted to an absolute path at install time
+  because a relative path would resolve against whatever OpenCode considers the
+  config root. A plugin the config names but the install did not copy is
+  silently skipped by OpenCode, which is why `tellico_check_config` fails on a
+  missing one rather than warning.
 - Agents: one lead (`orchestrate-tellico-0|1`) plus two node-pinned workers.
   `prompts/orchestrate.md` is always-on context for the lead, so every line
   added costs tokens on every turn. Keep it tight.

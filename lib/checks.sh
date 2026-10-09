@@ -641,7 +641,127 @@ tellico_check_config() {
     fi
   fi
 
+  # A plugin the config names but the install did not copy across is silently
+  # skipped by OpenCode, which would leave the credential guard off without
+  # saying so. Half an install is worth reporting as a broken one.
+  while IFS= read -r tellico_config_plugin; do
+    [ -n "$tellico_config_plugin" ] || continue
+    if [ ! -r "$tellico_config_plugin" ]; then
+      echo "plugin named by $tellico_config but not installed:" \
+        "$tellico_config_plugin" >&2
+      tellico_config_ok=false
+    fi
+  done <<EOF
+$(sed -n 's|.*"\(/[^"]*/plugins/[^"]*\.js\)".*|\1|p' "$tellico_config")
+EOF
+
   [ "$tellico_config_ok" = true ]
+}
+
+# --- Rendering and drift ----------------------------------------------------
+#
+# config/opencode.json is a template: install.sh fills in the endpoints and
+# the plugin directory of this particular device. Everything in these two
+# functions exists so that only one place knows which placeholders there are.
+
+# One provider's base URL. Tunnel mode forwards the private cluster endpoints
+# to loopback; gateway mode points at the gateway's node-pinned path.
+tellico_base_url() {
+  tellico_url_mode=$1
+  tellico_url_gateway=$2
+  tellico_url_node=$3
+  tellico_url_port=$4
+
+  if [ "$tellico_url_mode" = gateway ]; then
+    printf '%s/node%s\n' "${tellico_url_gateway%/}" "$tellico_url_node"
+  else
+    printf 'http://127.0.0.1:%s/v1\n' "$tellico_url_port"
+  fi
+}
+
+# The template with every placeholder filled in, on stdout.
+tellico_render_config() {
+  sed \
+    -e "s|__TELLICO_BASE_URL_0__|$2|g" \
+    -e "s|__TELLICO_BASE_URL_1__|$3|g" \
+    -e "s|__TELLICO_PLUGIN_DIR__|$4|g" \
+    "$1"
+}
+
+# The template parts of a config, with this device's substitutions put back.
+# Comparing fingerprints asks "is the installed config still the repository's
+# config", independently of which mode or ports the device was installed for.
+# Whether those endpoints are the right ones is tellico_check_config's job and
+# the gateway probe's, not this one's.
+tellico_config_fingerprint() {
+  sed \
+    -e 's|"baseURL": "[^"]*"|"baseURL": "__TELLICO_BASE_URL__"|' \
+    -e 's|"[^"]*/plugins/|"__TELLICO_PLUGIN_DIR__/|' \
+    "$1"
+}
+
+# Files installed byte for byte, at the same relative path on both sides.
+TELLICO_INSTALLED_COPIES='lib/checks.sh
+prompts/orchestrate.md
+prompts/worker.md
+plugins/secret-guard.js
+plugins/dispatch-balance.js'
+
+# Commands installed into the PATH directory rather than the config directory.
+TELLICO_INSTALLED_COMMANDS='opencode-tellico
+tellico-qwen-tunnel'
+
+# Which installed copies no longer match this checkout. Editing the repository
+# changes nothing until install.sh copies the files across, and OpenCode then
+# has to be restarted, so a stale copy looks exactly like a change that did
+# not work -- the session runs happily on the old prompt. Names the drifted
+# files in $tellico_drifted and the absent ones in $tellico_drift_absent;
+# returns non-zero when there is anything to report.
+tellico_check_drift() {
+  tellico_drift_repo=$1
+  tellico_drift_config=$2
+  tellico_drift_bin=$3
+  tellico_drifted=
+  tellico_drift_absent=
+
+  while IFS= read -r tellico_drift_name; do
+    [ -n "$tellico_drift_name" ] || continue
+    tellico_drift_live="$tellico_drift_config/$tellico_drift_name"
+    if [ ! -r "$tellico_drift_live" ]; then
+      tellico_drift_absent="$tellico_drift_absent $tellico_drift_name"
+    elif ! cmp -s "$tellico_drift_repo/$tellico_drift_name" "$tellico_drift_live"; then
+      tellico_drifted="$tellico_drifted $tellico_drift_name"
+    fi
+  done <<EOF
+$TELLICO_INSTALLED_COPIES
+EOF
+
+  while IFS= read -r tellico_drift_name; do
+    [ -n "$tellico_drift_name" ] || continue
+    tellico_drift_live="$tellico_drift_bin/$tellico_drift_name"
+    if [ ! -r "$tellico_drift_live" ]; then
+      tellico_drift_absent="$tellico_drift_absent $tellico_drift_name"
+    elif ! cmp -s "$tellico_drift_repo/bin/$tellico_drift_name" "$tellico_drift_live"; then
+      tellico_drifted="$tellico_drifted $tellico_drift_name"
+    fi
+  done <<EOF
+$TELLICO_INSTALLED_COMMANDS
+EOF
+
+  if [ ! -r "$tellico_drift_config/opencode.json" ]; then
+    tellico_drift_absent="$tellico_drift_absent opencode.json"
+  else
+    tellico_drift_tmp="${TMPDIR:-/tmp}/tellico-drift.$$"
+    tellico_config_fingerprint "$tellico_drift_config/opencode.json" \
+      >"$tellico_drift_tmp"
+    if ! tellico_config_fingerprint "$tellico_drift_repo/config/opencode.json" |
+      cmp -s - "$tellico_drift_tmp"; then
+      tellico_drifted="$tellico_drifted opencode.json"
+    fi
+    rm -f "$tellico_drift_tmp"
+  fi
+
+  [ -z "$tellico_drifted" ] && [ -z "$tellico_drift_absent" ]
 }
 
 # --- Gateway mode -----------------------------------------------------------

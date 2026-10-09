@@ -118,6 +118,7 @@ fi
 # Only meaningful once the commands exist.
 path_warning=false
 config_failed=false
+drift_warning=false
 if [ -r "$config_dir/opencode.json" ]; then
   if tellico_bin_on_path; then
     tellico_status_line path OK "$HOME/.local/bin on PATH"
@@ -135,6 +136,22 @@ if [ -r "$config_dir/opencode.json" ]; then
   else
     tellico_status_line config FAIL 'providers missing from opencode.json'
     config_failed=true
+  fi
+
+  # OpenCode reads the installed copies, not this checkout, so an edit here
+  # that was never installed looks exactly like a change that did not work.
+  if tellico_check_drift "$script_dir" "$config_dir" "$HOME/.local/bin"; then
+    tellico_status_line installed OK 'copies match this checkout'
+  else
+    drift_detail=
+    if [ -n "$tellico_drifted" ]; then
+      drift_detail="stale:$tellico_drifted"
+    fi
+    if [ -n "$tellico_drift_absent" ]; then
+      drift_detail="${drift_detail:+$drift_detail, }absent:$tellico_drift_absent"
+    fi
+    tellico_status_line installed WARN "$drift_detail"
+    drift_warning=true
   fi
 fi
 
@@ -181,6 +198,15 @@ EOF
   status=1
 fi
 
+if [ "$drift_warning" = true ]; then
+  echo
+  echo 'Note: the installed copies differ from this checkout, so a session is'
+  echo 'running the older files. Install them and restart OpenCode:'
+  echo
+  echo '  ./install.sh --no-start   # safe while a session is live'
+  echo
+fi
+
 if [ "$path_warning" = true ]; then
   profile=$(tellico_shell_profile)
   echo
@@ -206,7 +232,7 @@ if [ "$status" -eq 0 ]; then
     else
       echo 'Everything checks out. Install the client: ./install.sh'
     fi
-  elif [ "$path_warning" = true ]; then
+  elif [ "$path_warning" = true ] || [ "$drift_warning" = true ]; then
     echo 'Everything else checks out.'
   else
     echo 'Everything checks out. Start a session: opencode-tellico 0'

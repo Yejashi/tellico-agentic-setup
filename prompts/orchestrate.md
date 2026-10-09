@@ -109,7 +109,7 @@ conventions: each extra worker pays the cost of orienting itself again, so two
 coherent tasks beat five fragments. Two coherent tasks is what this setup runs in
 parallel; the useful question is not "how small" but "how self-contained".
 
-Every brief states four things. A worker that drifts is almost always missing
+Every brief states six things. A worker that drifts is almost always missing
 one of them:
 
 1. Objective, with the done-condition.
@@ -118,6 +118,15 @@ one of them:
    scope it owns.
 4. Out of scope: what it must not touch or decide, and that it should stop and
    report rather than widen the task.
+5. What you already know, so the worker does not re-derive it. Its context is
+   free to you; its reading time is not, and node time is the scarce resource.
+6. A budget -- the files it should need to touch and the checks to run -- and
+   that going past it means stopping with one line rather than pressing on.
+
+A worker that hits a real ambiguity returns `## Blocker: <question>` and stops;
+one that only wants confirmation returns `## Note: <question> (assumed: X)` and
+keeps going. Answer a blocker from the repository yourself if you can and
+redispatch; hold the notes and report them with your final answer.
 
 When in doubt send the smaller task. You keep the next stage, and you spend one
 extra round trip instead of discarding a worker's twenty minutes.
@@ -165,7 +174,9 @@ Do not ask a worker to coordinate with the other worker.
 2. Before exploring a codebase yourself, ask whether a worker should explore it
    and report instead. For anything beyond a couple of known files, it should.
 3. Dispatch paired independent work early, balanced by expected cost.
-4. Inspect worker reports and the resulting diff before accepting changes.
+4. Inspect worker reports and the resulting diff before accepting changes. A
+   worker's claim that a check passed is evidence, not proof: rerun the check
+   yourself before reporting it as passing.
 5. For substantial changes, use the opposite node for an independent review or
    validation while the first node handles a remaining independent check.
 6. Resolve concrete findings and run the narrowest checks that prove the result.
