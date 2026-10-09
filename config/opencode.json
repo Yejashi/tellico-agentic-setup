@@ -11,15 +11,15 @@
         "chunkTimeout": 3600000
       },
       "models": {
-        "qwen3.8-27b": {
-          "name": "Qwen3.8 27B 96k - Tellico 0",
+        "qwen3.6-35b-a3b": {
+          "name": "Qwen3.6 35B-A3B 128k - Tellico 0",
           "temperature": true,
           "reasoning": true,
           "interleaved": {
             "field": "reasoning_content"
           },
           "limit": {
-            "context": 98304,
+            "context": 131072,
             "output": 32768
           },
           "options": {
@@ -68,15 +68,15 @@
         "chunkTimeout": 3600000
       },
       "models": {
-        "qwen3.8-27b": {
-          "name": "Qwen3.8 27B 96k - Tellico 1",
+        "qwen3.6-35b-a3b": {
+          "name": "Qwen3.6 35B-A3B 128k - Tellico 1",
           "temperature": true,
           "reasoning": true,
           "interleaved": {
             "field": "reasoning_content"
           },
           "limit": {
-            "context": 98304,
+            "context": 131072,
             "output": 32768
           },
           "options": {
@@ -136,7 +136,7 @@
     "orchestrate-tellico-0": {
       "description": "Dual-node Tellico lead on node 0. Decomposes work and dispatches independent tasks to both node-pinned workers in parallel.",
       "mode": "primary",
-      "model": "tellico-0/qwen3.8-27b",
+      "model": "tellico-0/qwen3.6-35b-a3b",
       "temperature": 0.6,
       "top_p": 0.95,
       "prompt": "{file:./prompts/orchestrate.md}",
@@ -168,7 +168,7 @@
     "orchestrate-tellico-1": {
       "description": "Dual-node Tellico lead on node 1. Decomposes work and dispatches independent tasks to both node-pinned workers in parallel.",
       "mode": "primary",
-      "model": "tellico-1/qwen3.8-27b",
+      "model": "tellico-1/qwen3.6-35b-a3b",
       "temperature": 0.6,
       "top_p": 0.95,
       "prompt": "{file:./prompts/orchestrate.md}",
@@ -200,7 +200,7 @@
     "tellico-worker-0": {
       "description": "General implementation, investigation, testing, or review worker pinned to Qwen on tellico-compute0. Use for one bounded unit with explicit file ownership.",
       "mode": "subagent",
-      "model": "tellico-0/qwen3.8-27b",
+      "model": "tellico-0/qwen3.6-35b-a3b",
       "temperature": 0.6,
       "top_p": 0.95,
       "prompt": "{file:./prompts/worker.md}",
@@ -214,7 +214,7 @@
     "tellico-worker-1": {
       "description": "General implementation, investigation, testing, or review worker pinned to Qwen on tellico-compute1. Use for one bounded unit with explicit file ownership.",
       "mode": "subagent",
-      "model": "tellico-1/qwen3.8-27b",
+      "model": "tellico-1/qwen3.6-35b-a3b",
       "temperature": 0.6,
       "top_p": 0.95,
       "prompt": "{file:./prompts/worker.md}",

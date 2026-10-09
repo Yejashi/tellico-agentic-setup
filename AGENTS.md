@@ -1,7 +1,7 @@
 # AGENTS.md
 
-Client-side setup that points OpenCode at two self-hosted Qwen3.8-27B servers on
-the Tellico cluster. This repo installs files onto the client device; it does not
+Client-side setup that points OpenCode at two self-hosted Qwen3.6-35B-A3B servers
+on the Tellico cluster. This repo installs files onto the client device; it does not
 run the servers.
 
 ## Commands
@@ -84,11 +84,14 @@ Each server divides one pool across slots, so the per-request limit is
 `config/opencode.json` must equal that number for both providers. If it is too
 high, OpenCode builds a context the server rejects instead of compacting in
 time; if too low, context is wasted. The model display names encode it too
-(`96k`), so they drift with it.
+(`128k`), so they drift with it. Today that is 524288 / 4 = 131072.
 
 Those cluster-side values live in `/data/gclab/qwen38/service.env`, outside both
-repos. Changing speculative decoding there changes the context, which changes
-this repo.
+repos. Changing the model, slot count, micro-batch or speculative decoding there
+changes what fits, which changes this repo. The model id (`qwen3.6-35b-a3b`) is
+the cluster's `QWEN38_MODEL_ALIAS` and appears in `config/opencode.json`,
+`bin/opencode-tellico`, `lib/checks.sh` and the gateway defaults; a model swap
+touches all of them.
 
 ## Architecture boundaries
 
@@ -106,10 +109,11 @@ this repo.
   all N results before the model can speak again, so the lead cannot act on the
   first worker's report while the second still runs. That shapes how
   `prompts/orchestrate.md` tells the lead to size a pair. Do not "fix" it by
-  adding more workers: two requests on one node run at half speed each for no
-  aggregate gain, so a third worker buys nothing. The free capacity is a node
-  with *nothing* running on it, and that part does not change -- the cluster
-  serves about four concurrent requests however they are dispatched.
+  adding more workers. On the 27B two requests on one node ran at half speed
+  each for no aggregate gain; the 35B-A3B does gain in aggregate (94 tok/s
+  alone, 80 each at two, 56 each at four) but every extra request still slows
+  the others, and the eight slots are shared by up to three users. The fastest
+  capacity is still a node with *nothing* running on it.
 - The barrier is not absolute, and `bin/opencode-tellico` now removes it. The
   older claim here that OpenCode has no background task primitive was wrong:
   the 1.18.30 binary defines the task tool twice, once as `{description,
@@ -139,8 +143,8 @@ this repo.
   report ever goes missing, `TELLICO_BACKGROUND_SUBAGENTS=0` is the first
   thing to try, and the symptom to look for is a lead that announces it is
   waiting for reports and then stops.
-- The capacity argument above is untouched either way: four concurrent
-  requests is still four, and a third worker still buys nothing. What changed
+- The capacity argument above is untouched either way: the slot count is
+  what it is, and a third worker still costs the others speed. What changed
   is only that a finished worker's slot can now be refilled.
 - Background dispatch moved the lead's own slot from free to occupied, and that
   changed which worker the lead should reach for first. The lead generates on
@@ -164,8 +168,11 @@ this repo.
   the process OpenCode runs in.
 - Thinking level is a model *variant*, not a model or an agent. The four
   variants in `config/opencode.json` (`off`, `low`, `medium`, `xhigh`) are the
-  only values the chat template accepts -- it raises `Unexpected reasoning
-  effort` on anything else, which is how `high` was ruled out. Each carries
+  only values the Qwen3.8 template accepts -- it raises `Unexpected reasoning
+  effort` on anything else, which is how `high` was ruled out. The Qwen3.6
+  template now served reads only `enable_thinking` and ignores
+  `reasoning_effort`, so `low`/`medium`/`xhigh` are all just "on"; they are
+  kept so the commands survive a swap back. Each carries
   `chat_template_kwargs`, the channel proven to reach the template; a
   top-level `reasoning_effort` works against llama.cpp directly but is not
   what OpenCode forwards. `--think` sets the variant per agent at runtime; the
@@ -237,10 +244,12 @@ this repo.
   and the tunnel's loopback ports. It must never start, stop or restart the
   tunnel — `tellico-qwen-tunnel` still owns that, and a live session depends
   on it.
-- The gateway's job is admission control, not throughput. The cluster serves
-  about four concurrent requests, so `TELLICO_GATEWAY_MAX_INFLIGHT` defaults to
-  3 to leave one slot for a direct `opencode-tellico` session. Raising it does
-  not add capacity; it only moves the queue.
+- The gateway's job is admission control, not throughput. The cluster has
+  eight slots (4 per node), so `TELLICO_GATEWAY_MAX_INFLIGHT` defaults to 6 to
+  leave two for a direct `opencode-tellico` session. Raising it does not add
+  capacity; it only moves the queue. `TELLICO_GATEWAY_MODEL_ALIASES` keeps
+  old model ids (`qwen3.8-27b`) routing to the current model so gateway users
+  configured before a swap do not start getting 404s.
 - `TELLICO_GATEWAY_CONTEXT` is derived from `config/opencode.json` at install
   time, so it is bound by the same context coupling described above. A change
   to the cluster's per-slot context means rerunning the gateway installer too.

@@ -171,7 +171,7 @@ case ${TELLICO_BACKGROUND_SUBAGENTS:-1} in
     ;;
 esac
 
-model="tellico-${node}/qwen3.8-27b"
+model="tellico-${node}/qwen3.6-35b-a3b"
 lead_agent="orchestrate-tellico-${node}"
 # The lead's own generation lands on this node, so plugins/dispatch-balance.js
 # needs to know which one it is: a worker pinned to the same server as the

@@ -28,7 +28,7 @@ qwen.example.com {
 		header_up X-Forwarded-For {remote_host}
 	}
 
-	# 32 MiB covers a full 98k-token prompt with room to spare.
+	# 32 MiB covers a full 128k-token prompt with room to spare.
 	request_body {
 		max_size 32MB
 	}

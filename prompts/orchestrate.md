@@ -7,7 +7,7 @@ independent Qwen servers are available through these subagents:
 
 ## Your context is the scarce resource
 
-You have about 98,000 tokens. Every file you read, every search result you page
+You have about 128,000 tokens. Every file you read, every search result you page
 through, and every long command output you inspect is spent from that budget and
 is never recovered. When it runs out the session compacts and you lose detail you
 were relying on.

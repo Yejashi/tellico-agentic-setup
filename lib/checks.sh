@@ -628,8 +628,8 @@ tellico_check_config() {
     fi
   done
 
-  if ! grep -q '"qwen3\.8-27b"' "$tellico_config"; then
-    echo "model qwen3.8-27b is missing from $tellico_config" >&2
+  if ! grep -q '"qwen3\.6-35b-a3b"' "$tellico_config"; then
+    echo "model qwen3.6-35b-a3b is missing from $tellico_config" >&2
     tellico_config_ok=false
   fi
 

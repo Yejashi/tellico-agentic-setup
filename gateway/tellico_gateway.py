@@ -49,17 +49,20 @@ UPSTREAM_KEY_FILE = os.path.expanduser(
     )
 )
 
-# How many of the cluster's four concurrent slots the gateway may hold at
-# once. The default leaves one free so a direct opencode-tellico session is
-# never blocked behind API users.
-MAX_INFLIGHT = _env_int("TELLICO_GATEWAY_MAX_INFLIGHT", 3)
+# How many of the cluster's eight slots (4 per node) the gateway may hold at
+# once. The default leaves two free so a direct opencode-tellico session -- a
+# lead plus a worker -- is never blocked behind API users.
+MAX_INFLIGHT = _env_int("TELLICO_GATEWAY_MAX_INFLIGHT", 6)
 DEFAULT_MAX_PARALLEL = _env_int("TELLICO_GATEWAY_DEFAULT_MAX_PARALLEL", 1)
 QUEUE_TIMEOUT = _env_int("TELLICO_GATEWAY_QUEUE_TIMEOUT", 120)
 REQUEST_TIMEOUT = _env_int("TELLICO_GATEWAY_REQUEST_TIMEOUT", 3600)
 MAX_BODY = _env_int("TELLICO_GATEWAY_MAX_BODY", 32 * 1024 * 1024)
 HEALTH_INTERVAL = _env_int("TELLICO_GATEWAY_HEALTH_INTERVAL", 10)
 
-MODEL = _env("TELLICO_GATEWAY_MODEL", "qwen3.8-27b")
+MODEL = _env("TELLICO_GATEWAY_MODEL", "qwen3.6-35b-a3b")
+# Earlier model ids that still route to MODEL, so a client configured before a
+# model swap keeps working instead of getting a 404. Space-separated.
+MODEL_ALIASES = _env("TELLICO_GATEWAY_MODEL_ALIASES", "qwen3.8-27b").split()
 
 # Live state for tellico-gateway monitor. A file rather than an HTTP endpoint
 # because the port is published to the internet and this carries user names.
@@ -73,7 +76,7 @@ RUNTIME_DIR = os.path.expanduser(
     )
 )
 STATE_PATH = os.path.join(RUNTIME_DIR, "state.json")
-CONTEXT = _env_int("TELLICO_GATEWAY_CONTEXT", 98304)
+CONTEXT = _env_int("TELLICO_GATEWAY_CONTEXT", 131072)
 
 # /v1/responses is what Codex speaks: its wire_api accepts only "responses",
 # and llama.cpp implements that endpoint.
@@ -339,9 +342,11 @@ NODE_BY_LABEL = {label: (host, port) for label, host, port in NODES}
 ALL_LABELS = [label for label, _, _ in NODES]
 # Pooled name routes to either node; the suffixed names pin one, which is what
 # a caller wants when it is driving both nodes itself.
-MODEL_ROUTES = {MODEL: ALL_LABELS}
-for _label in ALL_LABELS:
-    MODEL_ROUTES["%s-%s" % (MODEL, _label)] = [_label]
+MODEL_ROUTES = {}
+for _name in [MODEL] + [a for a in MODEL_ALIASES if a != MODEL]:
+    MODEL_ROUTES[_name] = ALL_LABELS
+    for _label in ALL_LABELS:
+        MODEL_ROUTES["%s-%s" % (_name, _label)] = [_label]
 
 
 def _item_text(item):
