@@ -49,10 +49,10 @@ UPSTREAM_KEY_FILE = os.path.expanduser(
     )
 )
 
-# How many of the cluster's eight slots (4 per node) the gateway may hold at
+# How many of the cluster's six slots (3 per node) the gateway may hold at
 # once. The default leaves two free so a direct opencode-tellico session -- a
 # lead plus a worker -- is never blocked behind API users.
-MAX_INFLIGHT = _env_int("TELLICO_GATEWAY_MAX_INFLIGHT", 6)
+MAX_INFLIGHT = _env_int("TELLICO_GATEWAY_MAX_INFLIGHT", 4)
 DEFAULT_MAX_PARALLEL = _env_int("TELLICO_GATEWAY_DEFAULT_MAX_PARALLEL", 1)
 QUEUE_TIMEOUT = _env_int("TELLICO_GATEWAY_QUEUE_TIMEOUT", 120)
 REQUEST_TIMEOUT = _env_int("TELLICO_GATEWAY_REQUEST_TIMEOUT", 3600)

@@ -110,10 +110,10 @@ touches all of them.
   first worker's report while the second still runs. That shapes how
   `prompts/orchestrate.md` tells the lead to size a pair. Do not "fix" it by
   adding more workers. On the 27B two requests on one node ran at half speed
-  each for no aggregate gain; the 35B-A3B does gain in aggregate (94 tok/s
-  alone, 80 each at two, 56 each at four) but every extra request still slows
-  the others, and the eight slots are shared by up to three users. The fastest
-  capacity is still a node with *nothing* running on it.
+  each for no aggregate gain; the 35B-A3B with DFlash2 does gain in aggregate
+  (~190 tok/s alone on code, 100-114 each at two) but every extra request
+  still slows the others, and the six slots are shared by up to three users.
+  The fastest capacity is still a node with *nothing* running on it.
 - The barrier is not absolute, and `bin/opencode-tellico` now removes it. The
   older claim here that OpenCode has no background task primitive was wrong:
   the 1.18.30 binary defines the task tool twice, once as `{description,
@@ -245,8 +245,9 @@ touches all of them.
   tunnel — `tellico-qwen-tunnel` still owns that, and a live session depends
   on it.
 - The gateway's job is admission control, not throughput. The cluster has
-  eight slots (4 per node), so `TELLICO_GATEWAY_MAX_INFLIGHT` defaults to 6 to
-  leave two for a direct `opencode-tellico` session. Raising it does not add
+  six slots (3 per node, the drafter costs the fourth), so
+  `TELLICO_GATEWAY_MAX_INFLIGHT` defaults to 4 to leave two for a direct
+  `opencode-tellico` session. Raising it does not add
   capacity; it only moves the queue. `TELLICO_GATEWAY_MODEL_ALIASES` keeps
   old model ids (`qwen3.8-27b`) routing to the current model so gateway users
   configured before a swap do not start getting 404s.

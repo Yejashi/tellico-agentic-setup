@@ -181,11 +181,11 @@ minute, and is simply absent on a host with no cluster account.
 
 ## Concurrency is the real limit
 
-Tellico has **eight slots cluster-wide** (2 nodes x 4). That, not the
+Tellico has **six slots cluster-wide** (2 nodes x 3). That, not the
 transport, is what users will notice: each extra request on a node slows the
-others (94 tok/s alone, 56 tok/s each at four).
+others (about 190 tok/s alone on code, 100-114 each at two).
 
-`--max-inflight 6` is therefore the default: the gateway holds at most six
+`--max-inflight 4` is therefore the default: the gateway holds at most four
 slots, leaving two for a direct `opencode-tellico` session so your own lead
 agent is never stuck behind a stranger's long completion. Per user the default
 is one request at a time, which keeps any single caller from occupying the
@@ -265,7 +265,7 @@ scripted caller does not.
 | `TELLICO_GATEWAY_BIND` | `127.0.0.1` | Listen address |
 | `TELLICO_GATEWAY_PORT` | `4000` | Listen port |
 | `TELLICO_GATEWAY_NODES` | both tunnel ports | `label=host:port` per node |
-| `TELLICO_GATEWAY_MAX_INFLIGHT` | `6` | Cluster slots the gateway may hold |
+| `TELLICO_GATEWAY_MAX_INFLIGHT` | `4` | Cluster slots the gateway may hold |
 | `TELLICO_GATEWAY_DEFAULT_MAX_PARALLEL` | `1` | Per-user default, overridden per key |
 | `TELLICO_GATEWAY_QUEUE_TIMEOUT` | `120` | Seconds to wait for a slot before `429` |
 | `TELLICO_GATEWAY_REQUEST_TIMEOUT` | `3600` | Upstream timeout, for long generations |

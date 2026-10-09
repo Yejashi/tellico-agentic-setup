@@ -29,24 +29,30 @@ paths share the same tunnel, cluster key and per-slot context.
 
 | OpenCode provider | Cluster node | GPUs | Slots | Context per slot | Local endpoint |
 |---|---|---:|---:|---:|---|
-| `tellico-0/qwen3.6-35b-a3b` | `tellico-compute0` | 2 x V100 16 GB | 4 | 131,072 | `127.0.0.1:18080` |
-| `tellico-1/qwen3.6-35b-a3b` | `tellico-compute1` | 2 x V100 16 GB | 4 | 131,072 | `127.0.0.1:18081` |
+| `tellico-0/qwen3.6-35b-a3b` | `tellico-compute0` | 2 x V100 16 GB | 3 | 131,072 | `127.0.0.1:18080` |
+| `tellico-1/qwen3.6-35b-a3b` | `tellico-compute1` | 2 x V100 16 GB | 3 | 131,072 | `127.0.0.1:18081` |
 
-Each server divides one 524,288-token pool across four slots, so eight
+Each server divides one 393,216-token pool across three slots, so six
 concurrent requests fit cluster-wide; beyond that, requests queue. A single
 OpenCode session can issue several at once, because title, summary,
 compaction, and subagent calls all go to the same two servers.
 
 The model is a mixture-of-experts with 3B parameters active per token, chosen
-on 2026-10-09 to serve up to three users at once. Measured on one node: 94 tok/s
-for a lone request, 56 tok/s each with four running, and still 56 tok/s at
-110k tokens of context. Prompt reading is the slow part, about 390-490 tok/s.
-It replaced Qwen3.8-27B, which is the more capable model (SWE-bench Pro 61.7
-against 49.5) but fits only two 128k slots per node and falls to 19 tok/s at
-110k. Slots are not free in VRAM: four is the ceiling at this context. The
-trade is set on the cluster side in `service.env` (`QWEN38_MODEL`,
-`QWEN38_CTX`, `QWEN38_SLOTS`); `limit.context` in `opencode.json` has to match
-the per-slot figure that produces.
+on 2026-10-09 to serve up to three users at once, and each server also runs a
+DFlash2 draft model for speculative decoding. Measured on one node: about 190
+tok/s for a lone request on code, 100-114 each with two running, and 84 tok/s
+for a session 64k tokens deep (37-51 each with three that deep). Prompt
+reading is the slow part, about 390-490 tok/s. It replaced Qwen3.8-27B, which
+is the more capable model (SWE-bench Pro 61.7 against 49.5) but fits only two
+128k slots per node and falls to 19 tok/s at 110k.
+
+Slots are not free in VRAM: the drafter costs one, so three is the ceiling at
+this context (four without it). Speculation makes the model evaluate a block
+of tokens per pass, so output is a valid sample but not byte-identical to a
+non-speculative run. The trade is set on the cluster side in `service.env`
+(`QWEN38_MODEL`, `QWEN38_CTX`, `QWEN38_SLOTS`, `QWEN38_SPEC_*`);
+`limit.context` in `opencode.json` has to match the per-slot figure that
+produces.
 
 In gateway mode the local endpoints are replaced by the gateway's node-pinned
 paths -- `https://HOST/v1/node0` and `.../node1` -- which route to the same two
