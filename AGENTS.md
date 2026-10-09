@@ -33,7 +33,7 @@ Every shell script here is `#!/bin/sh`. Write POSIX shell, not bash: no arrays,
 no `[[ ]]`, no `local`, no `${var,,}`. The cluster-side repo (`qwen38-cluster`)
 is bash and its nodes run bash 4.2 — keep the two straight.
 
-`plugins/*.js` and `gateway/tellico_gateway.py` are the two exceptions.
+`plugins/` and `gateway/tellico_gateway.py` are the two exceptions.
 
 The plugins are plain ES-module JavaScript with no imports beyond node's own
 builtins. Keep them that way: OpenCode loads them with its own bundled runtime,
@@ -42,6 +42,17 @@ so there is no npm install, no build step and no node on the client, and
 dependency, would mean a toolchain on every client device. They must also never
 throw except where a throw is the point: a bug in a plugin that runs on every
 tool call would break every session.
+
+`plugins/tui/` holds TUI plugins, which may also import `solid-js` and
+`@opentui/solid`: OpenCode's runtime maps those specifiers to its own bundled
+copies, so they still need no install. They are listed in `config/tui.json`,
+not `config/opencode.json`, and `bin/opencode-tellico` points
+`OPENCODE_TUI_CONFIG` at the installed copy, which OpenCode merges over the
+user's own `tui.json`. `subagent-watch.js` is vendored verbatim from
+`opencode-subagent-watch` (MIT) so that it is pinned and needs no network at
+startup: upgrade it by replacing everything below its header, never by
+editing it in place. It lists child sessions in the sidebar, since background
+workers otherwise scroll out of view while the lead keeps talking.
 
 `gateway/tellico_gateway.py` is standard library only. Adding a dependency to
 it means a virtualenv on every gateway host, so do not. It never runs on the

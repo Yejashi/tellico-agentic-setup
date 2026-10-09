@@ -179,6 +179,13 @@ lead_agent="orchestrate-tellico-${node}"
 # runs. Exporting the resolved value also makes it visible to anything else in
 # the session, and matches the variable a user would have set by hand.
 export TELLICO_LEAD_NODE="$node"
+# Background workers run while the lead keeps talking, so their entries
+# scroll out of view. tui.json loads a sidebar panel listing them; OpenCode
+# merges it over the user's own tui.json rather than replacing it. Skipped
+# when an older install never wrote one.
+if [ -r "$config_dir/tui.json" ]; then
+  export OPENCODE_TUI_CONFIG="$config_dir/tui.json"
+fi
 # A thinking level is a model variant, so it is set per agent. Only the lead
 # and the workers get it: title, summary and compaction are the session's own
 # overhead and keep whatever the config gives them.

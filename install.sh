@@ -360,7 +360,7 @@ base_url0=$(tellico_base_url "$mode" "$gateway_url" 0 "$port0")
 base_url1=$(tellico_base_url "$mode" "$gateway_url" 1 "$port1")
 plugin_dir="$config_dir/plugins"
 
-mkdir -p "$config_dir/prompts" "$config_dir/lib" "$config_dir/plugins" "$bin_dir"
+mkdir -p "$config_dir/prompts" "$config_dir/lib" "$plugin_dir/tui" "$bin_dir"
 chmod 700 "$config_dir"
 
 # In gateway mode the key comes from the operator rather than over SSH, so it
@@ -416,6 +416,11 @@ install -m 600 "$script_dir/prompts/worker.md" "$config_dir/prompts/worker.md"
 # and no build step. They enforce what the prompts can only ask for.
 install -m 644 "$script_dir/plugins/secret-guard.js" "$plugin_dir/secret-guard.js"
 install -m 644 "$script_dir/plugins/dispatch-balance.js" "$plugin_dir/dispatch-balance.js"
+# The TUI loads its plugins from tui.json, not opencode.json, and
+# opencode-tellico points OPENCODE_TUI_CONFIG at this one.
+install -m 644 "$script_dir/plugins/tui/subagent-watch.js" "$plugin_dir/tui/subagent-watch.js"
+tellico_render_config "$script_dir/config/tui.json" \
+  "$base_url0" "$base_url1" "$plugin_dir" >"$config_dir/tui.json"
 install -m 755 "$script_dir/bin/opencode-tellico" "$bin_dir/opencode-tellico"
 
 # Codex support was removed: it exposes no delegation tool, so it could not

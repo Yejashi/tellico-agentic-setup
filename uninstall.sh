@@ -29,6 +29,10 @@ rm -f \
   "$config_dir/prompts/orchestrate.md" \
   "$config_dir/prompts/worker.md" \
   "$config_dir/lib/checks.sh" \
+  "$config_dir/tui.json" \
+  "$config_dir/plugins/secret-guard.js" \
+  "$config_dir/plugins/dispatch-balance.js" \
+  "$config_dir/plugins/tui/subagent-watch.js" \
   "$bin_dir/tellico-gateway" \
   "$lib_dir/tellico_gateway.py" \
   "$systemd_dir/$gateway_unit" \
@@ -38,6 +42,8 @@ rm -rf "$lib_dir/__pycache__"
 rmdir "$lib_dir" 2>/dev/null || true
 rmdir "$config_dir/prompts" 2>/dev/null || true
 rmdir "$config_dir/lib" 2>/dev/null || true
+rmdir "$config_dir/plugins/tui" 2>/dev/null || true
+rmdir "$config_dir/plugins" 2>/dev/null || true
 rmdir "$config_dir" 2>/dev/null || true
 
 if command -v systemctl >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; then

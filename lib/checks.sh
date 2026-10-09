@@ -705,7 +705,8 @@ TELLICO_INSTALLED_COPIES='lib/checks.sh
 prompts/orchestrate.md
 prompts/worker.md
 plugins/secret-guard.js
-plugins/dispatch-balance.js'
+plugins/dispatch-balance.js
+plugins/tui/subagent-watch.js'
 
 # Commands installed into the PATH directory rather than the config directory.
 TELLICO_INSTALLED_COMMANDS='opencode-tellico
@@ -757,6 +758,19 @@ EOF
     if ! tellico_config_fingerprint "$tellico_drift_repo/config/opencode.json" |
       cmp -s - "$tellico_drift_tmp"; then
       tellico_drifted="$tellico_drifted opencode.json"
+    fi
+    rm -f "$tellico_drift_tmp"
+  fi
+
+  if [ ! -r "$tellico_drift_config/tui.json" ]; then
+    tellico_drift_absent="$tellico_drift_absent tui.json"
+  else
+    tellico_drift_tmp="${TMPDIR:-/tmp}/tellico-drift.$$"
+    tellico_config_fingerprint "$tellico_drift_config/tui.json" \
+      >"$tellico_drift_tmp"
+    if ! tellico_config_fingerprint "$tellico_drift_repo/config/tui.json" |
+      cmp -s - "$tellico_drift_tmp"; then
+      tellico_drifted="$tellico_drifted tui.json"
     fi
     rm -f "$tellico_drift_tmp"
   fi

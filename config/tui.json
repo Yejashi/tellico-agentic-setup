@@ -1,0 +1,4 @@
+{
+  "$schema": "https://opencode.ai/config/tui.json",
+  "plugin": ["__TELLICO_PLUGIN_DIR__/tui/subagent-watch.js"]
+}
