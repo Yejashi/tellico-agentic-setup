@@ -131,6 +131,20 @@ this repo.
 - The capacity argument above is untouched either way: four concurrent
   requests is still four, and a third worker still buys nothing. What changed
   is only that a finished worker's slot can now be refilled.
+- Background dispatch moved the lead's own slot from free to occupied, and that
+  changed which worker the lead should reach for first. The lead generates on
+  its own node, and it used to park while workers ran, so a worker on that same
+  node cost nothing. Now the lead keeps working, so `tellico-worker-N` competes
+  with `orchestrate-tellico-N` for one server. Observed live: node 1 at 2 of 2
+  requests with the lead and `tellico-worker-1` halving each other, node 0 at 0
+  of 2 and a whole GPU idle. `prompts/orchestrate.md` therefore sends the first
+  unit of a round to the far node, and `plugins/dispatch-balance.js` nudges
+  when a task goes to the lead's own node while the far node has nothing in
+  flight -- only under background dispatch, since in the foreground the lead
+  parks and a lone worker there is fine. It needs to know where the lead runs
+  and no plugin hook reports that, so `bin/opencode-tellico` exports the
+  resolved `TELLICO_LEAD_NODE`; with the variable absent the nudge stays
+  silent rather than guessing.
 - Sizing a pair by cost was advice for the barrier, so it is gone from
   `prompts/orchestrate.md` and `plugins/dispatch-balance.js` suppresses its
   imbalance nudge when the flag is set, keeping the same-node and

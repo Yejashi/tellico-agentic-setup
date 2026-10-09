@@ -35,6 +35,20 @@ function backgroundDispatchEnabled() {
   return value === "true" || value === "1";
 }
 
+// Which node the lead itself generates on, exported by bin/opencode-tellico.
+// Nothing in the plugin API reports it, and it matters: the lead occupies a
+// slot on its own node whenever it is generating, so a worker pinned there
+// competes with it.
+function leadNode() {
+  const value = process.env.TELLICO_LEAD_NODE;
+  return value === "0" || value === "1" ? value : null;
+}
+
+function nodeOf(agent) {
+  const match = WORKER_NODE_RE.exec(agent);
+  return match ? match[1] : null;
+}
+
 function stateFor(states, sessionID) {
   let state = states.get(sessionID);
   if (!state) {
@@ -63,14 +77,15 @@ function agentOf(args) {
 }
 
 function otherNode(agent) {
-  const match = WORKER_NODE_RE.exec(agent);
-  if (!match) return null;
-  return match[1] === "0" ? "tellico-worker-1" : "tellico-worker-0";
+  const node = nodeOf(agent);
+  if (!node) return null;
+  return node === "0" ? "tellico-worker-1" : "tellico-worker-0";
 }
 
 export const DispatchBalancePlugin = async () => {
   const states = new Map();
   const backgroundDispatch = backgroundDispatchEnabled();
+  const lead = leadNode();
 
   return {
     "tool.execute.before": async (input, output) => {
@@ -96,11 +111,37 @@ export const DispatchBalancePlugin = async () => {
           }
         }
 
+        // The lead shares a server with the worker whose number matches its
+        // own, and under background dispatch it keeps generating rather than
+        // parking, so that slot stays taken. Sending work there while the
+        // other server has nothing on it is the one unambiguous waste: both
+        // requests on the busy node halve each other while a whole GPU idles.
+        // Only under background dispatch -- in the foreground the lead parks
+        // and holds no slot, so a lone worker on the lead's node is fine.
+        const node = nodeOf(agent);
+        if (backgroundDispatch && lead && node === lead) {
+          let otherBusy = false;
+          for (const entry of state.inflight.values()) {
+            if (entry.node && entry.node !== lead) otherBusy = true;
+          }
+          if (!otherBusy) {
+            nudge(
+              state,
+              "lead-node",
+              `Dispatch: you generate on node ${lead}, so ${agent} shares a ` +
+                `server with you while node ${lead === "0" ? "1" : "0"} has ` +
+                `nothing on it. Both of you then run at half speed for no ` +
+                `aggregate gain. Send this to ${otherNode(agent)} instead.`,
+            );
+          }
+        }
+
         // Every task already running has now overlapped at least one other.
         for (const entry of state.inflight.values()) entry.overlapped = true;
 
         state.inflight.set(input.callID, {
           agent,
+          node: nodeOf(agent),
           start: Date.now(),
           overlapped: state.inflight.size > 0,
         });

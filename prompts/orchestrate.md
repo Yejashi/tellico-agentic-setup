@@ -147,6 +147,13 @@ is still running, your next move is to fill the server that just came free:
 send the next independent unit to the worker that reported, or integrate while
 the other runs. A freed server with nothing on it is the only real waste here.
 
+You are on one of those two servers yourself: the one whose number matches your
+own name, so orchestrate-tellico-0 generates on node 0. Because you now keep
+working instead of parking while a worker runs, that server already has you on
+it. So the first unit of a round goes to the *other* node's worker. Dispatching
+to your own node's worker while the far node sits empty is the one move with no
+upside at all -- you and it halve each other while a whole server idles.
+
 Good parallel pairs include:
 
 - two read-only investigations of different subsystems;

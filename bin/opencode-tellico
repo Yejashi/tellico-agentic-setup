@@ -173,6 +173,12 @@ esac
 
 model="tellico-${node}/qwen3.8-27b"
 lead_agent="orchestrate-tellico-${node}"
+# The lead's own generation lands on this node, so plugins/dispatch-balance.js
+# needs to know which one it is: a worker pinned to the same server as the
+# lead competes with it, and nothing in the plugin API says where the lead
+# runs. Exporting the resolved value also makes it visible to anything else in
+# the session, and matches the variable a user would have set by hand.
+export TELLICO_LEAD_NODE="$node"
 # A thinking level is a model variant, so it is set per agent. Only the lead
 # and the workers get it: title, summary and compaction are the session's own
 # overhead and keep whatever the config gives them.
