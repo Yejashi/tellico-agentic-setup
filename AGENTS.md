@@ -98,16 +98,20 @@ that way and never inline a key into JSON or a unit file.
 
 ## Editing config or prompts does nothing until you install
 
-`config/opencode.json`, `prompts/*.md` and the `plugins/` files are templates.
-OpenCode reads the installed copies under `~/.config/tellico-qwen/`.
-`config/opencode.json` is substituted rather than copied:
-`__TELLICO_BASE_URL_0__` and `__TELLICO_BASE_URL_1__` become loopback tunnel
-ports or gateway node paths depending on the mode, and `__TELLICO_PLUGIN_DIR__`
-becomes the installed plugin directory, so never hardcode either back into it. A
-change to this repo has no effect until `./install.sh --no-start` copies it
-across, and OpenCode loads config and plugins once at startup, so the user must
-then restart their session. Say so explicitly when handing back a change to any
-of them.
+`config/opencode.json`, `pi/`, `prompts/*.md` and the `plugins/` files are
+templates.
+Both harnesses read the installed copies under `~/.config/tellico-qwen/`.
+`config/opencode.json`, `config/tui.json` and `pi/models.json` are substituted
+rather than copied, by `tellico_render_config`: `__TELLICO_BASE_URL_0__` and
+`__TELLICO_BASE_URL_1__` become loopback tunnel ports or gateway node paths
+depending on the mode, `__TELLICO_PLUGIN_DIR__` becomes the installed plugin
+directory, and `__TELLICO_CONFIG_DIR__` becomes the configuration directory, so
+never hardcode any of them back in. Whatever the fingerprint in
+`tellico_config_fingerprint` puts back has to match, or `./doctor.sh` reports a
+rendered file as drifted on every device. A change to this repo has no effect
+until `./install.sh --no-start` copies it across, and both harnesses load their
+configuration and extensions once at startup, so the user must then restart
+their session. Say so explicitly when handing back a change to any of them.
 
 `./doctor.sh` now detects this: `tellico_check_drift` compares every installed
 copy with the checkout and its `installed` line says which ones are stale.
@@ -297,6 +301,55 @@ touches all of them.
   that agent. Keep them tight, and keep what is genuinely shared --
   `.agent/PLANS.md` as the thing that survives compaction, the credential
   rule, verify-before-you-carry-forward -- saying the same thing in both.
+- `pi/` is the whole pi harness: `models.json`, `settings.json`,
+  `APPEND_SYSTEM.md` and `extensions/`, installed to
+  `~/.config/tellico-qwen/pi` with `PI_CODING_AGENT_DIR` pointing at it. Pi
+  reads one directory for all of that, so overriding that one variable is the
+  entire isolation mechanism -- there is no per-file override and no merge with
+  `~/.pi/agent`, which is why the user's own extensions and skills are not
+  loaded in a Tellico session and why uninstalling cannot damage them. Sessions
+  are deliberately moved out with `PI_CODING_AGENT_SESSION_DIR`: pi defaults
+  them to `<agent-dir>/sessions`, and that would make `uninstall.sh` choose
+  between leaving files behind and deleting transcripts.
+- Pi is a single-agent harness -- no subagents, no plan mode -- so `pi-tellico`
+  is the counterpart of `opencode-tellico --solo` and there is nothing for
+  `prompts/orchestrate.md` or `plugins/dispatch-balance/` to do there. Do not
+  try to rebuild the lead/worker split in it.
+- `pi/APPEND_SYSTEM.md`, not `SYSTEM.md`: pi's `SYSTEM.md` *replaces* its own
+  system prompt, which would throw away everything it says about its own tools.
+  The addendum carries only what pi cannot know -- the cluster, the context
+  economy, `.agent/PLANS.md`, verification and the credential rule.
+- The thinking channel is `compat.thinkingFormat: "chat-template"` plus
+  `chatTemplateKwargs`, which puts `enable_thinking` and `reasoning_effort`
+  inside `chat_template_kwargs`, the channel this repository already proved
+  reaches the Qwen template. Auto-detection would have chosen `"openai"` (a
+  top-level `reasoning_effort`) instead. Two other auto-detected defaults are
+  wrong for llama.cpp and are set explicitly: `supportsDeveloperRole` would be
+  true and send role `developer` where the template wants `system`, and
+  `maxTokensField` would be `max_completion_tokens` rather than `max_tokens`.
+  Pi has seven thinking levels and the template accepts three, so
+  `thinkingLevelMap` maps `minimal`, `high` and `max` to `null`: that marks
+  them unsupported, removes them from `/thinking`, and makes a request for
+  `high` clamp to `xhigh` instead of reaching the template and raising
+  `Unexpected reasoning effort`.
+- `compaction.reserveTokens` is 40960 because in pi it is two things at once:
+  compaction fires above `contextWindow - reserveTokens`, and the summary's own
+  output is capped at `min(0.8 * reserveTokens, maxTokens)`. 40960 gives the
+  summary the model's whole 32,768-token allowance and starts compacting at
+  90,112, which is the same headroom `compaction.reserved` buys under OpenCode.
+  Lowering it tightens both at once, and a truncated summary is the failure
+  this repository already paid for once.
+- `cacheWarming` is `"off"`. Four slots serve every user of this cluster, so a
+  warming request is a slot taken from someone's real work; and it could not
+  fire anyway, because warming needs an estimated $0.05 of avoided cache-miss
+  cost and this model's declared cost is zero.
+- `pi/extensions/secret-guard/` matters more than its OpenCode counterpart, not
+  less. Pi has no permission system -- its own security guide says it "does not
+  ask for approval before every tool call" -- so nothing else stands between
+  the model and the API key, and `models.json` names the key's path in a
+  `!cat` command the model can read. Pi's `tool_call` event blocks a call
+  outright and a throwing handler blocks it too, so unlike the OpenCode plugin
+  this one fails closed.
 - `config/gateway-url` is the single source of the built-in gateway URL, read
   by both `install.sh` and `doctor.sh` so a user supplies only a key. It is a
   plain file rather than a value in `lib/checks.sh` because both scripts need

@@ -21,6 +21,7 @@ fi
 
 rm -f \
   "$bin_dir/opencode-tellico" \
+  "$bin_dir/pi-tellico" \
   "$bin_dir/tellico-qwen-tunnel" \
   "$systemd_dir/$unit_name" \
   "$config_dir/api-key" \
@@ -42,6 +43,11 @@ rm -f \
   "$config_dir/plugins/tui/subagent-watch.js" \
   "$config_dir/plugins/tui-v2/subagents/tui.js" \
   "$config_dir/plugins/tui-v2/subagents/package.json" \
+  "$config_dir/pi/models.json" \
+  "$config_dir/pi/settings.json" \
+  "$config_dir/pi/APPEND_SYSTEM.md" \
+  "$config_dir/pi/extensions/secret-guard/index.js" \
+  "$config_dir/pi/extensions/secret-guard/package.json" \
   "$bin_dir/tellico-gateway" \
   "$lib_dir/tellico_gateway.py" \
   "$systemd_dir/$gateway_unit" \
@@ -57,6 +63,11 @@ rmdir "$config_dir/plugins/tui-v2" 2>/dev/null || true
 rmdir "$config_dir/plugins/secret-guard" 2>/dev/null || true
 rmdir "$config_dir/plugins/dispatch-balance" 2>/dev/null || true
 rmdir "$config_dir/plugins/compaction-guard" 2>/dev/null || true
+rmdir "$config_dir/pi/extensions/secret-guard" 2>/dev/null || true
+rmdir "$config_dir/pi/extensions" 2>/dev/null || true
+# Sessions live under $XDG_DATA_HOME/tellico-qwen, not here, so removing this
+# directory never deletes a transcript. It is left in place deliberately.
+rmdir "$config_dir/pi" 2>/dev/null || true
 rmdir "$config_dir/plugins" 2>/dev/null || true
 rmdir "$config_dir" 2>/dev/null || true
 

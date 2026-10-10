@@ -737,7 +737,32 @@ tellico_render_config() {
     -e "s|__TELLICO_BASE_URL_0__|$2|g" \
     -e "s|__TELLICO_BASE_URL_1__|$3|g" \
     -e "s|__TELLICO_PLUGIN_DIR__|$4|g" \
+    -e "s|__TELLICO_CONFIG_DIR__|${5-}|g" \
     "$1"
+}
+
+# Which server hosts the session. Left to itself every device would pick node
+# 0, piling every user's always-on session onto one server and costing it the
+# prompt-cache affinity that makes a long session cheap. Derive it from the
+# device instead: stable, so this device always starts on the same node and
+# keeps its cache, but spread across users. Shared by every launcher here so
+# one device does not disagree with itself between harnesses.
+tellico_default_lead_node() {
+  if [ -n "${TELLICO_LEAD_NODE:-}" ]; then
+    case $TELLICO_LEAD_NODE in
+      0|1)
+        printf '%s\n' "$TELLICO_LEAD_NODE"
+        return 0
+        ;;
+      *)
+        echo "$(basename "$0"): TELLICO_LEAD_NODE must be 0 or 1," \
+          "got '$TELLICO_LEAD_NODE'" >&2
+        return 2
+        ;;
+    esac
+  fi
+  tellico_node_seed=$(printf '%s' "${USER:-unknown}@$(uname -n)" | cksum | cut -d' ' -f1)
+  printf '%s\n' "$((tellico_node_seed % 2))"
 }
 
 # The template parts of a config, with this device's substitutions put back.
@@ -748,7 +773,9 @@ tellico_render_config() {
 tellico_config_fingerprint() {
   sed \
     -e 's|"baseURL": "[^"]*"|"baseURL": "__TELLICO_BASE_URL__"|' \
+    -e 's|"baseUrl": "[^"]*"|"baseUrl": "__TELLICO_BASE_URL__"|' \
     -e 's|"[^"]*/plugins/|"__TELLICO_PLUGIN_DIR__/|' \
+    -e 's|"!cat [^"]*/api-key"|"!cat __TELLICO_CONFIG_DIR__/api-key"|' \
     "$1"
 }
 
@@ -763,12 +790,17 @@ plugins/dispatch-balance/index.js
 plugins/dispatch-balance/package.json
 plugins/compaction-guard/index.js
 plugins/compaction-guard/package.json
+pi/settings.json
+pi/APPEND_SYSTEM.md
+pi/extensions/secret-guard/index.js
+pi/extensions/secret-guard/package.json
 plugins/tui/subagent-watch.js
 plugins/tui-v2/subagents/tui.js
 plugins/tui-v2/subagents/package.json'
 
 # Commands installed into the PATH directory rather than the config directory.
 TELLICO_INSTALLED_COMMANDS='opencode-tellico
+pi-tellico
 tellico-qwen-tunnel'
 
 # Which installed copies no longer match this checkout. Editing the repository
@@ -830,6 +862,19 @@ EOF
     if ! tellico_config_fingerprint "$tellico_drift_repo/config/tui.json" |
       cmp -s - "$tellico_drift_tmp"; then
       tellico_drifted="$tellico_drifted tui.json"
+    fi
+    rm -f "$tellico_drift_tmp"
+  fi
+
+  if [ ! -r "$tellico_drift_config/pi/models.json" ]; then
+    tellico_drift_absent="$tellico_drift_absent pi/models.json"
+  else
+    tellico_drift_tmp="${TMPDIR:-/tmp}/tellico-drift.$$"
+    tellico_config_fingerprint "$tellico_drift_config/pi/models.json" \
+      >"$tellico_drift_tmp"
+    if ! tellico_config_fingerprint "$tellico_drift_repo/pi/models.json" |
+      cmp -s - "$tellico_drift_tmp"; then
+      tellico_drifted="$tellico_drifted pi/models.json"
     fi
     rm -f "$tellico_drift_tmp"
   fi

@@ -115,6 +115,15 @@ else
   tellico_status_line tools OK "$(echo "$doctor_commands" | tr ' ' ',' | sed 's/,/, /g')"
 fi
 
+# pi is the second harness and is optional: a device that only uses OpenCode is
+# correctly installed without it, so its absence is reported rather than
+# failed. install.sh writes the pi agent directory either way.
+if command -v pi >/dev/null 2>&1; then
+  tellico_status_line harnesses OK "opencode, pi ($(pi --version 2>/dev/null | head -n 1))"
+else
+  tellico_status_line harnesses OK 'opencode; pi not installed (pi-tellico needs it)'
+fi
+
 # Only meaningful once the commands exist.
 path_warning=false
 config_failed=false

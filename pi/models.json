@@ -1,0 +1,107 @@
+{
+  "$schema": "https://raw.githubusercontent.com/earendil-works/pi/main/packages/coding-agent/schemas/models.schema.json",
+  "providers": {
+    "tellico-0": {
+      "name": "Tellico Qwen - node 0",
+      "baseUrl": "__TELLICO_BASE_URL_0__",
+      "api": "openai-completions",
+      "apiKey": "!cat __TELLICO_CONFIG_DIR__/api-key",
+      "models": [
+        {
+          "id": "qwen3.8-27b-gsq-iq3s",
+          "name": "Qwen3.8 27B GSQ IQ3_S 128k - Tellico 0",
+          "reasoning": true,
+          "input": [
+            "text"
+          ],
+          "contextWindow": 131072,
+          "maxTokens": 32768,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "thinkingLevelMap": {
+            "minimal": null,
+            "low": "low",
+            "medium": "medium",
+            "high": null,
+            "xhigh": "xhigh",
+            "max": null
+          },
+          "samplingParams": {
+            "temperature": 0.6,
+            "top_p": 0.95
+          },
+          "compat": {
+            "thinkingFormat": "chat-template",
+            "chatTemplateKwargs": {
+              "enable_thinking": {
+                "$var": "thinking.enabled"
+              },
+              "reasoning_effort": {
+                "$var": "thinking.effort",
+                "omitWhenOff": true
+              }
+            },
+            "supportsDeveloperRole": false,
+            "supportsStore": false,
+            "maxTokensField": "max_tokens"
+          }
+        }
+      ]
+    },
+    "tellico-1": {
+      "name": "Tellico Qwen - node 1",
+      "baseUrl": "__TELLICO_BASE_URL_1__",
+      "api": "openai-completions",
+      "apiKey": "!cat __TELLICO_CONFIG_DIR__/api-key",
+      "models": [
+        {
+          "id": "qwen3.8-27b-gsq-iq3s",
+          "name": "Qwen3.8 27B GSQ IQ3_S 128k - Tellico 1",
+          "reasoning": true,
+          "input": [
+            "text"
+          ],
+          "contextWindow": 131072,
+          "maxTokens": 32768,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "thinkingLevelMap": {
+            "minimal": null,
+            "low": "low",
+            "medium": "medium",
+            "high": null,
+            "xhigh": "xhigh",
+            "max": null
+          },
+          "samplingParams": {
+            "temperature": 0.6,
+            "top_p": 0.95
+          },
+          "compat": {
+            "thinkingFormat": "chat-template",
+            "chatTemplateKwargs": {
+              "enable_thinking": {
+                "$var": "thinking.enabled"
+              },
+              "reasoning_effort": {
+                "$var": "thinking.effort",
+                "omitWhenOff": true
+              }
+            },
+            "supportsDeveloperRole": false,
+            "supportsStore": false,
+            "maxTokensField": "max_tokens"
+          }
+        }
+      ]
+    }
+  }
+}

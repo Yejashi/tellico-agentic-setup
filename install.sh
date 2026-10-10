@@ -359,10 +359,13 @@ systemd_dir="$config_home/systemd/user"
 base_url0=$(tellico_base_url "$mode" "$gateway_url" 0 "$port0")
 base_url1=$(tellico_base_url "$mode" "$gateway_url" 1 "$port1")
 plugin_dir="$config_dir/plugins"
+# Pi reads one directory for everything; bin/pi-tellico points
+# PI_CODING_AGENT_DIR at this one.
+pi_dir="$config_dir/pi"
 
 mkdir -p "$config_dir/prompts" "$config_dir/lib" "$plugin_dir/tui" "$plugin_dir/tui-v2/subagents" \
   "$plugin_dir/secret-guard" "$plugin_dir/dispatch-balance" \
-  "$plugin_dir/compaction-guard" "$bin_dir"
+  "$plugin_dir/compaction-guard" "$pi_dir/extensions/secret-guard" "$bin_dir"
 chmod 700 "$config_dir"
 
 # In gateway mode the key comes from the operator rather than over SSH, so it
@@ -407,7 +410,7 @@ fi
 config_tmp="$config_dir/.opencode.json.tmp.$$"
 trap 'rm -f "$config_tmp"' EXIT HUP INT TERM
 tellico_render_config "$script_dir/config/opencode.json" \
-  "$base_url0" "$base_url1" "$plugin_dir" >"$config_tmp"
+  "$base_url0" "$base_url1" "$plugin_dir" "$config_dir" >"$config_tmp"
 mv "$config_tmp" "$config_dir/opencode.json"
 chmod 600 "$config_dir/opencode.json"
 trap - EXIT HUP INT TERM
@@ -433,7 +436,25 @@ install -m 644 "$script_dir/plugins/tui/subagent-watch.js" "$plugin_dir/tui/suba
 install -m 644 "$script_dir/plugins/tui-v2/subagents/tui.js" "$plugin_dir/tui-v2/subagents/tui.js"
 install -m 644 "$script_dir/plugins/tui-v2/subagents/package.json" "$plugin_dir/tui-v2/subagents/package.json"
 tellico_render_config "$script_dir/config/tui.json" \
-  "$base_url0" "$base_url1" "$plugin_dir" >"$config_dir/tui.json"
+  "$base_url0" "$base_url1" "$plugin_dir" "$config_dir" >"$config_dir/tui.json"
+
+# The pi harness. Its models.json names the API key as a command rather than a
+# value, so the file itself carries no secret, but it is rendered and
+# permissioned like opencode.json all the same.
+pi_tmp="$pi_dir/.models.json.tmp.$$"
+trap 'rm -f "$pi_tmp"' EXIT HUP INT TERM
+tellico_render_config "$script_dir/pi/models.json" \
+  "$base_url0" "$base_url1" "$plugin_dir" "$config_dir" >"$pi_tmp"
+mv "$pi_tmp" "$pi_dir/models.json"
+chmod 600 "$pi_dir/models.json"
+trap - EXIT HUP INT TERM
+install -m 600 "$script_dir/pi/settings.json" "$pi_dir/settings.json"
+install -m 600 "$script_dir/pi/APPEND_SYSTEM.md" "$pi_dir/APPEND_SYSTEM.md"
+install -m 644 "$script_dir/pi/extensions/secret-guard/index.js" \
+  "$pi_dir/extensions/secret-guard/index.js"
+install -m 644 "$script_dir/pi/extensions/secret-guard/package.json" \
+  "$pi_dir/extensions/secret-guard/package.json"
+install -m 755 "$script_dir/bin/pi-tellico" "$bin_dir/pi-tellico"
 install -m 755 "$script_dir/bin/opencode-tellico" "$bin_dir/opencode-tellico"
 
 # Codex support was removed: it exposes no delegation tool, so it could not

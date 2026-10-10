@@ -8,29 +8,6 @@ checks="$config_dir/lib/checks.sh"
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 tunnel_command="$script_dir/tellico-qwen-tunnel"
 
-# Which server hosts the lead conversation. Left to itself every device would
-# pick node 0, piling every user's always-on lead onto one server and costing
-# it the prompt-cache affinity that makes a long session cheap. Derive it from
-# the device instead: stable, so this device always leads on the same node and
-# keeps its cache, but spread across users.
-default_lead_node() {
-  if [ -n "${TELLICO_LEAD_NODE:-}" ]; then
-    case $TELLICO_LEAD_NODE in
-      0|1)
-        printf '%s\n' "$TELLICO_LEAD_NODE"
-        return 0
-        ;;
-      *)
-        echo "opencode-tellico: TELLICO_LEAD_NODE must be 0 or 1," \
-          "got '$TELLICO_LEAD_NODE'" >&2
-        exit 2
-        ;;
-    esac
-  fi
-  seed=$(printf '%s' "${USER:-unknown}@$(uname -n)" | cksum | cut -d' ' -f1)
-  printf '%s\n' "$((seed % 2))"
-}
-
 node=
 think=${TELLICO_THINK:-}
 solo=${TELLICO_SOLO:-0}
@@ -154,10 +131,6 @@ case $think in
     ;;
 esac
 
-if [ -z "$node" ]; then
-  node=$(default_lead_node)
-fi
-
 if ! command -v opencode >/dev/null 2>&1; then
   echo 'opencode-tellico: opencode is not installed or not on PATH' >&2
   echo 'Install it from https://opencode.ai/docs/ and rerun this command.' >&2
@@ -178,6 +151,12 @@ fi
 # Installed by install.sh alongside this script.
 # shellcheck disable=SC1090
 . "$checks"
+
+# Shared with pi-tellico, so one device does not lead on node 0 in one harness
+# and node 1 in the other.
+if [ -z "$node" ]; then
+  node=$(tellico_default_lead_node) || exit $?
+fi
 
 standalone_flag=$(tellico_opencode_standalone_flag)
 

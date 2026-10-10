@@ -1,0 +1,17 @@
+{
+  "$schema": "https://raw.githubusercontent.com/earendil-works/pi/main/packages/coding-agent/schemas/settings.schema.json",
+  "defaultProvider": "tellico-0",
+  "defaultModel": "qwen3.8-27b-gsq-iq3s",
+  "defaultThinkingLevel": "medium",
+  "defaultTools": [
+    "+grep",
+    "+find",
+    "+ls"
+  ],
+  "compaction": {
+    "enabled": true,
+    "reserveTokens": 40960
+  },
+  "cacheWarming": "off",
+  "showCacheMissNotices": true
+}

@@ -1,0 +1,152 @@
+#!/bin/sh
+set -eu
+
+config_home=${XDG_CONFIG_HOME:-"$HOME/.config"}
+data_home=${XDG_DATA_HOME:-"$HOME/.local/share"}
+config_dir="$config_home/tellico-qwen"
+agent_dir="$config_dir/pi"
+checks="$config_dir/lib/checks.sh"
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+tunnel_command="$script_dir/tellico-qwen-tunnel"
+
+node=
+think=${TELLICO_THINK:-}
+
+usage() {
+  cat <<'EOF'
+usage: pi-tellico [0|1] [--think LEVEL] [PI_ARGS...]
+
+Starts the pi coding agent against Tellico's two Qwen servers. The optional 0
+or 1 selects which server answers; with no number it is derived from this
+device, so that several users do not all land on node 0 and compete for one
+server's prompt cache. It is stable for a given device, and TELLICO_LEAD_NODE
+overrides it.
+
+Pi is a single-agent harness: it has no subagents, so there is no orchestrate
+or worker split here. It is the pi counterpart of "opencode-tellico --solo".
+
+Everything after the options goes to pi unchanged, so its own interface is
+available: a prompt to start with, @file to attach one, --print for one-shot
+output, --continue to resume, --mode json, and so on. See "pi --help".
+
+How much the model thinks is a thinking level. The config defaults it to
+medium; --think sets it for the session, /thinking changes it inside one, and
+pi's ctrl+t cycles it. The Qwen3.8 template accepts only these four, so pi's
+other levels are marked unsupported and do not appear:
+
+  off      no reasoning at all, fastest
+  low      brief reasoning
+  medium   the default
+  xhigh    the most the chat template allows
+
+examples:
+  pi-tellico
+  pi-tellico 0
+  pi-tellico 1 --think off
+  pi-tellico 0 'Review this repository'
+  pi-tellico 0 --print 'What does install.sh install?'
+  pi-tellico --continue
+
+environment:
+  TELLICO_THINK    Default thinking level, same values as --think, which
+                   overrides it. Unset, the configured level (medium) applies.
+  TELLICO_LEAD_NODE
+                   Force the node to 0 or 1 instead of deriving it from this
+                   device.
+EOF
+}
+
+case ${1:-} in
+  0|1)
+    node=$1
+    shift
+    ;;
+  -h|--help)
+    usage
+    exit 0
+    ;;
+esac
+
+# After the node, so "pi-tellico 1 --think low" reads naturally. Anything else
+# is pi's own argument and is passed through untouched.
+while [ "$#" -gt 0 ]; do
+  case $1 in
+    --think)
+      if [ "$#" -lt 2 ]; then
+        echo 'pi-tellico: --think requires a level' >&2
+        exit 2
+      fi
+      think=$2
+      shift 2
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+# Pi has minimal, high and max as well, but the Qwen3.8 chat template raises
+# "Unexpected reasoning effort" on anything outside low, medium and xhigh, so
+# pi/models.json marks the rest unsupported and this agrees with it.
+case $think in
+  ''|off|low|medium|xhigh) ;;
+  *)
+    echo "pi-tellico: unknown thinking level '$think'" >&2
+    echo 'Use one of: off, low, medium, xhigh' >&2
+    exit 2
+    ;;
+esac
+
+if ! command -v pi >/dev/null 2>&1; then
+  echo 'pi-tellico: pi is not installed or not on PATH' >&2
+  echo 'Install it with: curl -fsSL https://pi.dev/install.sh | sh' >&2
+  exit 1
+fi
+
+if [ ! -r "$agent_dir/models.json" ]; then
+  echo "pi-tellico: missing $agent_dir/models.json" >&2
+  echo 'Rerun install.sh from the tellico-agentic-setup repository.' >&2
+  exit 1
+fi
+
+if [ ! -r "$checks" ]; then
+  echo "pi-tellico: missing $checks" >&2
+  echo 'Rerun install.sh from the tellico-agentic-setup repository.' >&2
+  exit 1
+fi
+# Installed by install.sh alongside this script.
+# shellcheck disable=SC1090
+. "$checks"
+
+# Shared with opencode-tellico, so one device does not start on node 0 in one
+# harness and node 1 in the other.
+if [ -z "$node" ]; then
+  node=$(tellico_default_lead_node) || exit $?
+fi
+
+if ! "$tunnel_command" start >/dev/null; then
+  "$tunnel_command" status >&2 || true
+  exit 1
+fi
+
+model="tellico-${node}/qwen3.8-27b-gsq-iq3s"
+
+# Pi reads one directory for settings, models, the system-prompt addendum and
+# extensions, and PI_CODING_AGENT_DIR moves it. Pointing it at this setup's own
+# directory rather than ~/.pi/agent keeps the two apart in both directions: a
+# Tellico session cannot be changed by the user's own pi settings, and
+# installing or removing this setup cannot touch them. The cost is that the
+# user's own extensions, skills and prompts are not loaded here; add them to
+# this directory, or name them with pi's --extension, --skill and
+# --prompt-template flags, which are passed through.
+export PI_CODING_AGENT_DIR="$agent_dir"
+
+# Sessions are data, not configuration. Keeping them out of the agent
+# directory is what lets uninstall.sh remove this setup without deleting a
+# transcript, and puts them where session data belongs.
+export PI_CODING_AGENT_SESSION_DIR="$data_home/tellico-qwen/pi-sessions"
+mkdir -p "$PI_CODING_AGENT_SESSION_DIR"
+
+# $think is one word or empty, so it must stay unquoted.
+# shellcheck disable=SC2086
+exec pi --model "$model" ${think:+--thinking "$think"} "$@"

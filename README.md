@@ -73,6 +73,11 @@ OpenCode gets two primary agents per node and two node-pinned subagents:
 is only where the session starts. See
 [Orchestrate or solo](#orchestrate-or-solo).
 
+The same two servers also back a second harness: `pi-tellico` runs the
+[pi](https://pi.dev) coding agent against them. Pi has no subagents, so it is
+one agent on one server -- the pi counterpart of `opencode-tellico --solo`. See
+[The pi harness](#the-pi-harness).
+
 The cluster side of the service -- the Slurm job, the per-node llama.cpp server
 and the commands that start and inspect them -- lives in
 [qwen38-cluster](https://github.com/Yejashi/qwen38-cluster), and only the
@@ -258,6 +263,11 @@ rejected key from a gateway with no model server behind it.
 
 ## Use
 
+Two commands start a session: `opencode-tellico` for the OpenCode harness with
+its lead and two workers, and `pi-tellico` for the single-agent pi harness
+([below](#the-pi-harness)). Both share the tunnel, the key and the two
+servers.
+
 Start a dual-node OpenCode session with the lead on node 0:
 
 ```bash
@@ -420,6 +430,53 @@ Both are closed now:
 If it ever does fail, the session cannot be rescued: start a new one. Nothing
 is lost from disk, only the conversation.
 
+### The pi harness
+
+`pi-tellico` runs [pi](https://pi.dev) against the same two servers. Install pi
+first -- `curl -fsSL https://pi.dev/install.sh | sh`, or `npm install -g
+--ignore-scripts @earendil-works/pi-coding-agent`; it needs Node 22.19 or newer
+-- then:
+
+```bash
+pi-tellico                       # node derived from this device, as above
+pi-tellico 0 --think off
+pi-tellico 0 'Review this repository'
+pi-tellico 0 --print 'What does install.sh install?'
+pi-tellico --continue            # pi's own flags are passed through
+```
+
+Pi is a deliberately small harness: four core tools, no subagents, no plan
+mode. So there is no orchestrate-or-worker choice here -- one agent, one
+server, which is the same shape as `opencode-tellico --solo`. Use it when you
+want a harness that does less, and `opencode-tellico` when you want two
+servers working at once.
+
+What it gets from this setup:
+
+| Piece | Why |
+|---|---|
+| `pi/models.json` | Both nodes as `openai-completions` providers, 131,072 context and 32,768 output, and the `chat_template_kwargs` channel that actually reaches the Qwen template. The API key is named as a command, so the file holds no secret. |
+| `pi/settings.json` | Medium thinking, `grep`/`find`/`ls` added to pi's four default tools, and compaction reserve raised so a summary gets the model's whole output allowance. Prompt-cache warming is off: four slots serve every user, so a warming request is a slot taken from someone's real work. |
+| `pi/APPEND_SYSTEM.md` | Appended to pi's own system prompt: the context economy, `.agent/PLANS.md` as the thing that survives compaction, and the verification and credential rules. |
+| `pi/extensions/secret-guard/` | Blocks reads of the API key, `client.env` and SSH private keys. Pi has no permission system -- it "does not ask for approval before every tool call" -- so this is the only thing between the model and the credential. |
+
+Thinking works the same way, with pi's own controls: the config defaults to
+medium, `--think` sets the session, `/thinking` changes it inside one, and
+`ctrl+t` cycles. Pi has seven levels but the Qwen3.8 template accepts only
+`low`, `medium` and `xhigh`, so the rest are marked unsupported and never
+reach it -- asking for `high` clamps to `xhigh` rather than being rejected by
+the template.
+
+Its configuration is kept apart from your own `~/.pi/agent` in both
+directions: a Tellico session is not changed by your personal pi settings, and
+installing or removing this setup never touches them. The cost is that your own
+pi extensions, skills and prompts are not loaded; add them to
+`~/.config/tellico-qwen/pi/`, or name them with pi's `--extension`, `--skill`
+and `--prompt-template` flags, which are passed through. Sessions are kept
+outside the configuration directory, in
+`~/.local/share/tellico-qwen/pi-sessions`, so uninstalling never deletes a
+transcript.
+
 Tunnel and cluster checks:
 
 ```bash
@@ -452,10 +509,20 @@ Client side, on each user's own device:
 ~/.config/tellico-qwen/opencode.json
 ~/.config/tellico-qwen/prompts/orchestrate.md
 ~/.config/tellico-qwen/prompts/worker.md
+~/.config/tellico-qwen/prompts/build.md
+~/.config/tellico-qwen/plugins/
+~/.config/tellico-qwen/pi/
 ~/.config/tellico-qwen/api-key
 ~/.local/bin/opencode-tellico
+~/.local/bin/pi-tellico
 ~/.local/bin/tellico-qwen-tunnel
 ```
+
+`pi/` is the whole configuration for the pi harness -- `models.json`,
+`settings.json`, `APPEND_SYSTEM.md` and `extensions/` -- and
+`PI_CODING_AGENT_DIR` points pi at it. Pi sessions go to
+`~/.local/share/tellico-qwen/pi-sessions` instead, so uninstalling does not
+delete them.
 
 On systems with a working systemd user manager, the installer also enables:
 
