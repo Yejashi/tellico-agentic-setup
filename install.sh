@@ -414,6 +414,7 @@ trap - EXIT HUP INT TERM
 install -m 644 "$script_dir/lib/checks.sh" "$config_dir/lib/checks.sh"
 install -m 600 "$script_dir/prompts/orchestrate.md" "$config_dir/prompts/orchestrate.md"
 install -m 600 "$script_dir/prompts/worker.md" "$config_dir/prompts/worker.md"
+install -m 600 "$script_dir/prompts/build.md" "$config_dir/prompts/build.md"
 # OpenCode loads these itself, with its own bundled runtime: no npm install
 # and no build step. They enforce what the prompts can only ask for. Each is a
 # directory with a package.json because OpenCode 2 refuses a bare plugin file;

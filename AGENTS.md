@@ -282,9 +282,21 @@ touches all of them.
   config root. A plugin the config names but the install did not copy is
   silently skipped by OpenCode, which is why `tellico_check_config` fails on a
   missing one rather than warning.
-- Agents: one lead (`orchestrate-tellico-0|1`) plus two node-pinned workers.
-  `prompts/orchestrate.md` is always-on context for the lead, so every line
-  added costs tokens on every turn. Keep it tight.
+- Agents: two primaries per node plus two node-pinned workers.
+  `orchestrate-tellico-0|1` delegates, and `build-tellico-0|1` is the solo
+  alternative that does the work itself and cannot dispatch at all
+  (`--solo` / `TELLICO_SOLO=1` only chooses which one a session opens on;
+  `tab` switches between them). Their permissions are deliberately opposite
+  where it counts: the lead has no `bash` beyond read-only `git` because its
+  job is to delegate commands, and `build-tellico` has full `bash` and `edit`
+  with `task` denied. `build-tellico` does not say `"*": "allow"` the way the
+  workers do -- it lists what it needs, so OpenCode's own `external_directory:
+  ask` survives for an agent a user is driving directly. A prompt file is
+  always-on context for its agent, so every line added to
+  `prompts/orchestrate.md` or `prompts/build.md` costs tokens on every turn of
+  that agent. Keep them tight, and keep what is genuinely shared --
+  `.agent/PLANS.md` as the thing that survives compaction, the credential
+  rule, verify-before-you-carry-forward -- saying the same thing in both.
 - `config/gateway-url` is the single source of the built-in gateway URL, read
   by both `install.sh` and `doctor.sh` so a user supplies only a key. It is a
   plain file rather than a value in `lib/checks.sh` because both scripts need

@@ -61,9 +61,17 @@ servers. Everything else in the table, including the per-slot context, is
 identical.
 
 An SSH connection forwards the two private cluster endpoints to localhost.
-OpenCode gets a primary orchestration agent and two node-pinned subagents. For
-parallelizable work, the primary dispatches one bounded task to each server in
-the same Task batch while keeping concurrent write scopes separate.
+OpenCode gets two primary agents per node and two node-pinned subagents:
+
+| Agent | What it is |
+|---|---|
+| `orchestrate-tellico-0`, `orchestrate-tellico-1` | The default. Plans, delegates and integrates; dispatches one bounded task to each server in the same Task batch, keeping concurrent write scopes separate. Cannot run shell commands beyond read-only `git`. |
+| `build-tellico-0`, `build-tellico-1` | One agent, one server, no delegation. Reads, edits and runs checks itself. Started with `--solo`. |
+| `tellico-worker-0`, `tellico-worker-1` | Subagents the orchestrate lead dispatches to, one pinned to each node. |
+
+`tab` switches between the primaries inside a session, so the choice at launch
+is only where the session starts. See
+[Orchestrate or solo](#orchestrate-or-solo).
 
 The cluster side of the service -- the Slurm job, the per-node llama.cpp server
 and the commands that start and inspect them -- lives in
@@ -263,7 +271,9 @@ opencode-tellico 1
 ```
 
 Both commands can use both node-pinned subagents. The number only chooses the
-model that hosts the lightweight lead conversation.
+model that hosts the lightweight lead conversation. For a single agent that
+does the work itself instead of delegating, add `--solo`; see
+[Orchestrate or solo](#orchestrate-or-solo).
 
 With no number, the lead node is derived from the device, so that several users
 do not all lead on node 0 and compete for one server's prompt cache. It is
@@ -275,6 +285,36 @@ large agentic context costs minutes of reprocessing. Spreading the leads is
 free and protects it. See
 [`docs/flash-next-evaluation.md`](docs/flash-next-evaluation.md) for why the
 window cannot simply be made bigger instead.
+
+### Orchestrate or solo
+
+The default agent plans and delegates. It keeps its own window clear by
+spending a worker's instead, which is what makes a long task survive on a
+128k model, and it runs two servers at once on work that splits. It is also
+the slower, more indirect way to change three lines.
+
+`--solo` opens on `build-tellico` instead: one agent, one server, doing the
+reading and editing and checking itself.
+
+```bash
+opencode-tellico 0 --solo
+TELLICO_SOLO=1 opencode-tellico        # same thing, as an environment variable
+```
+
+Reach for `--solo` when the task does not split into independent units, when
+you want to watch exactly what is happening, or when delegation would cost
+more round trips than it saves. Reach for the default on anything broad enough
+to have two independent halves, or long enough that the lead's context would
+otherwise fill.
+
+Both are always defined, for both nodes, so `tab` switches between them
+mid-session and the flag only chooses where the session starts. The difference
+in what they may do is deliberate: the orchestrate lead cannot run shell
+commands beyond read-only `git`, because its job is to delegate them;
+`build-tellico` has full `bash` and `edit` and cannot dispatch at all. Neither
+can read the API key, `client.env` or an SSH private key -- that is blocked at
+the tool layer for every agent -- and both still ask before touching anything
+outside the working directory.
 
 ### Watching the workers
 

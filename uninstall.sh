@@ -28,6 +28,7 @@ rm -f \
   "$config_dir/opencode.json" \
   "$config_dir/prompts/orchestrate.md" \
   "$config_dir/prompts/worker.md" \
+  "$config_dir/prompts/build.md" \
   "$config_dir/lib/checks.sh" \
   "$config_dir/tui.json" \
   "$config_dir/plugins/secret-guard.js" \

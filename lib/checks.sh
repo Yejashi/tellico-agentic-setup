@@ -756,6 +756,7 @@ tellico_config_fingerprint() {
 TELLICO_INSTALLED_COPIES='lib/checks.sh
 prompts/orchestrate.md
 prompts/worker.md
+prompts/build.md
 plugins/secret-guard/index.js
 plugins/secret-guard/package.json
 plugins/dispatch-balance/index.js

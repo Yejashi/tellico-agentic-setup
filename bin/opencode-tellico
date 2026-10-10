@@ -33,35 +33,46 @@ default_lead_node() {
 
 node=
 think=${TELLICO_THINK:-}
+solo=${TELLICO_SOLO:-0}
 
 usage() {
   cat <<'EOF'
-usage: opencode-tellico [0|1] [--think LEVEL] [OPENCODE_ARGS...]
+usage: opencode-tellico [0|1] [--solo] [--think LEVEL] [OPENCODE_ARGS...]
 
 Starts OpenCode with dual-node Tellico orchestration. The optional 0 or 1
 selects the lead model; both node-pinned workers remain available.
+
+--solo opens the session on build-tellico instead: one agent that does the
+whole job on one server, reading and editing and running checks itself, with
+no workers and no delegation. Use it when the task does not split into
+independent units, or when a single agent is simply easier to follow. Both
+agents are always defined, so "tab" switches between them mid-session; --solo
+only picks which one the session starts on.
 
 With no number, the lead node is derived from this device, so that several
 users do not all lead on node 0 and compete for one server's prompt cache.
 It is stable for a given device. TELLICO_LEAD_NODE overrides it.
 
-How much the model thinks is a model variant, and the config defaults the
-lead and both workers to medium. There are three ways to change it:
+How much the model thinks is a model variant, and the config defaults every
+work agent to medium. There are three ways to change it:
 
-  --think LEVEL      the whole session, lead and both workers
-  ctrl+t             cycle the lead's level inside the session; ctrl+x t
-                     lists them. Workers keep the level they were launched
-                     with.
+  --think LEVEL      the whole session, every agent, including ones you
+                     switch to with "tab"
+  ctrl+t             cycle the current agent's level inside the session;
+                     ctrl+x t lists them. A worker keeps the level the
+                     session was launched with.
   /think-LEVEL ...   one request, e.g. "/think-off fix this import order"
 
   off      no reasoning at all, fastest
   low      brief reasoning
-  medium   the default for the lead and both workers
+  medium   the default for the leads, build-tellico and both workers
   xhigh    the most the chat template allows
 
 examples:
   opencode-tellico 0
+  opencode-tellico 0 --solo
   opencode-tellico 1 --think low
+  opencode-tellico 1 --solo --think off
   opencode-tellico 1 /path/to/project
   opencode-tellico 0 run 'Review this repository'
 
@@ -69,6 +80,8 @@ environment:
   TELLICO_THINK    Default thinking level, same values as --think, which
                    overrides it. Unset, the agents' configured level
                    (medium) applies.
+  TELLICO_SOLO     Set to 1 to open on build-tellico by default, as --solo
+                   does.
   TELLICO_LEAD_NODE
                    Force the lead node to 0 or 1 instead of deriving it from
                    this device.
@@ -98,15 +111,39 @@ case ${1:-} in
     ;;
 esac
 
-# After the node, so "opencode-tellico 1 --think low" reads naturally.
-if [ "${1:-}" = --think ]; then
-  if [ "$#" -lt 2 ]; then
-    echo 'opencode-tellico: --think requires a level' >&2
+# After the node, so "opencode-tellico 1 --think low" reads naturally. A loop
+# rather than a fixed order, so --solo and --think can be given either way
+# round; anything else is OpenCode's own argument and is passed through
+# untouched.
+while [ "$#" -gt 0 ]; do
+  case $1 in
+    --think)
+      if [ "$#" -lt 2 ]; then
+        echo 'opencode-tellico: --think requires a level' >&2
+        exit 2
+      fi
+      think=$2
+      shift 2
+      ;;
+    --solo)
+      solo=1
+      shift
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+case $solo in
+  0|1) ;;
+  false|no|off) solo=0 ;;
+  true|yes|on) solo=1 ;;
+  *)
+    echo "opencode-tellico: TELLICO_SOLO must be 0 or 1, got '$solo'" >&2
     exit 2
-  fi
-  think=$2
-  shift 2
-fi
+    ;;
+esac
 
 case $think in
   ''|off|low|medium|xhigh) ;;
@@ -178,7 +215,16 @@ case ${TELLICO_BACKGROUND_SUBAGENTS:-1} in
 esac
 
 model="tellico-${node}/qwen3.8-27b-gsq-iq3s"
-lead_agent="orchestrate-tellico-${node}"
+# Which primary agent the session opens on. The orchestrate lead delegates and
+# can only read, grep and edit itself; build-tellico does the whole job on one
+# server and cannot dispatch at all. Both are defined for both nodes, so "tab"
+# still switches between them inside a session -- this only picks the one the
+# session starts with.
+if [ "$solo" = 1 ]; then
+  lead_agent="build-tellico-${node}"
+else
+  lead_agent="orchestrate-tellico-${node}"
+fi
 # The lead's own generation lands on this node, so plugins/dispatch-balance.js
 # needs to know which one it is: a worker pinned to the same server as the
 # lead competes with it, and nothing in the plugin API says where the lead
@@ -211,16 +257,19 @@ if [ "${opencode_major:-1}" -ge 2 ] && [ -z "${OPENCODE_CLI_CONFIG_CONTENT:-}" ]
   fi
 fi
 # A thinking level is a model variant, so it is set per agent, and it overrides
-# the medium that config/opencode.json gives these three. Only the lead and the
-# workers get it: title, summary and compaction are the session's own overhead
-# and are held at no thinking at all, by their agent options and by
+# the medium that config/opencode.json gives every work agent. All six get it,
+# not only the one this session opens on, because "tab" switches primary agent
+# inside a session and --think is meant to hold for the session. Title, summary
+# and compaction are excluded: they are the session's own overhead and are held
+# at no thinking at all, by their agent options and by
 # plugins/compaction-guard, so that a summary cannot spend its output budget on
 # reasoning and come back truncated -- which ends the session.
 think_overrides=""
 if [ -n "$think" ]; then
-  think_overrides=",\"${lead_agent}\":{\"variant\":\"${think}\"}"
-  think_overrides="${think_overrides},\"tellico-worker-0\":{\"variant\":\"${think}\"}"
-  think_overrides="${think_overrides},\"tellico-worker-1\":{\"variant\":\"${think}\"}"
+  for tellico_think_agent in orchestrate-tellico-0 orchestrate-tellico-1 \
+    build-tellico-0 build-tellico-1 tellico-worker-0 tellico-worker-1; do
+    think_overrides="${think_overrides},\"${tellico_think_agent}\":{\"variant\":\"${think}\"}"
+  done
 fi
 
 runtime_config="{\"model\":\"${model}\",\"small_model\":\"${model}\",\"default_agent\":\"${lead_agent}\",\"agent\":{\"compaction\":{\"model\":\"${model}\"},\"summary\":{\"model\":\"${model}\"},\"title\":{\"model\":\"${model}\"}${think_overrides}}}"

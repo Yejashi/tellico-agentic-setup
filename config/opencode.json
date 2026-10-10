@@ -324,6 +324,50 @@
         "doom_loop": "deny"
       }
     },
+    "build-tellico-0": {
+      "description": "Single-agent Tellico engineer on node 0. Does the work itself -- reading, editing, running checks -- with no workers and no delegation. Use instead of the orchestrate lead when the task does not split into independent units.",
+      "mode": "primary",
+      "model": "tellico-0/qwen3.8-27b-gsq-iq3s",
+      "variant": "medium",
+      "temperature": 0.6,
+      "top_p": 0.95,
+      "prompt": "{file:./prompts/build.md}",
+      "steps": 200,
+      "permission": {
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "list": "allow",
+        "edit": "allow",
+        "bash": "allow",
+        "webfetch": "allow",
+        "lsp": "allow",
+        "task": "deny",
+        "doom_loop": "deny"
+      }
+    },
+    "build-tellico-1": {
+      "description": "Single-agent Tellico engineer on node 1. Does the work itself -- reading, editing, running checks -- with no workers and no delegation. Use instead of the orchestrate lead when the task does not split into independent units.",
+      "mode": "primary",
+      "model": "tellico-1/qwen3.8-27b-gsq-iq3s",
+      "variant": "medium",
+      "temperature": 0.6,
+      "top_p": 0.95,
+      "prompt": "{file:./prompts/build.md}",
+      "steps": 200,
+      "permission": {
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "list": "allow",
+        "edit": "allow",
+        "bash": "allow",
+        "webfetch": "allow",
+        "lsp": "allow",
+        "task": "deny",
+        "doom_loop": "deny"
+      }
+    },
     "tellico-worker-0": {
       "description": "General implementation, investigation, testing, or review worker pinned to Qwen on tellico-compute0. Use for one bounded unit with explicit file ownership.",
       "mode": "subagent",
