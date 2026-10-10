@@ -294,8 +294,16 @@ Four levels exist, which are what the chat template accepts:
 |---|---|
 | `off` | no reasoning at all; fastest, for mechanical edits |
 | `low` | brief reasoning |
-| `medium` | the server's own default |
+| `medium` | the default here, for the lead and both workers |
 | `xhigh` | the most the template allows |
+
+`medium` is the default because it is the level this setup is tuned around,
+and it is now stated in `config/opencode.json` rather than inherited: the
+cluster happens to start `llama-server` with `--reasoning-effort medium` too,
+but the client no longer depends on that, and the template's own default is
+`xhigh`. Change `agent.*.variant` there to move the default.
+
+There are three ways to change it, from widest to narrowest scope.
 
 For a whole session, at launch:
 
@@ -304,22 +312,31 @@ opencode-tellico 0 --think low
 TELLICO_THINK=off opencode-tellico 1      # same thing, as an environment variable
 ```
 
-For one request, inside a running session:
+Inside a running session, with OpenCode's own variant controls:
+
+```text
+ctrl+t      cycle the level
+ctrl+x t    list the levels and pick one
+```
+
+For one request:
 
 ```text
 /think-off    fix the import order in this file
 /think-xhigh  why does this lock order deadlock under two writers?
 ```
 
-`--think` applies to the lead and both workers. Title, summary and compaction
-never think at all, whatever you ask for: they are the session's own overhead
-rather than work you asked for, and a summary that spends its output budget on
-reasoning comes back truncated, which ends the session (see
-[Compaction](#compaction)).
+`--think` and the config default apply to the lead and both workers. `ctrl+t`
+changes the session's model variant, which is the lead's: a worker dispatched
+afterwards still runs at the level the session was launched with, so reach for
+`--think` when you want the whole fleet moved. `ctrl+x t` is this setup's
+binding (`config/tui.json`) and is OpenCode 1 only; `ctrl+t` is built in and
+works on both.
 
-Note that `medium` is what you get today whether or not you ask: the cluster
-starts `llama-server` with `--reasoning-effort medium`, so it is the floor
-these levels move away from. The template's own default is `xhigh`.
+Title, summary and compaction never think at all, whatever you ask for: they
+are the session's own overhead rather than work you asked for, and a summary
+that spends its output budget on reasoning comes back truncated, which ends
+the session (see [Compaction](#compaction)).
 
 Non-interactive example:
 

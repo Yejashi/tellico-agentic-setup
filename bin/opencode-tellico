@@ -45,13 +45,18 @@ With no number, the lead node is derived from this device, so that several
 users do not all lead on node 0 and compete for one server's prompt cache.
 It is stable for a given device. TELLICO_LEAD_NODE overrides it.
 
-How much the model thinks is a model variant. --think sets it for the whole
-session, for the lead and both workers; inside a session the /think-off,
-/think-low, /think-medium and /think-xhigh commands set it for one request.
+How much the model thinks is a model variant, and the config defaults the
+lead and both workers to medium. There are three ways to change it:
+
+  --think LEVEL      the whole session, lead and both workers
+  ctrl+t             cycle the lead's level inside the session; ctrl+x t
+                     lists them. Workers keep the level they were launched
+                     with.
+  /think-LEVEL ...   one request, e.g. "/think-off fix this import order"
 
   off      no reasoning at all, fastest
   low      brief reasoning
-  medium   the server's default
+  medium   the default for the lead and both workers
   xhigh    the most the chat template allows
 
 examples:
@@ -62,7 +67,8 @@ examples:
 
 environment:
   TELLICO_THINK    Default thinking level, same values as --think, which
-                   overrides it.
+                   overrides it. Unset, the agents' configured level
+                   (medium) applies.
   TELLICO_LEAD_NODE
                    Force the lead node to 0 or 1 instead of deriving it from
                    this device.
@@ -180,12 +186,14 @@ lead_agent="orchestrate-tellico-${node}"
 # the session, and matches the variable a user would have set by hand.
 export TELLICO_LEAD_NODE="$node"
 # Background workers run while the lead keeps talking, so their entries
-# scroll out of view. tui.json loads a sidebar panel listing them; OpenCode
-# merges it over the user's own tui.json rather than replacing it. Skipped
-# when an older install never wrote one, and on OpenCode 2: the vendored
-# panel is written against OpenCode 1's TUI plugin API ({id, tui}) and has no
-# OpenCode 2 release, whose TUI plugins are {id, setup}. An unreadable version
-# keeps the old behaviour.
+# scroll out of view. tui.json loads a sidebar panel listing them, and binds
+# the model-variant list to <leader>t so the thinking level can be picked
+# rather than only cycled with the built-in ctrl+t. OpenCode merges it over the
+# user's own tui.json rather than replacing it. Skipped when an older install
+# never wrote one, and on OpenCode 2: the vendored panel is written against
+# OpenCode 1's TUI plugin API ({id, tui}) and has no OpenCode 2 release, whose
+# TUI plugins are {id, setup}. Skipping it there costs only the extra binding;
+# ctrl+t is built in. An unreadable version keeps the old behaviour.
 opencode_major=$(tellico_opencode_major)
 if [ -r "$config_dir/tui.json" ] && [ "${opencode_major:-1}" -lt 2 ]; then
   export OPENCODE_TUI_CONFIG="$config_dir/tui.json"
@@ -202,9 +210,12 @@ if [ "${opencode_major:-1}" -ge 2 ] && [ -z "${OPENCODE_CLI_CONFIG_CONTENT:-}" ]
     export OPENCODE_CLI_CONFIG_CONTENT="$cli_overlay"
   fi
 fi
-# A thinking level is a model variant, so it is set per agent. Only the lead
-# and the workers get it: title, summary and compaction are the session's own
-# overhead and keep whatever the config gives them.
+# A thinking level is a model variant, so it is set per agent, and it overrides
+# the medium that config/opencode.json gives these three. Only the lead and the
+# workers get it: title, summary and compaction are the session's own overhead
+# and are held at no thinking at all, by their agent options and by
+# plugins/compaction-guard, so that a summary cannot spend its output budget on
+# reasoning and come back truncated -- which ends the session.
 think_overrides=""
 if [ -n "$think" ]; then
   think_overrides=",\"${lead_agent}\":{\"variant\":\"${think}\"}"

@@ -223,8 +223,17 @@ touches all of them.
   so the levels collapsed to on/off there; they are graded again.) Each carries
   `chat_template_kwargs`, the channel proven to reach the template; a
   top-level `reasoning_effort` works against llama.cpp directly but is not
-  what OpenCode forwards. `--think` sets the variant per agent at runtime; the
-  `/think-*` commands set it per request.
+  what OpenCode forwards. The lead and both workers declare `variant: medium`
+  in `config/opencode.json`, so that is the default without relying on the
+  cluster's `--reasoning-effort medium` server flag; the three overhead agents
+  instead pin `enable_thinking: false` (see `plugins/` below). Narrower scopes
+  override it in order: `--think` sets the variant per agent at runtime, the
+  `/think-*` commands set it per request, and OpenCode's own `variant.cycle`
+  (`ctrl+t`) and `variant.list` (bound to `<leader>t` in `config/tui.json`)
+  change the session's -- which is the lead's only, because a worker's variant
+  comes from its agent config at dispatch. `config/tui.json` is the keybind
+  channel: `keybinds` is a TUI-config key, and `opencode.json` has no such
+  key at all.
 - `bin/opencode-tellico` derives the default lead node from `$USER@$(uname -n)`
   so concurrent users spread across both servers instead of all leading on
   node 0. It must stay *stable* per device: the point is prompt-cache affinity,
