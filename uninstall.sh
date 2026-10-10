@@ -51,6 +51,7 @@ rm -f \
   "$config_dir/pi/extensions/secret-guard/package.json" \
   "$config_dir/crush/tellico.crushrc" \
   "$config_dir/crush/hooks/secret-guard.sh" \
+  "$config_dir/crush/hooks/fetch-guard.sh" \
   "$bin_dir/tellico-gateway" \
   "$lib_dir/tellico_gateway.py" \
   "$systemd_dir/$gateway_unit" \

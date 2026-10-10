@@ -128,6 +128,15 @@ if [[ -r $tellico_key_file ]]; then
   hook add PreToolUse \
     --name tellico-secret-guard \
     --command "$tellico_config_dir/crush/hooks/secret-guard.sh"
+
+  # Raw HTML from fetch is the fastest way to overflow a 131072-token slot:
+  # Crush only checks for auto-summarize between steps, so one batch of large
+  # pages goes straight past it. The hook rewrites format "html" to
+  # "markdown", and blocks a repeat; it is a no-op outside crush-tellico.
+  hook add PreToolUse \
+    --name tellico-fetch-guard \
+    --matcher '^fetch$' \
+    --command "$tellico_config_dir/crush/hooks/fetch-guard.sh"
 else
   echo "tellico.crushrc: $tellico_key_file is not readable;" \
     "skipping the Tellico providers. Start the tunnel with" \

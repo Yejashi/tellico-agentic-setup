@@ -400,6 +400,16 @@ touches all of them.
   one. Crush documents that `PreToolUse` fires only on the top-level agent's
   tool calls, which covers everything while Crush has no subagents; when PR
   3098 lands, this stops covering them.
+- `crush/hooks/fetch-guard.sh` exists because Crush checks for
+  auto-summarize only between steps, from the previous step's usage, and
+  nothing checks a request's size before it leaves. Three `fetch` calls with
+  `format: "html"` in one batch took a session from 62k to 149k tokens in a
+  single step; the server rejected it, and the summary request failed the same
+  way because it carries the whole history, so the session was lost. The hook
+  rewrites the first html fetch of a session to markdown through
+  `updated_input` (a shallow merge, so no JSON parsing) and blocks any later
+  one. It does nothing unless `TELLICO_LEAD_NODE` is set, because the fragment
+  that registers it runs in every Crush session the user starts.
 - `config/gateway-url` is the single source of the built-in gateway URL, read
   by both `install.sh` and `doctor.sh` so a user supplies only a key. It is a
   plain file rather than a value in `lib/checks.sh` because both scripts need

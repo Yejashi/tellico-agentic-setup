@@ -797,6 +797,7 @@ pi/APPEND_SYSTEM.md
 pi/extensions/secret-guard/index.js
 pi/extensions/secret-guard/package.json
 crush/hooks/secret-guard.sh
+crush/hooks/fetch-guard.sh
 plugins/tui/subagent-watch.js
 plugins/tui-v2/subagents/tui.js
 plugins/tui-v2/subagents/package.json'

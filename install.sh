@@ -476,6 +476,8 @@ chmod 600 "$crush_dir/tellico.crushrc"
 trap - EXIT HUP INT TERM
 install -m 755 "$script_dir/crush/hooks/secret-guard.sh" \
   "$crush_dir/hooks/secret-guard.sh"
+install -m 755 "$script_dir/crush/hooks/fetch-guard.sh" \
+  "$crush_dir/hooks/fetch-guard.sh"
 install -m 755 "$script_dir/bin/crush-tellico" "$bin_dir/crush-tellico"
 crush_source_line="source \"$crush_dir/tellico.crushrc\""
 if [ ! -e "$crushrc" ]; then
