@@ -361,7 +361,8 @@ base_url1=$(tellico_base_url "$mode" "$gateway_url" 1 "$port1")
 plugin_dir="$config_dir/plugins"
 
 mkdir -p "$config_dir/prompts" "$config_dir/lib" "$plugin_dir/tui" "$plugin_dir/tui-v2/subagents" \
-  "$plugin_dir/secret-guard" "$plugin_dir/dispatch-balance" "$bin_dir"
+  "$plugin_dir/secret-guard" "$plugin_dir/dispatch-balance" \
+  "$plugin_dir/compaction-guard" "$bin_dir"
 chmod 700 "$config_dir"
 
 # In gateway mode the key comes from the operator rather than over SSH, so it
@@ -417,7 +418,7 @@ install -m 600 "$script_dir/prompts/worker.md" "$config_dir/prompts/worker.md"
 # and no build step. They enforce what the prompts can only ask for. Each is a
 # directory with a package.json because OpenCode 2 refuses a bare plugin file;
 # OpenCode 1 accepts either.
-for plugin in secret-guard dispatch-balance; do
+for plugin in secret-guard dispatch-balance compaction-guard; do
   install -m 644 "$script_dir/plugins/$plugin/index.js" "$plugin_dir/$plugin/index.js"
   install -m 644 "$script_dir/plugins/$plugin/package.json" "$plugin_dir/$plugin/package.json"
 done

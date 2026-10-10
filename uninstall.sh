@@ -32,7 +32,15 @@ rm -f \
   "$config_dir/tui.json" \
   "$config_dir/plugins/secret-guard.js" \
   "$config_dir/plugins/dispatch-balance.js" \
+  "$config_dir/plugins/secret-guard/index.js" \
+  "$config_dir/plugins/secret-guard/package.json" \
+  "$config_dir/plugins/dispatch-balance/index.js" \
+  "$config_dir/plugins/dispatch-balance/package.json" \
+  "$config_dir/plugins/compaction-guard/index.js" \
+  "$config_dir/plugins/compaction-guard/package.json" \
   "$config_dir/plugins/tui/subagent-watch.js" \
+  "$config_dir/plugins/tui-v2/subagents/tui.js" \
+  "$config_dir/plugins/tui-v2/subagents/package.json" \
   "$bin_dir/tellico-gateway" \
   "$lib_dir/tellico_gateway.py" \
   "$systemd_dir/$gateway_unit" \
@@ -43,6 +51,11 @@ rmdir "$lib_dir" 2>/dev/null || true
 rmdir "$config_dir/prompts" 2>/dev/null || true
 rmdir "$config_dir/lib" 2>/dev/null || true
 rmdir "$config_dir/plugins/tui" 2>/dev/null || true
+rmdir "$config_dir/plugins/tui-v2/subagents" 2>/dev/null || true
+rmdir "$config_dir/plugins/tui-v2" 2>/dev/null || true
+rmdir "$config_dir/plugins/secret-guard" 2>/dev/null || true
+rmdir "$config_dir/plugins/dispatch-balance" 2>/dev/null || true
+rmdir "$config_dir/plugins/compaction-guard" 2>/dev/null || true
 rmdir "$config_dir/plugins" 2>/dev/null || true
 rmdir "$config_dir" 2>/dev/null || true
 

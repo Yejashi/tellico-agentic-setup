@@ -760,6 +760,8 @@ plugins/secret-guard/index.js
 plugins/secret-guard/package.json
 plugins/dispatch-balance/index.js
 plugins/dispatch-balance/package.json
+plugins/compaction-guard/index.js
+plugins/compaction-guard/package.json
 plugins/tui/subagent-watch.js
 plugins/tui-v2/subagents/tui.js
 plugins/tui-v2/subagents/package.json'

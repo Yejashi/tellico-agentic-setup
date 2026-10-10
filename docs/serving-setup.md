@@ -160,7 +160,9 @@ QWEN38_CTX_CHECKPOINTS=2
 
 **The context coupling.** `limit.context` in `config/opencode.json` must
 equal `QWEN38_CTX / QWEN38_SLOTS` (262144 / 2 = 131072), for all four
-providers.
+providers, and `limit.input` must be set to the same number so that
+`compaction.reserved` is honoured at all. See "The context coupling" in
+`AGENTS.md` for why it is otherwise read and discarded.
 
 ## Operating it
 

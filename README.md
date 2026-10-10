@@ -312,8 +312,10 @@ For one request, inside a running session:
 ```
 
 `--think` applies to the lead and both workers. Title, summary and compaction
-keep whatever the config gives them, since they are the session's own overhead
-rather than work you asked for.
+never think at all, whatever you ask for: they are the session's own overhead
+rather than work you asked for, and a summary that spends its output budget on
+reasoning comes back truncated, which ends the session (see
+[Compaction](#compaction)).
 
 Note that `medium` is what you get today whether or not you ask: the cluster
 starts `llama-server` with `--reasoning-effort medium`, so it is the floor
@@ -325,6 +327,41 @@ Non-interactive example:
 opencode-tellico 0 run 'Review this repository and fix the highest-impact issue'
 opencode-tellico 0 --think off run 'Rename this symbol across the repository'
 ```
+
+### Compaction
+
+A session that fills its 128k window is compacted: OpenCode summarises the old
+turns and continues from the summary. That is routine, but on this setup it had
+two ways to fail, and a failed compaction is terminal -- OpenCode stops the
+turn, and every turn after it retries the same compaction and stops again, so
+the session is finished mid-task.
+
+Both are closed now:
+
+- **The summary ran out of output budget.** Compaction inherited the session's
+  thinking level -- the compaction messages in this device's history are
+  recorded with `variant: xhigh` -- so the model reasoned at length and the
+  summary itself could be cut off. Measured across 193 compactions on this
+  device, summaries run 600-7,400 output tokens with thinking on, median 3,215,
+  and the thinking is all of the variance. OpenCode 1.18.30's own compaction
+  allows 32,000, so there was margin here; its newer compaction path hard-caps
+  the summary at 4,096, which 17% of those 193 exceeded. Compaction, summary
+  and title now never think (`plugins/compaction-guard/`, plus
+  `agent.compaction.options` in `config/opencode.json`), which removes the
+  variance instead of relying on the margin.
+
+- **The compaction request was itself too big for the window.** Compaction
+  renders the whole conversation so far into one prompt, reasoning blocks
+  included, and reasoning is the bulk of it -- 74% of a 115,562-token payload in
+  the one session on this device where compaction failed outright.
+  `compaction.reserved` is meant to make compaction fire early enough to leave
+  room, but OpenCode only honours it when the model also declares
+  `limit.input`, which is why each model here now declares it. Compaction
+  fires at 131,072 - 40,000 = 91,072 tokens, leaving the whole 32,000-token
+  output allowance plus slack for one more turn.
+
+If it ever does fail, the session cannot be rescued: start a new one. Nothing
+is lost from disk, only the conversation.
 
 Tunnel and cluster checks:
 

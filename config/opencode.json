@@ -20,6 +20,7 @@
           },
           "limit": {
             "context": 131072,
+            "input": 131072,
             "output": 32768
           },
           "options": {
@@ -77,6 +78,7 @@
           },
           "limit": {
             "context": 131072,
+            "input": 131072,
             "output": 32768
           },
           "options": {
@@ -137,6 +139,7 @@
           },
           "limit": {
             "context": 131072,
+            "input": 131072,
             "output": 32768
           },
           "options": {
@@ -197,6 +200,7 @@
           },
           "limit": {
             "context": 131072,
+            "input": 131072,
             "output": 32768
           },
           "options": {
@@ -238,7 +242,8 @@
   },
   "plugin": [
     "__TELLICO_PLUGIN_DIR__/secret-guard",
-    "__TELLICO_PLUGIN_DIR__/dispatch-balance"
+    "__TELLICO_PLUGIN_DIR__/dispatch-balance",
+    "__TELLICO_PLUGIN_DIR__/compaction-guard"
   ],
   "tool_output": {
     "max_lines": 300,
@@ -247,7 +252,7 @@
   "compaction": {
     "auto": true,
     "prune": true,
-    "reserved": 12000,
+    "reserved": 40000,
     "tail_turns": 4,
     "preserve_recent_tokens": 8000
   },
@@ -343,6 +348,27 @@
         "*": "allow",
         "task": "deny",
         "doom_loop": "deny"
+      }
+    },
+    "compaction": {
+      "options": {
+        "chat_template_kwargs": {
+          "enable_thinking": false
+        }
+      }
+    },
+    "summary": {
+      "options": {
+        "chat_template_kwargs": {
+          "enable_thinking": false
+        }
+      }
+    },
+    "title": {
+      "options": {
+        "chat_template_kwargs": {
+          "enable_thinking": false
+        }
       }
     }
   },

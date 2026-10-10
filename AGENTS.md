@@ -121,6 +121,19 @@ high, OpenCode builds a context the server rejects instead of compacting in
 time; if too low, context is wasted. The model display names encode it too
 (`128k`), so they drift with it. Today that is 262144 / 2 = 131072.
 
+`limit.input` must be set to the same number, and carries `compaction.reserved`
+with it. OpenCode decides when to compact in `vn()`:
+`limit.input ? limit.input - reserved : context - min(limit.output, 32000)`.
+With `limit.input` absent, `reserved` is read and then thrown away, and the
+buffer is silently whatever `limit.output` happens to be -- so lowering
+`limit.output` to bound a runaway would *raise* the compaction threshold and
+start producing requests the server hard-rejects. With it set, the buffer is
+`reserved` and nothing else: 40,000 today, which is the 32,000-token output
+allowance plus slack for one more turn's tool results. Compaction must fire
+early enough that its own request fits as well, because it renders the whole
+head of the conversation -- reasoning blocks included, which is most of it --
+into a single prompt.
+
 Those cluster-side values live in `/data/gclab/qwen38/service.env`, outside both
 repos. Changing the model, slot count, micro-batch or speculative decoding there
 changes what fits, which changes this repo. The model id (`qwen3.8-27b-gsq-iq3s`) is
@@ -243,7 +256,16 @@ touches all of them.
   context and `.agent/PLANS.md`. `dispatch-balance` counts task overlap and
   nudges once per session when the lead serialises, puts both halves of a pair
   on one node, or pairs a long task with a short one -- the three ways to idle
-  a server, none of which the lead can see for itself. Both are allowlist-first
+  a server, none of which the lead can see for itself. `compaction-guard`
+  forces `enable_thinking: false` on the three native overhead agents
+  (compaction, summary, title): `agent.compaction.options` in the config says
+  the same thing, but a model variant is merged *after* agent options and
+  compaction inherits the variant of the user message that triggered it, so
+  under `--think xhigh` the config alone loses and `chat.params` -- the last
+  hook before the request leaves, and the only one carrying the agent name --
+  is the only place that wins; it is the one plugin here with no OpenCode 2
+  half, because that release has no verified counterpart to `chat.params`, so
+  there the config entry is the whole of it. All three are allowlist-first
   like every check here: a form they cannot recognise is allowed through rather
   than guessed at. They are registered through `__TELLICO_PLUGIN_DIR__` in
   `config/opencode.json`, substituted to an absolute path at install time
