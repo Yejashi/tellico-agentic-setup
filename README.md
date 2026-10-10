@@ -313,6 +313,14 @@ opencode-tellico 0 --solo
 TELLICO_SOLO=1 opencode-tellico        # same thing, as an environment variable
 ```
 
+`build-tellico` stops after 200 tool steps in one turn, reports, and waits for
+input. For a long solo session left running on its own, raise that for the
+session only; the orchestrate lead and the workers keep their limits:
+
+```bash
+opencode-tellico 0 --solo --steps 100000
+```
+
 Reach for `--solo` when the task does not split into independent units, when
 you want to watch exactly what is happening, or when delegation would cost
 more round trips than it saves. Reach for the default on anything broad enough

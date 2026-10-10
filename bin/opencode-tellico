@@ -11,10 +11,11 @@ tunnel_command="$script_dir/tellico-qwen-tunnel"
 node=
 think=${TELLICO_THINK:-}
 solo=${TELLICO_SOLO:-0}
+steps=${TELLICO_STEPS:-}
 
 usage() {
   cat <<'EOF'
-usage: opencode-tellico [0|1] [--solo] [--think LEVEL] [OPENCODE_ARGS...]
+usage: opencode-tellico [0|1] [--solo] [--think LEVEL] [--steps N] [OPENCODE_ARGS...]
 
 Starts OpenCode with dual-node Tellico orchestration. The optional 0 or 1
 selects the lead model; both node-pinned workers remain available.
@@ -59,6 +60,11 @@ environment:
                    (medium) applies.
   TELLICO_SOLO     Set to 1 to open on build-tellico by default, as --solo
                    does.
+  TELLICO_STEPS    Tool steps build-tellico may take in one turn before it
+                   is made to stop and report, same as --steps, which
+                   overrides it. Unset, the configured 200 applies. Raise it
+                   for a long unattended solo session, which otherwise
+                   stops and waits for input at the limit.
   TELLICO_LEAD_NODE
                    Force the lead node to 0 or 1 instead of deriving it from
                    this device.
@@ -106,6 +112,14 @@ while [ "$#" -gt 0 ]; do
       solo=1
       shift
       ;;
+    --steps)
+      if [ "$#" -lt 2 ]; then
+        echo 'opencode-tellico: --steps requires a number' >&2
+        exit 2
+      fi
+      steps=$2
+      shift 2
+      ;;
     *)
       break
       ;;
@@ -118,6 +132,14 @@ case $solo in
   true|yes|on) solo=1 ;;
   *)
     echo "opencode-tellico: TELLICO_SOLO must be 0 or 1, got '$solo'" >&2
+    exit 2
+    ;;
+esac
+
+case $steps in
+  '') ;;
+  *[!0-9]* | 0)
+    echo "opencode-tellico: --steps must be a positive number, got '$steps'" >&2
     exit 2
     ;;
 esac
@@ -243,13 +265,30 @@ fi
 # at no thinking at all, by their agent options and by
 # plugins/compaction-guard, so that a summary cannot spend its output budget on
 # reasoning and come back truncated -- which ends the session.
+#
+# --steps applies to build-tellico only. The orchestrate lead and the workers
+# keep their limits: a worker's budget is part of how a bounded task stays
+# bounded, and the lead's is a guard against dispatching without end. One JSON
+# object per agent carries both settings, because a repeated key would let the
+# later one silently replace the earlier.
 think_overrides=""
-if [ -n "$think" ]; then
-  for tellico_think_agent in orchestrate-tellico-0 orchestrate-tellico-1 \
-    build-tellico-0 build-tellico-1 tellico-worker-0 tellico-worker-1; do
-    think_overrides="${think_overrides},\"${tellico_think_agent}\":{\"variant\":\"${think}\"}"
-  done
-fi
+for tellico_agent in orchestrate-tellico-0 orchestrate-tellico-1 \
+  build-tellico-0 build-tellico-1 tellico-worker-0 tellico-worker-1; do
+  tellico_fields=""
+  if [ -n "$think" ]; then
+    tellico_fields="\"variant\":\"${think}\""
+  fi
+  case $tellico_agent in
+    build-tellico-*)
+      if [ -n "$steps" ]; then
+        tellico_fields="${tellico_fields:+${tellico_fields},}\"steps\":${steps}"
+      fi
+      ;;
+  esac
+  if [ -n "$tellico_fields" ]; then
+    think_overrides="${think_overrides},\"${tellico_agent}\":{${tellico_fields}}"
+  fi
+done
 
 runtime_config="{\"model\":\"${model}\",\"small_model\":\"${model}\",\"default_agent\":\"${lead_agent}\",\"agent\":{\"compaction\":{\"model\":\"${model}\"},\"summary\":{\"model\":\"${model}\"},\"title\":{\"model\":\"${model}\"}${think_overrides}}}"
 
