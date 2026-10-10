@@ -22,6 +22,7 @@ fi
 rm -f \
   "$bin_dir/opencode-tellico" \
   "$bin_dir/pi-tellico" \
+  "$bin_dir/crush-tellico" \
   "$bin_dir/tellico-qwen-tunnel" \
   "$systemd_dir/$unit_name" \
   "$config_dir/api-key" \
@@ -48,10 +49,34 @@ rm -f \
   "$config_dir/pi/APPEND_SYSTEM.md" \
   "$config_dir/pi/extensions/secret-guard/index.js" \
   "$config_dir/pi/extensions/secret-guard/package.json" \
+  "$config_dir/crush/tellico.crushrc" \
+  "$config_dir/crush/hooks/secret-guard.sh" \
   "$bin_dir/tellico-gateway" \
   "$lib_dir/tellico_gateway.py" \
   "$systemd_dir/$gateway_unit" \
   "$gateway_dir/gateway.env"
+
+# install.sh appended one marked line to the user's own crushrc. Take out that
+# line and the comment above it, and nothing else: the rest of the file is
+# theirs. The file is only removed if this made it empty.
+crushrc="$config_home/crush/crushrc"
+if [ -f "$crushrc" ] && grep -qF "$config_dir/crush/tellico.crushrc" "$crushrc"; then
+  crushrc_tmp="$crushrc.tellico-uninstall.$$"
+  if sed \
+    -e "\|^source \"$config_dir/crush/tellico.crushrc\"\$|d" \
+    -e '/^# Added by tellico-agentic-setup install\.sh$/d' \
+    "$crushrc" >"$crushrc_tmp"; then
+    mv "$crushrc_tmp" "$crushrc"
+    echo "Removed the Tellico line from $crushrc."
+    if [ ! -s "$crushrc" ] || ! grep -q '[^[:space:]]' "$crushrc"; then
+      rm -f "$crushrc"
+      rmdir "$config_home/crush" 2>/dev/null || true
+    fi
+  else
+    rm -f "$crushrc_tmp"
+    echo "Could not edit $crushrc; remove the Tellico source line by hand." >&2
+  fi
+fi
 
 rm -rf "$lib_dir/__pycache__"
 rmdir "$lib_dir" 2>/dev/null || true
@@ -68,6 +93,8 @@ rmdir "$config_dir/pi/extensions" 2>/dev/null || true
 # Sessions live under $XDG_DATA_HOME/tellico-qwen, not here, so removing this
 # directory never deletes a transcript. It is left in place deliberately.
 rmdir "$config_dir/pi" 2>/dev/null || true
+rmdir "$config_dir/crush/hooks" 2>/dev/null || true
+rmdir "$config_dir/crush" 2>/dev/null || true
 rmdir "$config_dir/plugins" 2>/dev/null || true
 rmdir "$config_dir" 2>/dev/null || true
 

@@ -776,6 +776,8 @@ tellico_config_fingerprint() {
     -e 's|"baseUrl": "[^"]*"|"baseUrl": "__TELLICO_BASE_URL__"|' \
     -e 's|"[^"]*/plugins/|"__TELLICO_PLUGIN_DIR__/|' \
     -e 's|"!cat [^"]*/api-key"|"!cat __TELLICO_CONFIG_DIR__/api-key"|' \
+    -e 's|--base-url "[^"]*"|--base-url "__TELLICO_BASE_URL__"|' \
+    -e 's|^tellico_config_dir=.*|tellico_config_dir="__TELLICO_CONFIG_DIR__"|' \
     "$1"
 }
 
@@ -794,6 +796,7 @@ pi/settings.json
 pi/APPEND_SYSTEM.md
 pi/extensions/secret-guard/index.js
 pi/extensions/secret-guard/package.json
+crush/hooks/secret-guard.sh
 plugins/tui/subagent-watch.js
 plugins/tui-v2/subagents/tui.js
 plugins/tui-v2/subagents/package.json'
@@ -801,6 +804,7 @@ plugins/tui-v2/subagents/package.json'
 # Commands installed into the PATH directory rather than the config directory.
 TELLICO_INSTALLED_COMMANDS='opencode-tellico
 pi-tellico
+crush-tellico
 tellico-qwen-tunnel'
 
 # Which installed copies no longer match this checkout. Editing the repository
@@ -875,6 +879,20 @@ EOF
     if ! tellico_config_fingerprint "$tellico_drift_repo/pi/models.json" |
       cmp -s - "$tellico_drift_tmp"; then
       tellico_drifted="$tellico_drifted pi/models.json"
+    fi
+    rm -f "$tellico_drift_tmp"
+  fi
+
+  if [ ! -r "$tellico_drift_config/crush/tellico.crushrc" ]; then
+    tellico_drift_absent="$tellico_drift_absent crush/tellico.crushrc"
+  else
+    tellico_drift_tmp="${TMPDIR:-/tmp}/tellico-drift.$$"
+    tellico_config_fingerprint "$tellico_drift_config/crush/tellico.crushrc" \
+      >"$tellico_drift_tmp"
+    if ! tellico_config_fingerprint \
+      "$tellico_drift_repo/crush/tellico.crushrc" |
+      cmp -s - "$tellico_drift_tmp"; then
+      tellico_drifted="$tellico_drifted crush/tellico.crushrc"
     fi
     rm -f "$tellico_drift_tmp"
   fi

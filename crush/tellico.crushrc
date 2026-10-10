@@ -1,0 +1,138 @@
+# Tellico's Crush configuration, sourced from the user's own crushrc.
+#
+# Crush has no config-file flag and no config environment variable: it
+# discovers ./.crushrc, ./crushrc and $XDG_CONFIG_HOME/crush/crushrc and
+# merges them. Relocating the search with XDG_CONFIG_HOME would work, but it
+# is inherited by every command the model runs through the bash tool, which
+# would point the agent's own git, nix and gh at the wrong configuration
+# directory. So this setup integrates instead of isolating: install.sh adds
+# one marked "source" line to the user's crushrc, and everything Tellico needs
+# lives here. Nothing below touches a setting that is not about Tellico --
+# no "option default-providers", no "permissions allow" -- because this file
+# runs inside a configuration the user owns.
+#
+# It is Bash, which is what makes the launcher possible: bin/crush-tellico
+# exports TELLICO_LEAD_NODE and TELLICO_THINK, and the lines below read them.
+# Crush loads its configuration once per invocation (verified: a plain "crush"
+# starts no background server), so those variables reach the session that set
+# them. If that ever changes -- OpenCode 2 grew exactly that problem -- a
+# second session's --think would be silently ignored, so check for a crush
+# server socket before trusting it.
+
+tellico_config_dir="__TELLICO_CONFIG_DIR__"
+tellico_key_file="$tellico_config_dir/api-key"
+
+# The launcher always exports this. The fallback is for a bare "crush", which
+# should still reach a working server rather than fail to resolve a model.
+tellico_node="${TELLICO_LEAD_NODE:-0}"
+case $tellico_node in
+  0 | 1) ;;
+  *) tellico_node=0 ;;
+esac
+
+# How much the model thinks. The Qwen3.8 template reads
+# chat_template_kwargs.enable_thinking and chat_template_kwargs.reasoning_effort
+# and raises "Unexpected reasoning effort" on anything outside low, medium and
+# xhigh -- including "high", which is the value Crush's own --reasoning-effort
+# would happily send. So the level travels in --extra-body and the models below
+# are deliberately not marked --can-reason: Crush then never adds a reasoning
+# parameter of its own, and this is the only thing setting one.
+tellico_think="${TELLICO_THINK:-medium}"
+case $tellico_think in
+  off) tellico_kwargs='{"enable_thinking":false}' ;;
+  low | medium | xhigh)
+    tellico_kwargs="{\"enable_thinking\":true"
+    tellico_kwargs="$tellico_kwargs,\"reasoning_effort\":\"$tellico_think\"}"
+    ;;
+  *) tellico_kwargs='{"enable_thinking":true,"reasoning_effort":"medium"}' ;;
+esac
+
+# In tunnel mode the key is fetched when the tunnel starts, which the launcher
+# does first. A bare "crush" before that would otherwise register providers
+# with an empty key and fail at the first request with no explanation.
+if [[ -r $tellico_key_file ]]; then
+  tellico_key="$(cat "$tellico_key_file")"
+
+  # Two providers per node. The plain one carries the session's thinking level;
+  # the -quiet one never thinks at all, and holds the small-model slot, because
+  # Crush uses the small model for titles and for the summaries that
+  # auto-summarize produces. A summary that spends its output budget on
+  # reasoning comes back truncated, and that is a failure this setup has
+  # already paid for once under OpenCode.
+  provider add tellico-0 \
+    --name "Tellico Qwen - node 0" \
+    --type openai-compat \
+    --base-url "__TELLICO_BASE_URL_0__" \
+    --api-key "$tellico_key" \
+    --extra-body "{\"chat_template_kwargs\":$tellico_kwargs}"
+
+  provider add tellico-1 \
+    --name "Tellico Qwen - node 1" \
+    --type openai-compat \
+    --base-url "__TELLICO_BASE_URL_1__" \
+    --api-key "$tellico_key" \
+    --extra-body "{\"chat_template_kwargs\":$tellico_kwargs}"
+
+  provider add tellico-0-quiet \
+    --name "Tellico Qwen - node 0 (no thinking)" \
+    --type openai-compat \
+    --base-url "__TELLICO_BASE_URL_0__" \
+    --api-key "$tellico_key" \
+    --extra-body '{"chat_template_kwargs":{"enable_thinking":false}}'
+
+  provider add tellico-1-quiet \
+    --name "Tellico Qwen - node 1 (no thinking)" \
+    --type openai-compat \
+    --base-url "__TELLICO_BASE_URL_1__" \
+    --api-key "$tellico_key" \
+    --extra-body '{"chat_template_kwargs":{"enable_thinking":false}}'
+
+  unset tellico_key
+
+  # 131072 is QWEN38_CTX / QWEN38_SLOTS and must track the cluster; see "The
+  # context coupling" in AGENTS.md. The model is free, and the zero prices
+  # keep Crush's cost display honest rather than inventing a number.
+  for tellico_provider in tellico-0 tellico-1 \
+    tellico-0-quiet tellico-1-quiet; do
+    model add "$tellico_provider/qwen3.8-27b-gsq-iq3s" \
+      --name "Qwen3.8 27B GSQ IQ3_S 128k" \
+      --context-window 131072 \
+      --default-max-tokens 32768 \
+      --price-input 0 \
+      --price-output 0 \
+      --price-cache-create 0 \
+      --price-cache-hit 0
+  done
+  unset tellico_provider
+
+  model large "tellico-$tellico_node/qwen3.8-27b-gsq-iq3s" \
+    --max-tokens 32768 \
+    --temperature 0.6 \
+    --top-p 0.95
+  model small "tellico-$tellico_node-quiet/qwen3.8-27b-gsq-iq3s" \
+    --max-tokens 32768
+
+  # Crush aborts a request after this many seconds of inactivity, and the
+  # default is 60. On this cluster a cold prompt is read at 430-650 tok/s, so a
+  # fresh 110k-token session waits about four minutes before the first token --
+  # every deep session would die on the default. config/opencode.json sets the
+  # same thing as headerTimeout and chunkTimeout.
+  option request-timeout 3600
+
+  # Credentials are blocked at the tool layer, the same as under OpenCode and
+  # pi. Crush fires PreToolUse before every tool call and treats exit code 2 as
+  # a block, with stderr as the reason. Note the documented scope: PreToolUse
+  # fires only on the top-level agent's tool calls, so if Crush's subagents
+  # land (PR 3098, still open) this stops covering everything and the guard has
+  # to move.
+  hook add PreToolUse \
+    --name tellico-secret-guard \
+    --command "$tellico_config_dir/crush/hooks/secret-guard.sh"
+else
+  echo "tellico.crushrc: $tellico_key_file is not readable;" \
+    "skipping the Tellico providers. Start the tunnel with" \
+    "'tellico-qwen-tunnel start', or use crush-tellico, which does." >&2
+fi
+
+unset tellico_config_dir tellico_key_file tellico_node
+unset tellico_think tellico_kwargs

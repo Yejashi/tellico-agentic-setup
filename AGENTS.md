@@ -98,8 +98,8 @@ that way and never inline a key into JSON or a unit file.
 
 ## Editing config or prompts does nothing until you install
 
-`config/opencode.json`, `pi/`, `prompts/*.md` and the `plugins/` files are
-templates.
+`config/opencode.json`, `pi/`, `crush/`, `prompts/*.md` and the `plugins/`
+files are templates.
 Both harnesses read the installed copies under `~/.config/tellico-qwen/`.
 `config/opencode.json`, `config/tui.json` and `pi/models.json` are substituted
 rather than copied, by `tellico_render_config`: `__TELLICO_BASE_URL_0__` and
@@ -350,6 +350,56 @@ touches all of them.
   `!cat` command the model can read. Pi's `tool_call` event blocks a call
   outright and a throwing handler blocks it too, so unlike the OpenCode plugin
   this one fails closed.
+- `crush/` is the Crush harness, and it is the one piece here that writes
+  outside `~/.config/tellico-qwen`. Crush merges `./.crushrc`, `./crushrc` and
+  `$XDG_CONFIG_HOME/crush/crushrc` and has no config flag or environment
+  variable, so there is nothing to point at a private directory the way
+  `OPENCODE_CONFIG` and `PI_CODING_AGENT_DIR` are pointed. Relocating the
+  search with `XDG_CONFIG_HOME` is the obvious trick and is wrong: the variable
+  is inherited by every command the model runs through the `bash` tool, which
+  would send the agent's own `git`, `nix` and `gh` to a configuration directory
+  that only has Crush in it. So `install.sh` appends one marked line to the
+  user's own `crushrc` and `uninstall.sh` removes exactly that line and the
+  comment above it. Because that file is the user's, the fragment sets nothing
+  that is not about Tellico -- no `option default-providers`, no `permissions
+  allow`. `doctor.sh` has a `crushrc` check because this is the only harness
+  that can be half-installed.
+- `crushrc` is Bash, which is the only reason `crush-tellico` can work: Crush
+  has no flag that selects a model for an interactive session, so the launcher
+  exports `TELLICO_LEAD_NODE` and `TELLICO_THINK` and the fragment reads them.
+  That depends on Crush loading its configuration once per invocation, which
+  v0.98.1 does -- a plain `crush` starts no background server, verified by
+  watching for its socket. If a future version delegates to the shared server
+  the way OpenCode 2 does, a second session's `--think` would be silently
+  ignored and the levels would have to become providers instead.
+- Four Crush providers, not two. `extra_body` is per provider, so the thinking
+  level cannot vary per model on one provider; `tellico-N` carries the
+  session's level and `tellico-N-quiet` has thinking off and holds the
+  *small model* slot, which Crush uses for titles and auto-summarize. That is
+  the same rule `plugins/compaction-guard/` enforces under OpenCode, expressed
+  declaratively instead.
+- The Crush models are deliberately not `--can-reason`. Crush's own
+  `--reasoning-effort` accepts `low`, `medium` and `high`; the Qwen3.8 template
+  accepts `low`, `medium` and `xhigh` and raises `Unexpected reasoning effort`
+  on `high`. Marking the model as reasoning-capable would put a value in the UI
+  that the server rejects, so the level travels in `extra_body` and Crush adds
+  nothing of its own.
+- `option request-timeout 3600`. Crush's default is 60 seconds of inactivity,
+  and prompt reading counts as inactivity: at the measured 430-650 tok/s a cold
+  110k-token prompt waits about four minutes for its first token, so every deep
+  session would die on the default. It is the same thing `headerTimeout` and
+  `chunkTimeout` do in `config/opencode.json`.
+- `crush/hooks/secret-guard.sh` is POSIX sh because Crush exports
+  `CRUSH_TOOL_NAME`, `CRUSH_TOOL_INPUT_FILE_PATH` and
+  `CRUSH_TOOL_INPUT_COMMAND`, so the guard needs no JSON parsing and no
+  toolchain. Exit 2 blocks the call with stderr as the reason the model sees;
+  any other non-zero exit is a non-blocking warning, so a bug lets the call
+  through rather than wedging the session -- the same under-enforcing failure
+  mode as the other two guards. Keying on the normalised file path rather than
+  each tool's own argument means a new file tool is covered the day Crush adds
+  one. Crush documents that `PreToolUse` fires only on the top-level agent's
+  tool calls, which covers everything while Crush has no subagents; when PR
+  3098 lands, this stops covering them.
 - `config/gateway-url` is the single source of the built-in gateway URL, read
   by both `install.sh` and `doctor.sh` so a user supplies only a key. It is a
   plain file rather than a value in `lib/checks.sh` because both scripts need

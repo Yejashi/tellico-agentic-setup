@@ -118,10 +118,32 @@ fi
 # pi is the second harness and is optional: a device that only uses OpenCode is
 # correctly installed without it, so its absence is reported rather than
 # failed. install.sh writes the pi agent directory either way.
-if command -v pi >/dev/null 2>&1; then
-  tellico_status_line harnesses OK "opencode, pi ($(pi --version 2>/dev/null | head -n 1))"
+doctor_harnesses='opencode'
+doctor_harnesses_missing=
+for harness in pi crush; do
+  if command -v "$harness" >/dev/null 2>&1; then
+    doctor_harnesses="$doctor_harnesses, $harness"
+  else
+    doctor_harnesses_missing="$doctor_harnesses_missing $harness"
+  fi
+done
+if [ -n "$doctor_harnesses_missing" ]; then
+  tellico_status_line harnesses OK \
+    "$doctor_harnesses; not installed:$doctor_harnesses_missing"
 else
-  tellico_status_line harnesses OK 'opencode; pi not installed (pi-tellico needs it)'
+  tellico_status_line harnesses OK "$doctor_harnesses"
+fi
+
+# Crush is the only harness here that needs a line in a file outside this
+# setup's own directory, so it is the only one that can be half-installed.
+if [ -r "$config_dir/crush/tellico.crushrc" ]; then
+  if grep -qF "$config_dir/crush/tellico.crushrc" \
+    "$config_home/crush/crushrc" 2>/dev/null; then
+    tellico_status_line crushrc OK 'sources the Tellico providers'
+  else
+    tellico_status_line crushrc WARN \
+      "$config_home/crush/crushrc does not source tellico.crushrc"
+  fi
 fi
 
 # Only meaningful once the commands exist.

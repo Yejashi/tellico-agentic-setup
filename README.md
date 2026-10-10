@@ -73,10 +73,12 @@ OpenCode gets two primary agents per node and two node-pinned subagents:
 is only where the session starts. See
 [Orchestrate or solo](#orchestrate-or-solo).
 
-The same two servers also back a second harness: `pi-tellico` runs the
-[pi](https://pi.dev) coding agent against them. Pi has no subagents, so it is
-one agent on one server -- the pi counterpart of `opencode-tellico --solo`. See
-[The pi harness](#the-pi-harness).
+The same two servers also back two more harnesses, both single-agent:
+`pi-tellico` runs the [pi](https://pi.dev) coding agent and `crush-tellico`
+runs [Crush](https://github.com/charmbracelet/crush). Each is the counterpart
+of `opencode-tellico --solo` in its own harness. See
+[The pi harness](#the-pi-harness) and
+[The Crush harness](#the-crush-harness).
 
 The cluster side of the service -- the Slurm job, the per-node llama.cpp server
 and the commands that start and inspect them -- lives in
@@ -263,10 +265,10 @@ rejected key from a gateway with no model server behind it.
 
 ## Use
 
-Two commands start a session: `opencode-tellico` for the OpenCode harness with
-its lead and two workers, and `pi-tellico` for the single-agent pi harness
-([below](#the-pi-harness)). Both share the tunnel, the key and the two
-servers.
+Three commands start a session: `opencode-tellico` for the OpenCode harness
+with its lead and two workers, and `pi-tellico` and `crush-tellico` for the
+single-agent [pi](#the-pi-harness) and [Crush](#the-crush-harness) harnesses.
+All three share the tunnel, the key and the two servers.
 
 Start a dual-node OpenCode session with the lead on node 0:
 
@@ -477,6 +479,58 @@ outside the configuration directory, in
 `~/.local/share/tellico-qwen/pi-sessions`, so uninstalling never deletes a
 transcript.
 
+### The Crush harness
+
+`crush-tellico` runs [Crush](https://github.com/charmbracelet/crush) against
+the same two servers. Install Crush first (Homebrew, npm, Arch, Nix and more
+in its README), then:
+
+```bash
+crush-tellico                    # node derived from this device, as above
+crush-tellico 0 --think off
+crush-tellico 0 run 'Review this repository'
+crush-tellico 0 --continue       # Crush's own flags are passed through
+```
+
+Crush is single-agent here too: its subagent support is an open pull request,
+so this is its counterpart of `--solo`. What it adds over OpenCode and pi is a
+permission prompt in front of every tool call, `PreToolUse` hooks, and LSP
+integration, in a single Go binary with no Node dependency.
+
+It is configured differently from the other two, and not by choice. Crush
+merges `./.crushrc`, `./crushrc` and `$XDG_CONFIG_HOME/crush/crushrc` and has
+no config flag or environment variable; relocating that search with
+`XDG_CONFIG_HOME` would also redirect every command the model runs through the
+`bash` tool. So this setup integrates instead of isolating: `install.sh` writes
+`~/.config/tellico-qwen/crush/tellico.crushrc` and appends **one marked line**
+to your own `~/.config/crush/crushrc` that sources it. `./uninstall.sh` takes
+that line back out, and `./doctor.sh` has a `crushrc` line that tells you if it
+is missing. Nothing in the fragment touches a setting that is not about
+Tellico -- no global permission changes, no provider defaults -- because it
+runs inside a file you own.
+
+Because `crushrc` is Bash, the launcher passes the node and the thinking level
+through `TELLICO_LEAD_NODE` and `TELLICO_THINK`, which the fragment reads.
+Crush has no flag that picks a model for an interactive session, so this is the
+whole mechanism; `crush run` does accept `-m`, if you want to override it for
+one command.
+
+Four providers are registered, which is two more than the other harnesses
+need:
+
+| Provider | Why |
+|---|---|
+| `tellico-0`, `tellico-1` | One per node, carrying the session's thinking level in `extra_body` as `chat_template_kwargs`. |
+| `tellico-0-quiet`, `tellico-1-quiet` | The same servers with thinking off. These hold Crush's *small model* slot, which it uses for titles and for auto-summarize. A summary that spends its output budget on reasoning comes back truncated -- the failure this setup already paid for once under OpenCode -- so here it simply cannot think. |
+
+Two settings are worth knowing about. The models are deliberately **not**
+marked `--can-reason`: Crush's own `--reasoning-effort` offers `high`, which
+the Qwen3.8 template rejects outright, so the level travels in `extra_body`
+instead and Crush never adds one of its own. And `request-timeout` is raised to
+3600 from its default of 60 -- Crush aborts on that many seconds of
+inactivity, and a cold 110k-token prompt on this cluster waits about four
+minutes before the first token, so every deep session would otherwise die.
+
 Tunnel and cluster checks:
 
 ```bash
@@ -512,11 +566,16 @@ Client side, on each user's own device:
 ~/.config/tellico-qwen/prompts/build.md
 ~/.config/tellico-qwen/plugins/
 ~/.config/tellico-qwen/pi/
+~/.config/tellico-qwen/crush/
 ~/.config/tellico-qwen/api-key
 ~/.local/bin/opencode-tellico
 ~/.local/bin/pi-tellico
+~/.local/bin/crush-tellico
 ~/.local/bin/tellico-qwen-tunnel
 ```
+
+Plus one marked line in `~/.config/crush/crushrc`, which is the only file this
+setup writes outside its own directory; `./uninstall.sh` removes it again.
 
 `pi/` is the whole configuration for the pi harness -- `models.json`,
 `settings.json`, `APPEND_SYSTEM.md` and `extensions/` -- and

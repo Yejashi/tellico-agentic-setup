@@ -362,10 +362,15 @@ plugin_dir="$config_dir/plugins"
 # Pi reads one directory for everything; bin/pi-tellico points
 # PI_CODING_AGENT_DIR at this one.
 pi_dir="$config_dir/pi"
+# Crush discovers its own config by path and has no flag or variable to point
+# elsewhere, so this fragment is sourced from the user's crushrc instead.
+crush_dir="$config_dir/crush"
+crushrc="$config_home/crush/crushrc"
 
 mkdir -p "$config_dir/prompts" "$config_dir/lib" "$plugin_dir/tui" "$plugin_dir/tui-v2/subagents" \
   "$plugin_dir/secret-guard" "$plugin_dir/dispatch-balance" \
-  "$plugin_dir/compaction-guard" "$pi_dir/extensions/secret-guard" "$bin_dir"
+  "$plugin_dir/compaction-guard" "$pi_dir/extensions/secret-guard" \
+  "$crush_dir/hooks" "$bin_dir"
 chmod 700 "$config_dir"
 
 # In gateway mode the key comes from the operator rather than over SSH, so it
@@ -455,6 +460,37 @@ install -m 644 "$script_dir/pi/extensions/secret-guard/index.js" \
 install -m 644 "$script_dir/pi/extensions/secret-guard/package.json" \
   "$pi_dir/extensions/secret-guard/package.json"
 install -m 755 "$script_dir/bin/pi-tellico" "$bin_dir/pi-tellico"
+
+# The Crush harness. Unlike the other two this one has to reach into a file
+# the user owns: Crush merges ./.crushrc, ./crushrc and
+# $XDG_CONFIG_HOME/crush/crushrc and has no config flag or variable, and
+# relocating the search with XDG_CONFIG_HOME would also redirect every command
+# the model runs. So one marked line is appended to the user's crushrc, and
+# only if it is not already there. uninstall.sh takes it back out.
+crush_tmp="$crush_dir/.tellico.crushrc.tmp.$$"
+trap 'rm -f "$crush_tmp"' EXIT HUP INT TERM
+tellico_render_config "$script_dir/crush/tellico.crushrc" \
+  "$base_url0" "$base_url1" "$plugin_dir" "$config_dir" >"$crush_tmp"
+mv "$crush_tmp" "$crush_dir/tellico.crushrc"
+chmod 600 "$crush_dir/tellico.crushrc"
+trap - EXIT HUP INT TERM
+install -m 755 "$script_dir/crush/hooks/secret-guard.sh" \
+  "$crush_dir/hooks/secret-guard.sh"
+install -m 755 "$script_dir/bin/crush-tellico" "$bin_dir/crush-tellico"
+crush_source_line="source \"$crush_dir/tellico.crushrc\""
+if [ ! -e "$crushrc" ]; then
+  mkdir -p "$config_home/crush"
+  printf '# Added by tellico-agentic-setup install.sh\n%s\n' \
+    "$crush_source_line" >"$crushrc"
+  chmod 644 "$crushrc"
+  echo "Created $crushrc, sourcing the Tellico providers."
+elif grep -qF "$crush_dir/tellico.crushrc" "$crushrc"; then
+  : # Already sourced; rerunning the installer must not append it twice.
+else
+  printf '\n# Added by tellico-agentic-setup install.sh\n%s\n' \
+    "$crush_source_line" >>"$crushrc"
+  echo "Added one line to $crushrc, sourcing the Tellico providers."
+fi
 install -m 755 "$script_dir/bin/opencode-tellico" "$bin_dir/opencode-tellico"
 
 # Codex support was removed: it exposes no delegation tool, so it could not
