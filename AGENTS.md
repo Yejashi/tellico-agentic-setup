@@ -1,7 +1,7 @@
 # AGENTS.md
 
-Client-side setup that points OpenCode at two self-hosted Qwen3.6-35B-A3B servers
-on the Tellico cluster. This repo installs files onto the client device; it does not
+Client-side setup that points OpenCode at two self-hosted Qwen3.8-27B servers
+(GSQ-RCO IQ3_S, with a DFlash2 drafter) on the Tellico cluster. This repo installs files onto the client device; it does not
 run the servers.
 
 ## Commands
@@ -103,11 +103,11 @@ Each server divides one pool across slots, so the per-request limit is
 `config/opencode.json` must equal that number for both providers. If it is too
 high, OpenCode builds a context the server rejects instead of compacting in
 time; if too low, context is wasted. The model display names encode it too
-(`128k`), so they drift with it. Today that is 524288 / 4 = 131072.
+(`128k`), so they drift with it. Today that is 262144 / 2 = 131072.
 
 Those cluster-side values live in `/data/gclab/qwen38/service.env`, outside both
 repos. Changing the model, slot count, micro-batch or speculative decoding there
-changes what fits, which changes this repo. The model id (`qwen3.6-35b-a3b`) is
+changes what fits, which changes this repo. The model id (`qwen3.8-27b-gsq-iq3s`) is
 the cluster's `QWEN38_MODEL_ALIAS` and appears in `config/opencode.json`,
 `bin/opencode-tellico`, `lib/checks.sh` and the gateway defaults; a model swap
 touches all of them.
@@ -129,9 +129,10 @@ touches all of them.
   first worker's report while the second still runs. That shapes how
   `prompts/orchestrate.md` tells the lead to size a pair. Do not "fix" it by
   adding more workers. On the 27B two requests on one node ran at half speed
-  each for no aggregate gain; the 35B-A3B with DFlash2 does gain in aggregate
-  (~190 tok/s alone on code, 100-114 each at two) but every extra request
-  still slows the others, and the six slots are shared by up to three users.
+  each for no aggregate gain; the GSQ IQ3_S build with DFlash2 does gain in
+  aggregate (72-86 tok/s alone on code, 52-70 each at two) but every extra
+  request still slows the others, and the four slots are shared by up to three
+  users.
   The fastest capacity is still a node with *nothing* running on it.
 - The barrier is not absolute, and `bin/opencode-tellico` now removes it. The
   older claim here that OpenCode has no background task primitive was wrong:
@@ -188,10 +189,9 @@ touches all of them.
 - Thinking level is a model *variant*, not a model or an agent. The four
   variants in `config/opencode.json` (`off`, `low`, `medium`, `xhigh`) are the
   only values the Qwen3.8 template accepts -- it raises `Unexpected reasoning
-  effort` on anything else, which is how `high` was ruled out. The Qwen3.6
-  template now served reads only `enable_thinking` and ignores
-  `reasoning_effort`, so `low`/`medium`/`xhigh` are all just "on"; they are
-  kept so the commands survive a swap back. Each carries
+  effort` on anything else, which is how `high` was ruled out. (The
+  Qwen3.6-35B-A3B served briefly on 2026-10-09 read only `enable_thinking`,
+  so the levels collapsed to on/off there; they are graded again.) Each carries
   `chat_template_kwargs`, the channel proven to reach the template; a
   top-level `reasoning_effort` works against llama.cpp directly but is not
   what OpenCode forwards. `--think` sets the variant per agent at runtime; the
@@ -264,9 +264,14 @@ touches all of them.
   tunnel — `tellico-qwen-tunnel` still owns that, and a live session depends
   on it.
 - The gateway's job is admission control, not throughput. The cluster has
-  six slots (3 per node, the drafter costs the fourth), so
-  `TELLICO_GATEWAY_MAX_INFLIGHT` defaults to 4 to leave two for a direct
-  `opencode-tellico` session. Raising it does not add
+  four slots (2 per node), so `TELLICO_GATEWAY_MAX_INFLIGHT` defaults to 3
+  to leave one for a direct `opencode-tellico` lead. Within that, leads go
+  first: a request carrying `X-Tellico-Role: worker` waits while any lead is
+  queued, and workers together never hold every slot. The client sets that
+  header through the `tellico-0-worker` / `tellico-1-worker` providers, which
+  only the worker agents use; anything unlabelled counts as a lead. This
+  ordering exists only in the gateway -- tunnel-mode sessions reach
+  llama-server directly, which serves strictly first come, first served. Raising it does not add
   capacity; it only moves the queue. `TELLICO_GATEWAY_MODEL_ALIASES` keeps
   old model ids (`qwen3.8-27b`) routing to the current model so gateway users
   configured before a swap do not start getting 404s.

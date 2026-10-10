@@ -49,20 +49,20 @@ UPSTREAM_KEY_FILE = os.path.expanduser(
     )
 )
 
-# How many of the cluster's six slots (3 per node) the gateway may hold at
-# once. The default leaves two free so a direct opencode-tellico session -- a
-# lead plus a worker -- is never blocked behind API users.
-MAX_INFLIGHT = _env_int("TELLICO_GATEWAY_MAX_INFLIGHT", 4)
+# How many of the cluster's four slots (2 per node) the gateway may hold at
+# once. The default leaves one free so a direct opencode-tellico lead is never
+# blocked behind API users; within the three, leads go first (see Pool).
+MAX_INFLIGHT = _env_int("TELLICO_GATEWAY_MAX_INFLIGHT", 3)
 DEFAULT_MAX_PARALLEL = _env_int("TELLICO_GATEWAY_DEFAULT_MAX_PARALLEL", 1)
 QUEUE_TIMEOUT = _env_int("TELLICO_GATEWAY_QUEUE_TIMEOUT", 120)
 REQUEST_TIMEOUT = _env_int("TELLICO_GATEWAY_REQUEST_TIMEOUT", 3600)
 MAX_BODY = _env_int("TELLICO_GATEWAY_MAX_BODY", 32 * 1024 * 1024)
 HEALTH_INTERVAL = _env_int("TELLICO_GATEWAY_HEALTH_INTERVAL", 10)
 
-MODEL = _env("TELLICO_GATEWAY_MODEL", "qwen3.6-35b-a3b")
+MODEL = _env("TELLICO_GATEWAY_MODEL", "qwen3.8-27b-gsq-iq3s")
 # Earlier model ids that still route to MODEL, so a client configured before a
 # model swap keeps working instead of getting a 404. Space-separated.
-MODEL_ALIASES = _env("TELLICO_GATEWAY_MODEL_ALIASES", "qwen3.8-27b").split()
+MODEL_ALIASES = _env("TELLICO_GATEWAY_MODEL_ALIASES", "qwen3.6-35b-a3b qwen3.8-27b").split()
 
 # Live state for tellico-gateway monitor. A file rather than an HTTP endpoint
 # because the port is published to the internet and this carries user names.
@@ -194,6 +194,13 @@ class Pool:
         self.max_inflight = max_inflight
         self._cond = threading.Condition()
         self._inflight = 0
+        # Lead-first admission. The cluster has few slots, and a lead request
+        # is a person waiting at a prompt while a worker's is background work,
+        # so a worker never takes a slot while a lead is queued, and workers
+        # together never hold every slot. Roles come from the
+        # X-Tellico-Role header; anything not marked "worker" counts as a lead.
+        self._leads_waiting = 0
+        self._workers_inflight = 0
         self._per_user = {}
         self._per_node = {label: 0 for label, _, _ in nodes}
         self._healthy = {label: False for label, _, _ in nodes}
@@ -223,6 +230,8 @@ class Pool:
             return {
                 "inflight": self._inflight,
                 "max_inflight": self.max_inflight,
+                "workers_inflight": self._workers_inflight,
+                "leads_waiting": self._leads_waiting,
                 "users": dict(self._per_user),
                 "nodes": {
                     label: {
@@ -233,37 +242,62 @@ class Pool:
                 },
             }
 
-    def acquire(self, user, user_limit, want, timeout):
+    def _worker_may_start(self):
+        if self._leads_waiting:
+            return False
+        # Workers together hold at most all but one slot, so a lead arriving
+        # later never finds every slot taken by background work. With a
+        # single slot there is nothing to reserve.
+        if self.max_inflight >= 2 and self._workers_inflight >= self.max_inflight - 1:
+            return False
+        return True
+
+    def acquire(self, user, user_limit, want, timeout, role="lead"):
         """Wait for a slot and return (label, queued_seconds), or (None, reason).
 
         want is a list of acceptable node labels; the least busy healthy one
         wins. Returns a reason string of "timeout" or "unavailable" instead of
-        a label when it cannot be satisfied.
+        a label when it cannot be satisfied. role is "lead" or "worker"; see
+        __init__ for how they are ordered.
         """
+        worker = role == "worker"
         deadline = time.monotonic() + timeout
         started = time.monotonic()
         with self._cond:
-            while True:
-                mine = self._per_user.get(user, 0)
-                options = [l for l in want if self._healthy[l]]
-                if options and self._inflight < self.max_inflight and mine < user_limit:
-                    label = min(options, key=lambda l: self._per_node[l])
-                    self._inflight += 1
-                    self._per_user[user] = mine + 1
-                    self._per_node[label] += 1
-                    return label, time.monotonic() - started
-                if not options:
-                    # Nothing to queue behind: the allocation is gone rather
-                    # than busy, so fail now instead of waiting it out.
-                    return None, "unavailable"
-                remaining = deadline - time.monotonic()
-                if remaining <= 0:
-                    return None, "timeout"
-                self._cond.wait(min(remaining, 1.0))
+            if not worker:
+                self._leads_waiting += 1
+            try:
+                while True:
+                    mine = self._per_user.get(user, 0)
+                    options = [l for l in want if self._healthy[l]]
+                    if (options and self._inflight < self.max_inflight and mine < user_limit
+                            and (not worker or self._worker_may_start())):
+                        label = min(options, key=lambda l: self._per_node[l])
+                        self._inflight += 1
+                        self._per_user[user] = mine + 1
+                        self._per_node[label] += 1
+                        if worker:
+                            self._workers_inflight += 1
+                        return label, time.monotonic() - started
+                    if not options:
+                        # Nothing to queue behind: the allocation is gone rather
+                        # than busy, so fail now instead of waiting it out.
+                        return None, "unavailable"
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        return None, "timeout"
+                    self._cond.wait(min(remaining, 1.0))
+            finally:
+                if not worker:
+                    self._leads_waiting -= 1
+                    # A lead leaving the queue may unblock a waiting worker.
+                    self._cond.notify_all()
 
-    def release(self, user, label):
+    def release(self, user, label, role="lead"):
         with self._cond:
             self._inflight = max(0, self._inflight - 1)
+            if role == "worker":
+                self._workers_inflight = max(0, self._workers_inflight - 1)
             self._per_node[label] = max(0, self._per_node[label] - 1)
             left = self._per_user.get(user, 1) - 1
             if left > 0:
@@ -549,6 +583,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_error_json(401, "Invalid API key.", "invalid_request_error")
             return
         user, user_limit = identity
+        role = "worker" if (self.headers.get("X-Tellico-Role") or "").strip().lower() == "worker" else "lead"
 
         try:
             payload = json.loads(body or b"{}")
@@ -597,7 +632,7 @@ class Handler(BaseHTTPRequestHandler):
         remaining = list(labels)
         queued = 0.0
         while remaining:
-            label, outcome = POOL.acquire(user, user_limit, remaining, QUEUE_TIMEOUT)
+            label, outcome = POOL.acquire(user, user_limit, remaining, QUEUE_TIMEOUT, role)
             if label is None:
                 self.report_unavailable(user, requested, outcome, queued)
                 return
@@ -616,7 +651,7 @@ class Handler(BaseHTTPRequestHandler):
                     path, host, port, wire, stream, upstream_key
                 )
             except (OSError, http.client.HTTPException) as error:
-                POOL.release(user, label)
+                POOL.release(user, label, role)
                 POOL.set_health(label, False)
                 remaining = [l for l in remaining if l != label]
                 if remaining:
@@ -634,7 +669,7 @@ class Handler(BaseHTTPRequestHandler):
                 )
                 return
             else:
-                POOL.release(user, label)
+                POOL.release(user, label, role)
                 log(
                     "user=%s model=%s node=%s status=%s queued=%.1fs dur=%.1fs "
                     "stream=%d in=%s out=%s"

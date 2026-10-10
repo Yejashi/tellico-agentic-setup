@@ -11,8 +11,8 @@
         "chunkTimeout": 3600000
       },
       "models": {
-        "qwen3.6-35b-a3b": {
-          "name": "Qwen3.6 35B-A3B 128k - Tellico 0",
+        "qwen3.8-27b-gsq-iq3s": {
+          "name": "Qwen3.8 27B GSQ IQ3_S 128k - Tellico 0",
           "temperature": true,
           "reasoning": true,
           "interleaved": {
@@ -68,8 +68,128 @@
         "chunkTimeout": 3600000
       },
       "models": {
-        "qwen3.6-35b-a3b": {
-          "name": "Qwen3.6 35B-A3B 128k - Tellico 1",
+        "qwen3.8-27b-gsq-iq3s": {
+          "name": "Qwen3.8 27B GSQ IQ3_S 128k - Tellico 1",
+          "temperature": true,
+          "reasoning": true,
+          "interleaved": {
+            "field": "reasoning_content"
+          },
+          "limit": {
+            "context": 131072,
+            "output": 32768
+          },
+          "options": {
+            "temperature": 0.6,
+            "top_p": 0.95,
+            "parallel_tool_calls": true,
+            "chat_template_kwargs": {
+              "enable_thinking": true
+            }
+          },
+          "variants": {
+            "off": {
+              "chat_template_kwargs": {
+                "enable_thinking": false
+              }
+            },
+            "low": {
+              "chat_template_kwargs": {
+                "enable_thinking": true,
+                "reasoning_effort": "low"
+              }
+            },
+            "medium": {
+              "chat_template_kwargs": {
+                "enable_thinking": true,
+                "reasoning_effort": "medium"
+              }
+            },
+            "xhigh": {
+              "chat_template_kwargs": {
+                "enable_thinking": true,
+                "reasoning_effort": "xhigh"
+              }
+            }
+          }
+        }
+      }
+    },
+    "tellico-0-worker": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Tellico Qwen - node 0 (workers)",
+      "options": {
+        "baseURL": "__TELLICO_BASE_URL_0__",
+        "apiKey": "{file:~/.config/tellico-qwen/api-key}",
+        "headerTimeout": 3600000,
+        "chunkTimeout": 3600000,
+        "headers": {
+          "X-Tellico-Role": "worker"
+        }
+      },
+      "models": {
+        "qwen3.8-27b-gsq-iq3s": {
+          "name": "Qwen3.8 27B GSQ IQ3_S 128k - Tellico 0 worker",
+          "temperature": true,
+          "reasoning": true,
+          "interleaved": {
+            "field": "reasoning_content"
+          },
+          "limit": {
+            "context": 131072,
+            "output": 32768
+          },
+          "options": {
+            "temperature": 0.6,
+            "top_p": 0.95,
+            "parallel_tool_calls": true,
+            "chat_template_kwargs": {
+              "enable_thinking": true
+            }
+          },
+          "variants": {
+            "off": {
+              "chat_template_kwargs": {
+                "enable_thinking": false
+              }
+            },
+            "low": {
+              "chat_template_kwargs": {
+                "enable_thinking": true,
+                "reasoning_effort": "low"
+              }
+            },
+            "medium": {
+              "chat_template_kwargs": {
+                "enable_thinking": true,
+                "reasoning_effort": "medium"
+              }
+            },
+            "xhigh": {
+              "chat_template_kwargs": {
+                "enable_thinking": true,
+                "reasoning_effort": "xhigh"
+              }
+            }
+          }
+        }
+      }
+    },
+    "tellico-1-worker": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Tellico Qwen - node 1 (workers)",
+      "options": {
+        "baseURL": "__TELLICO_BASE_URL_1__",
+        "apiKey": "{file:~/.config/tellico-qwen/api-key}",
+        "headerTimeout": 3600000,
+        "chunkTimeout": 3600000,
+        "headers": {
+          "X-Tellico-Role": "worker"
+        }
+      },
+      "models": {
+        "qwen3.8-27b-gsq-iq3s": {
+          "name": "Qwen3.8 27B GSQ IQ3_S 128k - Tellico 1 worker",
           "temperature": true,
           "reasoning": true,
           "interleaved": {
@@ -136,7 +256,7 @@
     "orchestrate-tellico-0": {
       "description": "Dual-node Tellico lead on node 0. Decomposes work and dispatches independent tasks to both node-pinned workers in parallel.",
       "mode": "primary",
-      "model": "tellico-0/qwen3.6-35b-a3b",
+      "model": "tellico-0/qwen3.8-27b-gsq-iq3s",
       "temperature": 0.6,
       "top_p": 0.95,
       "prompt": "{file:./prompts/orchestrate.md}",
@@ -168,7 +288,7 @@
     "orchestrate-tellico-1": {
       "description": "Dual-node Tellico lead on node 1. Decomposes work and dispatches independent tasks to both node-pinned workers in parallel.",
       "mode": "primary",
-      "model": "tellico-1/qwen3.6-35b-a3b",
+      "model": "tellico-1/qwen3.8-27b-gsq-iq3s",
       "temperature": 0.6,
       "top_p": 0.95,
       "prompt": "{file:./prompts/orchestrate.md}",
@@ -200,7 +320,7 @@
     "tellico-worker-0": {
       "description": "General implementation, investigation, testing, or review worker pinned to Qwen on tellico-compute0. Use for one bounded unit with explicit file ownership.",
       "mode": "subagent",
-      "model": "tellico-0/qwen3.6-35b-a3b",
+      "model": "tellico-0-worker/qwen3.8-27b-gsq-iq3s",
       "temperature": 0.6,
       "top_p": 0.95,
       "prompt": "{file:./prompts/worker.md}",
@@ -214,7 +334,7 @@
     "tellico-worker-1": {
       "description": "General implementation, investigation, testing, or review worker pinned to Qwen on tellico-compute1. Use for one bounded unit with explicit file ownership.",
       "mode": "subagent",
-      "model": "tellico-1/qwen3.6-35b-a3b",
+      "model": "tellico-1-worker/qwen3.8-27b-gsq-iq3s",
       "temperature": 0.6,
       "top_p": 0.95,
       "prompt": "{file:./prompts/worker.md}",

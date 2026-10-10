@@ -7,7 +7,7 @@ Tellico and running a tunnel, a user gets a URL and their own API key:
 curl https://lab-pc.tail960ade.ts.net/v1/chat/completions \
   -H "Authorization: Bearer sk-tellico-..." \
   -H 'Content-Type: application/json' \
-  -d '{"model":"qwen3.6-35b-a3b","messages":[{"role":"user","content":"hello"}]}'
+  -d '{"model":"qwen3.8-27b-gsq-iq3s","messages":[{"role":"user","content":"hello"}]}'
 ```
 
 It is one process on **one** host you control. That host still runs
@@ -118,7 +118,7 @@ tellico-gateway restart
 One request, one line, no keys:
 
 ```text
-user=alice model=qwen3.6-35b-a3b node=node0 status=200 queued=1.0s dur=0.9s stream=0 in=19 out=12
+user=alice model=qwen3.8-27b-gsq-iq3s node=node0 status=200 queued=1.0s dur=0.9s stream=0 in=19 out=12
 ```
 
 `queued` is the time spent waiting for a slot. If it is routinely seconds,
@@ -181,13 +181,19 @@ minute, and is simply absent on a host with no cluster account.
 
 ## Concurrency is the real limit
 
-Tellico has **six slots cluster-wide** (2 nodes x 3). That, not the
+Tellico has **four slots cluster-wide** (2 nodes x 2). That, not the
 transport, is what users will notice: each extra request on a node slows the
-others (about 190 tok/s alone on code, 100-114 each at two).
+others (72-86 tok/s alone on code, 52-70 each at two).
 
-`--max-inflight 4` is therefore the default: the gateway holds at most four
-slots, leaving two for a direct `opencode-tellico` session so your own lead
-agent is never stuck behind a stranger's long completion. Per user the default
+`--max-inflight 3` is therefore the default: the gateway holds at most three
+slots, leaving one for a direct `opencode-tellico` session so your own lead
+agent is never stuck behind a stranger's long completion.
+
+Leads go first. A request with the header `X-Tellico-Role: worker` waits
+while any other request is queued, and worker requests together never hold
+every gateway slot, so a person at a prompt is not stuck behind background
+work. `opencode-tellico` sends the header for its worker agents; requests
+without it are treated as leads. Per user the default
 is one request at a time, which keeps any single caller from occupying the
 whole gateway budget.
 
@@ -200,11 +206,11 @@ naming the allocation, rather than waiting out the queue.
 
 | Model id | Routes to |
 |---|---|
-| `qwen3.6-35b-a3b` | either node, whichever has fewer requests in flight |
-| `qwen3.6-35b-a3b-node0` | `tellico-compute0` only |
-| `qwen3.6-35b-a3b-node1` | `tellico-compute1` only |
+| `qwen3.8-27b-gsq-iq3s` | either node, whichever has fewer requests in flight |
+| `qwen3.8-27b-gsq-iq3s-node0` | `tellico-compute0` only |
+| `qwen3.8-27b-gsq-iq3s-node1` | `tellico-compute1` only |
 
-The previous model's ids (`qwen3.8-27b`, `-node0`, `-node1`) are kept as
+Earlier models' ids (`qwen3.6-35b-a3b`, `qwen3.8-27b`, and their `-node0`/`-node1` forms) are kept as
 aliases by `TELLICO_GATEWAY_MODEL_ALIASES`, so clients configured before the
 swap keep working.
 
@@ -265,12 +271,12 @@ scripted caller does not.
 | `TELLICO_GATEWAY_BIND` | `127.0.0.1` | Listen address |
 | `TELLICO_GATEWAY_PORT` | `4000` | Listen port |
 | `TELLICO_GATEWAY_NODES` | both tunnel ports | `label=host:port` per node |
-| `TELLICO_GATEWAY_MAX_INFLIGHT` | `4` | Cluster slots the gateway may hold |
+| `TELLICO_GATEWAY_MAX_INFLIGHT` | `3` | Cluster slots the gateway may hold |
 | `TELLICO_GATEWAY_DEFAULT_MAX_PARALLEL` | `1` | Per-user default, overridden per key |
 | `TELLICO_GATEWAY_QUEUE_TIMEOUT` | `120` | Seconds to wait for a slot before `429` |
 | `TELLICO_GATEWAY_REQUEST_TIMEOUT` | `3600` | Upstream timeout, for long generations |
-| `TELLICO_GATEWAY_MODEL` | `qwen3.6-35b-a3b` | Base model id |
-| `TELLICO_GATEWAY_MODEL_ALIASES` | `qwen3.8-27b` | Old ids that still route to it, space-separated |
+| `TELLICO_GATEWAY_MODEL` | `qwen3.8-27b-gsq-iq3s` | Base model id |
+| `TELLICO_GATEWAY_MODEL_ALIASES` | `qwen3.6-35b-a3b qwen3.8-27b` | Old ids that still route to it, space-separated |
 | `TELLICO_GATEWAY_CONTEXT` | from `opencode.json` | Context advertised on `/v1/models` |
 
 `TELLICO_GATEWAY_CONTEXT` is read from `config/opencode.json` at install time,

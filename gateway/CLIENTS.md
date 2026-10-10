@@ -9,7 +9,7 @@ pointing it at the base URL.
 ```text
 base URL   https://HOST/v1          (as given to you)
 API key    sk-tellico-...           (yours; do not share it)
-model      qwen3.6-35b-a3b
+model      qwen3.8-27b-gsq-iq3s
 ```
 
 ## curl
@@ -19,7 +19,7 @@ curl "$TELLICO_BASE_URL/chat/completions" \
   -H "Authorization: Bearer $TELLICO_API_KEY" \
   -H 'Content-Type: application/json' \
   -d '{
-    "model": "qwen3.6-35b-a3b",
+    "model": "qwen3.8-27b-gsq-iq3s",
     "messages": [{"role": "user", "content": "Explain NVLink in two sentences."}]
   }'
 ```
@@ -34,7 +34,7 @@ from openai import OpenAI
 client = OpenAI(base_url="https://HOST/v1", api_key="sk-tellico-...")
 
 response = client.chat.completions.create(
-    model="qwen3.6-35b-a3b",
+    model="qwen3.8-27b-gsq-iq3s",
     messages=[{"role": "user", "content": "Explain NVLink in two sentences."}],
 )
 print(response.choices[0].message.content)
@@ -73,9 +73,10 @@ itself.
 
 ## What the model is
 
-Qwen3.6-35B-A3B, self-hosted on two nodes of the Tellico cluster. It is a
-mixture-of-experts reasoning model served by llama.cpp. It replaced Qwen3.8-27B
-on 2026-10-09; the old id `qwen3.8-27b` still works and reaches the new model.
+Qwen3.8-27B (ISTA-DASLab's GSQ-RCO IQ3_S quantisation), self-hosted on two
+nodes of the Tellico cluster. It is a reasoning model served by llama.cpp with
+speculative decoding. The earlier ids `qwen3.6-35b-a3b` and `qwen3.8-27b`
+still work and reach this model.
 
 - **Context**: 131,072 tokens per request. `/v1/models` reports it.
 - **Thinking**: on by default. The reasoning text arrives in a
@@ -94,7 +95,7 @@ one at a time — a second simultaneous request waits rather than failing.
 | Status | Meaning | What to do |
 |---|---|---|
 | `401` | Key not recognised, or revoked | Ask the operator for a new one |
-| `404` | Unknown model id | Use `qwen3.6-35b-a3b` |
+| `404` | Unknown model id | Use `qwen3.8-27b-gsq-iq3s` |
 | `429` | No slot came free in time | Retry with backoff; honour `Retry-After` |
 | `503` | No model server is up | The cluster allocation has ended; tell the operator |
 | `502` | A node dropped mid-request | Retry once; it routes to the other node |

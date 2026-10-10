@@ -28,7 +28,7 @@ usage: gateway/install-gateway.sh [options]
 
   --bind ADDR        address the gateway listens on (default: 127.0.0.1)
   --port PORT        port the gateway listens on (default: 4000)
-  --max-inflight N   cluster slots the gateway may hold at once (default: 4)
+  --max-inflight N   cluster slots the gateway may hold at once (default: 3)
   --no-start         install files only; do not start the service
 USAGE
   exit 2
@@ -104,14 +104,14 @@ print(limits.pop() if len(limits) == 1 else 131072)
 
 bind=${want_bind:-${TELLICO_GATEWAY_BIND:-127.0.0.1}}
 port=${want_port:-${TELLICO_GATEWAY_PORT:-4000}}
-inflight=${want_inflight:-${TELLICO_GATEWAY_MAX_INFLIGHT:-4}}
-model=${TELLICO_GATEWAY_MODEL:-qwen3.6-35b-a3b}
-model_aliases=${TELLICO_GATEWAY_MODEL_ALIASES-qwen3.8-27b}
+inflight=${want_inflight:-${TELLICO_GATEWAY_MAX_INFLIGHT:-3}}
+model=${TELLICO_GATEWAY_MODEL:-qwen3.8-27b-gsq-iq3s}
+model_aliases=${TELLICO_GATEWAY_MODEL_ALIASES-qwen3.6-35b-a3b qwen3.8-27b}
 
 case $port in ''|*[!0-9]*) fail "--port must be a number, got '$port'" ;; esac
 case $inflight in ''|*[!0-9]*) fail "--max-inflight must be a number" ;; esac
 [ "$inflight" -ge 1 ] || fail '--max-inflight must be at least 1'
-[ "$inflight" -le 6 ] || echo 'install-gateway.sh: warning: Tellico has 6 slots cluster-wide; a higher --max-inflight will just queue.' >&2
+[ "$inflight" -le 4 ] || echo 'install-gateway.sh: warning: Tellico has 4 slots cluster-wide; a higher --max-inflight will just queue.' >&2
 
 # --- install files -----------------------------------------------------------
 
@@ -136,8 +136,8 @@ TELLICO_GATEWAY_UPSTREAM_KEY="$client_dir/api-key"
 TELLICO_GATEWAY_NODES="node0=127.0.0.1:$port0 node1=127.0.0.1:$port1"
 TELLICO_GATEWAY_SCRIPT="$lib_dir/tellico_gateway.py"
 
-# How many of the cluster's 6 slots the gateway may hold. The default leaves
-# two free for a direct opencode-tellico session.
+# How many of the cluster's 4 slots the gateway may hold. The default leaves
+# one free for a direct opencode-tellico lead; leads are admitted first.
 TELLICO_GATEWAY_MAX_INFLIGHT="$inflight"
 TELLICO_GATEWAY_DEFAULT_MAX_PARALLEL="${TELLICO_GATEWAY_DEFAULT_MAX_PARALLEL:-1}"
 TELLICO_GATEWAY_QUEUE_TIMEOUT="${TELLICO_GATEWAY_QUEUE_TIMEOUT:-120}"

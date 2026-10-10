@@ -1,7 +1,7 @@
 # Tellico agentic setup
 
-Portable OpenCode client setup for the two Qwen3.6-35B-A3B servers running on
-the Tellico cluster.
+Portable OpenCode client setup for the two Qwen3.8-27B servers running on the
+Tellico cluster.
 
 The repository contains no API key or SSH private key. The installer retrieves
 the model API key through your authenticated Tellico SSH connection and stores
@@ -29,25 +29,26 @@ paths share the same tunnel, cluster key and per-slot context.
 
 | OpenCode provider | Cluster node | GPUs | Slots | Context per slot | Local endpoint |
 |---|---|---:|---:|---:|---|
-| `tellico-0/qwen3.6-35b-a3b` | `tellico-compute0` | 2 x V100 16 GB | 3 | 131,072 | `127.0.0.1:18080` |
-| `tellico-1/qwen3.6-35b-a3b` | `tellico-compute1` | 2 x V100 16 GB | 3 | 131,072 | `127.0.0.1:18081` |
+| `tellico-0/qwen3.8-27b-gsq-iq3s` | `tellico-compute0` | 2 x V100 16 GB | 2 | 131,072 | `127.0.0.1:18080` |
+| `tellico-1/qwen3.8-27b-gsq-iq3s` | `tellico-compute1` | 2 x V100 16 GB | 2 | 131,072 | `127.0.0.1:18081` |
 
-Each server divides one 393,216-token pool across three slots, so six
+Each server divides one 262,144-token pool across two slots, so four
 concurrent requests fit cluster-wide; beyond that, requests queue. A single
 OpenCode session can issue several at once, because title, summary,
 compaction, and subagent calls all go to the same two servers.
 
-The model is a mixture-of-experts with 3B parameters active per token, chosen
-on 2026-10-09 to serve up to three users at once, and each server also runs a
-DFlash2 draft model for speculative decoding. Measured on one node: about 190
-tok/s for a lone request on code, 100-114 each with two running, and 84 tok/s
-for a session 64k tokens deep (37-51 each with three that deep). Prompt
-reading is the slow part, about 390-490 tok/s. It replaced Qwen3.8-27B, which
-is the more capable model (SWE-bench Pro 61.7 against 49.5) but fits only two
-128k slots per node and falls to 19 tok/s at 110k.
+The model is Qwen3.8-27B in ISTA-DASLab's GSQ-RCO IQ3_S quantisation (11.8
+GB, publisher-reported lossless on LiveCodeBench v6), with a DFlash2 draft
+model for speculative decoding, chosen on 2026-10-09 for agentic coding at
+128k. On a 12-task unit-tested coding suite it passed 11/12 against 4/12 for
+the Qwen3.6-35B-A3B it replaced, and its tool calls held up where the 35B's
+did not. Measured on one node: 72-86 tok/s for a lone request on code, 52-70
+each with two running, about 33 tok/s for a session 64-110k tokens deep. Cold
+prompt reading runs 430-650 tok/s, so a fresh 110k prompt waits about four
+minutes; the prompt cache spares a returning session most of that.
 
-Slots are not free in VRAM: the drafter costs one, so three is the ceiling at
-this context (four without it). Speculation makes the model evaluate a block
+Slots are not free in VRAM: a third 128k slot does not fit beside the drafter
+(it does without it, at 24-34 tok/s each, which is slower for everyone). Speculation makes the model evaluate a block
 of tokens per pass, so output is a valid sample but not byte-identical to a
 non-speculative run. The trade is set on the cluster side in `service.env`
 (`QWEN38_MODEL`, `QWEN38_CTX`, `QWEN38_SLOTS`, `QWEN38_SPEC_*`);
@@ -277,18 +278,15 @@ window cannot simply be made bigger instead.
 
 ### Controlling how much it thinks
 
-The model is a reasoning model, and whether it reasons is a model variant.
-Qwen3.6's chat template has only an on/off switch (`enable_thinking`), so of
-the four levels below only `off` differs; `low`, `medium` and `xhigh` all mean
-"thinking on" and are kept so the commands still work if a graded model
-returns:
+The model is a reasoning model, and how much it reasons is a model variant.
+Four levels exist, which are what the chat template accepts:
 
 | Level | Meaning |
 |---|---|
 | `off` | no reasoning at all; fastest, for mechanical edits |
-| `low` | thinking on |
-| `medium` | thinking on |
-| `xhigh` | thinking on |
+| `low` | brief reasoning |
+| `medium` | the server's own default |
+| `xhigh` | the most the template allows |
 
 For a whole session, at launch:
 
@@ -308,8 +306,9 @@ For one request, inside a running session:
 keep whatever the config gives them, since they are the session's own overhead
 rather than work you asked for.
 
-Thinking is on unless you pick `off`. The cluster still starts `llama-server`
-with `--reasoning-effort medium`; the Qwen3.6 template ignores it.
+Note that `medium` is what you get today whether or not you ask: the cluster
+starts `llama-server` with `--reasoning-effort medium`, so it is the floor
+these levels move away from. The template's own default is `xhigh`.
 
 Non-interactive example:
 
@@ -387,7 +386,7 @@ the launched session.
 
 OpenCode v2 serves plain `opencode` invocations from a shared background
 service that was started without `OPENCODE_CONFIG`, which makes it ignore that
-variable and report `Model unavailable: tellico-0/qwen3.6-35b-a3b`. So
+variable and report `Model unavailable: tellico-0/qwen3.8-27b-gsq-iq3s`. So
 `opencode-tellico` passes `--standalone`, giving the session its own server
 that does read the config. The flag is used only when the installed OpenCode
 advertises it, so older versions without a background service are unaffected.
