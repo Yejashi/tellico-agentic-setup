@@ -596,6 +596,48 @@ tellico_opencode_major() {
     head -n 1
 }
 
+# OpenCode 2's CLI config overlay that adds one TUI plugin directory to the
+# user's own "plugins" list, on stdout; nothing when that list cannot be read
+# safely, so the caller can skip the plugin rather than drop the user's. The
+# overlay replaces arrays wholesale, which is why the user's list is copied in.
+tellico_cli_plugin_overlay() {
+  tellico_cli_file="${XDG_CONFIG_HOME:-$HOME/.config}/opencode/cli.json"
+  if [ ! -e "$tellico_cli_file" ]; then
+    printf '{"plugins":["%s"]}\n' "$1"
+    return 0
+  fi
+  command -v python3 >/dev/null 2>&1 || return 0
+  python3 - "$tellico_cli_file" "$1" <<'TELLICO_PY' 2>/dev/null || true
+import json, re, sys
+text = open(sys.argv[1], encoding="utf-8").read()
+# cli.json is JSONC: drop // and /* */ comments outside strings, and trailing
+# commas, before a strict parse. Anything stranger fails the parse, and then
+# nothing is printed.
+out, i, n, in_str = [], 0, len(text), False
+while i < n:
+    c = text[i]
+    if in_str:
+        out.append(c)
+        if c == "\\" and i + 1 < n:
+            out.append(text[i + 1]); i += 2; continue
+        if c == '"': in_str = False
+        i += 1; continue
+    if c == '"': in_str = True; out.append(c); i += 1; continue
+    if text.startswith("//", i):
+        j = text.find("\n", i); i = n if j < 0 else j; continue
+    if text.startswith("/*", i):
+        j = text.find("*/", i + 2); i = n if j < 0 else j + 2; continue
+    out.append(c); i += 1
+config = json.loads(re.sub(r",(\s*[}\]])", r"\1", "".join(out)) or "{}")
+plugins = config.get("plugins", []) if isinstance(config, dict) else None
+if not isinstance(plugins, list):
+    sys.exit(1)
+if sys.argv[2] not in plugins:
+    plugins = plugins + [sys.argv[2]]
+print(json.dumps({"plugins": plugins}))
+TELLICO_PY
+}
+
 tellico_opencode_standalone_flag() {
   case ${TELLICO_OPENCODE_STANDALONE:-auto} in
     1|true|yes|on)
@@ -718,7 +760,9 @@ plugins/secret-guard/index.js
 plugins/secret-guard/package.json
 plugins/dispatch-balance/index.js
 plugins/dispatch-balance/package.json
-plugins/tui/subagent-watch.js'
+plugins/tui/subagent-watch.js
+plugins/tui-v2/subagents/tui.js
+plugins/tui-v2/subagents/package.json'
 
 # Commands installed into the PATH directory rather than the config directory.
 TELLICO_INSTALLED_COMMANDS='opencode-tellico

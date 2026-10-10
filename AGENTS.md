@@ -73,6 +73,22 @@ startup: upgrade it by replacing everything below its header, never by
 editing it in place. It lists child sessions in the sidebar, since background
 workers otherwise scroll out of view while the lead keeps talking.
 
+OpenCode 2 gets `plugins/tui-v2/subagents/tui.js` instead, our own small port
+of the same panel: a row per subagent with its status, and a click opens that
+subagent's session. OpenCode 2 loads TUI plugins from the `plugins` list of
+its CLI config (`~/.config/opencode/cli.json`), never from `tui.json`, so the
+launcher passes it in `OPENCODE_CLI_CONFIG_CONTENT`. That overlay *replaces*
+arrays rather than merging them, so `tellico_cli_plugin_overlay` copies the
+user's own list in first (reading cli.json as JSONC) and prints nothing when
+it cannot, in which case the panel is skipped rather than the user's plugins
+dropped. A TUI plugin there is a directory whose `tui.js` default-exports
+`{ id, setup(context) }`; `context.ui.slot({ append: "sidebar.content",
+render })` places it, `context.data.session` (`family`, `status`, `get`) is
+reactive so no polling is needed, and `context.ui.router.navigate({ type:
+"session", sessionID })` opens a session. Verified 2026-10-09 in a real 2.0.26
+TUI under tmux: the row showed a running worker, and clicking it opened the
+worker's session. OpenCode 2 hides the sidebar by default; `ctrl+x b` shows it.
+
 `gateway/tellico_gateway.py` is standard library only. Adding a dependency to
 it means a virtualenv on every gateway host, so do not. It never runs on the
 cluster, which is ppc64le on RHEL 7.6, so normal x86 Python is fine there.

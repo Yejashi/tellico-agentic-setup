@@ -360,7 +360,7 @@ base_url0=$(tellico_base_url "$mode" "$gateway_url" 0 "$port0")
 base_url1=$(tellico_base_url "$mode" "$gateway_url" 1 "$port1")
 plugin_dir="$config_dir/plugins"
 
-mkdir -p "$config_dir/prompts" "$config_dir/lib" "$plugin_dir/tui" \
+mkdir -p "$config_dir/prompts" "$config_dir/lib" "$plugin_dir/tui" "$plugin_dir/tui-v2/subagents" \
   "$plugin_dir/secret-guard" "$plugin_dir/dispatch-balance" "$bin_dir"
 chmod 700 "$config_dir"
 
@@ -426,6 +426,10 @@ rm -f "$plugin_dir/secret-guard.js" "$plugin_dir/dispatch-balance.js"
 # The TUI loads its plugins from tui.json, not opencode.json, and
 # opencode-tellico points OPENCODE_TUI_CONFIG at this one.
 install -m 644 "$script_dir/plugins/tui/subagent-watch.js" "$plugin_dir/tui/subagent-watch.js"
+# OpenCode 2's counterpart, a directory whose tui.js the launcher adds to the
+# CLI config's plugin list; see bin/opencode-tellico.
+install -m 644 "$script_dir/plugins/tui-v2/subagents/tui.js" "$plugin_dir/tui-v2/subagents/tui.js"
+install -m 644 "$script_dir/plugins/tui-v2/subagents/package.json" "$plugin_dir/tui-v2/subagents/package.json"
 tellico_render_config "$script_dir/config/tui.json" \
   "$base_url0" "$base_url1" "$plugin_dir" >"$config_dir/tui.json"
 install -m 755 "$script_dir/bin/opencode-tellico" "$bin_dir/opencode-tellico"

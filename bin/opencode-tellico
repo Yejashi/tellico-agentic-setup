@@ -190,6 +190,18 @@ opencode_major=$(tellico_opencode_major)
 if [ -r "$config_dir/tui.json" ] && [ "${opencode_major:-1}" -lt 2 ]; then
   export OPENCODE_TUI_CONFIG="$config_dir/tui.json"
 fi
+# OpenCode 2 reads TUI plugins from the "plugins" list of its CLI config
+# (~/.config/opencode/cli.json), not tui.json, and takes a per-launch overlay
+# in OPENCODE_CLI_CONFIG_CONTENT. The overlay replaces arrays rather than
+# merging them, so the user's own plugins are read and kept. When they cannot
+# be read safely the panel is skipped instead of dropping them.
+if [ "${opencode_major:-1}" -ge 2 ] && [ -z "${OPENCODE_CLI_CONFIG_CONTENT:-}" ] &&
+  [ -r "$config_dir/plugins/tui-v2/subagents/tui.js" ]; then
+  cli_overlay=$(tellico_cli_plugin_overlay "$config_dir/plugins/tui-v2/subagents")
+  if [ -n "$cli_overlay" ]; then
+    export OPENCODE_CLI_CONFIG_CONTENT="$cli_overlay"
+  fi
+fi
 # A thinking level is a model variant, so it is set per agent. Only the lead
 # and the workers get it: title, summary and compaction are the session's own
 # overhead and keep whatever the config gives them.

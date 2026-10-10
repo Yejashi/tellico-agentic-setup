@@ -276,6 +276,15 @@ free and protects it. See
 [`docs/flash-next-evaluation.md`](docs/flash-next-evaluation.md) for why the
 window cannot simply be made bigger instead.
 
+### Watching the workers
+
+The sidebar lists the session's subagents -- which worker, what it was asked,
+and whether it is still running -- and clicking one opens its session so you
+can follow its progress.
+OpenCode 2 hides the sidebar until you press `ctrl+x b` (or run "Show
+sidebar" from `ctrl+p`). On OpenCode 1 the panel is the vendored
+`subagent-watch`; on OpenCode 2 it is `plugins/tui-v2/subagents`.
+
 ### Controlling how much it thinks
 
 The model is a reasoning model, and how much it reasons is a model variant.
