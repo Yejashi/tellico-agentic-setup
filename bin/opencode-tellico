@@ -182,8 +182,12 @@ export TELLICO_LEAD_NODE="$node"
 # Background workers run while the lead keeps talking, so their entries
 # scroll out of view. tui.json loads a sidebar panel listing them; OpenCode
 # merges it over the user's own tui.json rather than replacing it. Skipped
-# when an older install never wrote one.
-if [ -r "$config_dir/tui.json" ]; then
+# when an older install never wrote one, and on OpenCode 2: the vendored
+# panel is written against OpenCode 1's TUI plugin API ({id, tui}) and has no
+# OpenCode 2 release, whose TUI plugins are {id, setup}. An unreadable version
+# keeps the old behaviour.
+opencode_major=$(tellico_opencode_major)
+if [ -r "$config_dir/tui.json" ] && [ "${opencode_major:-1}" -lt 2 ]; then
   export OPENCODE_TUI_CONFIG="$config_dir/tui.json"
 fi
 # A thinking level is a model variant, so it is set per agent. Only the lead

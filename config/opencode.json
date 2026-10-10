@@ -117,8 +117,8 @@
     }
   },
   "plugin": [
-    "__TELLICO_PLUGIN_DIR__/secret-guard.js",
-    "__TELLICO_PLUGIN_DIR__/dispatch-balance.js"
+    "__TELLICO_PLUGIN_DIR__/secret-guard",
+    "__TELLICO_PLUGIN_DIR__/dispatch-balance"
   ],
   "tool_output": {
     "max_lines": 300,

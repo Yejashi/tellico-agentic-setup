@@ -360,7 +360,8 @@ base_url0=$(tellico_base_url "$mode" "$gateway_url" 0 "$port0")
 base_url1=$(tellico_base_url "$mode" "$gateway_url" 1 "$port1")
 plugin_dir="$config_dir/plugins"
 
-mkdir -p "$config_dir/prompts" "$config_dir/lib" "$plugin_dir/tui" "$bin_dir"
+mkdir -p "$config_dir/prompts" "$config_dir/lib" "$plugin_dir/tui" \
+  "$plugin_dir/secret-guard" "$plugin_dir/dispatch-balance" "$bin_dir"
 chmod 700 "$config_dir"
 
 # In gateway mode the key comes from the operator rather than over SSH, so it
@@ -413,9 +414,15 @@ install -m 644 "$script_dir/lib/checks.sh" "$config_dir/lib/checks.sh"
 install -m 600 "$script_dir/prompts/orchestrate.md" "$config_dir/prompts/orchestrate.md"
 install -m 600 "$script_dir/prompts/worker.md" "$config_dir/prompts/worker.md"
 # OpenCode loads these itself, with its own bundled runtime: no npm install
-# and no build step. They enforce what the prompts can only ask for.
-install -m 644 "$script_dir/plugins/secret-guard.js" "$plugin_dir/secret-guard.js"
-install -m 644 "$script_dir/plugins/dispatch-balance.js" "$plugin_dir/dispatch-balance.js"
+# and no build step. They enforce what the prompts can only ask for. Each is a
+# directory with a package.json because OpenCode 2 refuses a bare plugin file;
+# OpenCode 1 accepts either.
+for plugin in secret-guard dispatch-balance; do
+  install -m 644 "$script_dir/plugins/$plugin/index.js" "$plugin_dir/$plugin/index.js"
+  install -m 644 "$script_dir/plugins/$plugin/package.json" "$plugin_dir/$plugin/package.json"
+done
+# Single-file plugins from an older install. Nothing names them any more.
+rm -f "$plugin_dir/secret-guard.js" "$plugin_dir/dispatch-balance.js"
 # The TUI loads its plugins from tui.json, not opencode.json, and
 # opencode-tellico points OPENCODE_TUI_CONFIG at this one.
 install -m 644 "$script_dir/plugins/tui/subagent-watch.js" "$plugin_dir/tui/subagent-watch.js"

@@ -8,7 +8,14 @@
 // "*": "allow", so without this plugin `read ~/.config/tellico-qwen/api-key`
 // or `cat` of the same file succeeds, the key lands in the worker's report,
 // and from there in the lead's context and possibly in .agent/PLANS.md on
-// disk. A throw in tool.execute.before aborts the call instead.
+// disk. A throw in the before-execute hook aborts the call instead.
+//
+// It loads under both OpenCode 1 and 2, whose plugin contracts differ. Both
+// accept a directory with package.json, which is why this is index.js in one;
+// OpenCode 2 refuses a bare file ("configured plugin path must be a
+// directory"). OpenCode 1 reads `server` from the default export and OpenCode
+// 2 reads `setup`, and each ignores the other. OpenCode 2 also renamed bash
+// to shell, and read's filePath to path; both spellings are checked.
 //
 // Allowlist-first, like every other check here: a form this cannot recognise
 // (a shell variable holding the path, say) is allowed through rather than
@@ -90,37 +97,53 @@ function stringArg(args, key) {
   return typeof value === "string" ? value : "";
 }
 
+// The check both formats share. Throws to block the call.
+function guard(tool, args) {
+  if (tool === "read") {
+    const filePath = stringArg(args, "filePath") || stringArg(args, "path");
+    const kind = secretKind(filePath);
+    if (kind) {
+      throw new Error(
+        `[secret-guard] blocked: ${filePath} is ${kind}. ` +
+          "Report that you need it rather than reading it; never quote a " +
+          "credential into a report, a plan file or a commit.",
+      );
+    }
+  }
+
+  if (tool === "bash" || tool === "shell") {
+    const command = stringArg(args, "command");
+    const kind = commandSecretKind(command);
+    if (kind) {
+      throw new Error(
+        `[secret-guard] blocked: this command reads ${kind}. ` +
+          "Report that you need it rather than reading it; never quote a " +
+          "credential into a report, a plan file or a commit.",
+      );
+    }
+  }
+}
+
+// OpenCode 1: a server function that returns hook objects.
 export const SecretGuardPlugin = async () => {
   return {
     "tool.execute.before": async (input, output) => {
-      const tool = (input && input.tool) || "";
-      const args = output && output.args;
-
-      if (tool === "read") {
-        const filePath = stringArg(args, "filePath") || stringArg(args, "path");
-        const kind = secretKind(filePath);
-        if (kind) {
-          throw new Error(
-            `[secret-guard] blocked: ${filePath} is ${kind}. ` +
-              "Report that you need it rather than reading it; never quote a " +
-              "credential into a report, a plan file or a commit.",
-          );
-        }
-      }
-
-      if (tool === "bash") {
-        const command = stringArg(args, "command");
-        const kind = commandSecretKind(command);
-        if (kind) {
-          throw new Error(
-            `[secret-guard] blocked: this command reads ${kind}. ` +
-              "Report that you need it rather than reading it; never quote a " +
-              "credential into a report, a plan file or a commit.",
-          );
-        }
-      }
+      guard((input && input.tool) || "", output && output.args);
     },
   };
 };
 
-export default SecretGuardPlugin;
+// OpenCode 2: hooks are registered on the context, and the event carries the
+// tool name and its (mutable) input together.
+async function setup(context) {
+  const registration = await context.tool.hook("execute.before", (event) => {
+    guard((event && event.tool) || "", event && event.input);
+  });
+  return () => registration.dispose();
+}
+
+export default {
+  id: "tellico-secret-guard",
+  server: SecretGuardPlugin,
+  setup,
+};

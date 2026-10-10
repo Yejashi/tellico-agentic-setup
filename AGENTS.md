@@ -43,12 +43,31 @@ dependency, would mean a toolchain on every client device. They must also never
 throw except where a throw is the point: a bug in a plugin that runs on every
 tool call would break every session.
 
+The server plugins must load under both OpenCode 1 and OpenCode 2, which
+differ in three ways that each silently disable a plugin. OpenCode 2 refuses a
+bare file ("configured plugin path must be a directory"), so each plugin is a
+directory, `plugins/<name>/index.js` plus a `package.json`, which OpenCode 1
+also accepts. OpenCode 1 reads `server` from the default export and OpenCode 2
+reads `setup`, so the default export carries both: `{ id, server, setup }`,
+with the logic shared and only the wiring duplicated. And OpenCode 2 renamed
+the tools and arguments the plugins key on: `bash` is `shell`, `task` is
+`subagent` with `agent` instead of `subagent_type`, and `read` takes `path`
+instead of `filePath`; check both spellings. In `setup`, hooks register on the
+context (`context.tool.hook("execute.before", fn)`,
+`context.session.hook("context", fn)` for system lines as
+`{ type: "text", text }`), a throw in `execute.before` still blocks the call,
+and the returned function disposes the registrations. Both formats were
+verified against 1.18.30 and 2.0.26 on 2026-10-09; `/plugins` is not a
+command in either, so check a server plugin by its effect, not a listing.
+
 `plugins/tui/` holds TUI plugins, which may also import `solid-js` and
 `@opentui/solid`: OpenCode's runtime maps those specifiers to its own bundled
 copies, so they still need no install. They are listed in `config/tui.json`,
 not `config/opencode.json`, and `bin/opencode-tellico` points
 `OPENCODE_TUI_CONFIG` at the installed copy, which OpenCode merges over the
-user's own `tui.json`. `subagent-watch.js` is vendored verbatim from
+user's own `tui.json` -- on OpenCode 1 only, since the vendored panel is
+written against OpenCode 1's TUI API (`{ id, tui }`) and has no OpenCode 2
+release. `subagent-watch.js` is vendored verbatim from
 `opencode-subagent-watch` (MIT) so that it is pinned and needs no network at
 startup: upgrade it by replacing everything below its header, never by
 editing it in place. It lists child sessions in the sidebar, since background
@@ -63,7 +82,7 @@ that way and never inline a key into JSON or a unit file.
 
 ## Editing config or prompts does nothing until you install
 
-`config/opencode.json`, `prompts/*.md` and `plugins/*.js` are templates.
+`config/opencode.json`, `prompts/*.md` and the `plugins/` files are templates.
 OpenCode reads the installed copies under `~/.config/tellico-qwen/`.
 `config/opencode.json` is substituted rather than copied:
 `__TELLICO_BASE_URL_0__` and `__TELLICO_BASE_URL_1__` become loopback tunnel
@@ -153,7 +172,7 @@ touches all of them.
   with `orchestrate-tellico-N` for one server. Observed live: node 1 at 2 of 2
   requests with the lead and `tellico-worker-1` halving each other, node 0 at 0
   of 2 and a whole GPU idle. `prompts/orchestrate.md` therefore sends the first
-  unit of a round to the far node, and `plugins/dispatch-balance.js` nudges
+  unit of a round to the far node, and `plugins/dispatch-balance/` nudges
   when a task goes to the lead's own node while the far node has nothing in
   flight -- only under background dispatch, since in the foreground the lead
   parks and a lone worker there is fine. It needs to know where the lead runs
@@ -161,7 +180,7 @@ touches all of them.
   resolved `TELLICO_LEAD_NODE`; with the variable absent the nudge stays
   silent rather than guessing.
 - Sizing a pair by cost was advice for the barrier, so it is gone from
-  `prompts/orchestrate.md` and `plugins/dispatch-balance.js` suppresses its
+  `prompts/orchestrate.md` and `plugins/dispatch-balance/` suppresses its
   imbalance nudge when the flag is set, keeping the same-node and
   serial-dispatch nudges, which hold either way. The plugin reads the variable
   from its own environment, which works because the launcher exports it into
@@ -200,12 +219,12 @@ touches all of them.
   endpoints are the right ones is `tellico_check_config`'s job and the gateway
   probe's.
 - `plugins/` enforces what the prompts can only ask for, and exists only for
-  things config cannot express. `secret-guard.js` blocks reads of the API key,
+  things config cannot express. `secret-guard` blocks reads of the API key,
   `client.env` and SSH private keys: OpenCode's permission schema gates
   `edit`, `bash`, `webfetch`, `doom_loop` and `external_directory` but has no
   pattern gate for `read` at all, and both workers run `"*": "allow"`, so
   without it a credential can reach a worker report and from there the lead's
-  context and `.agent/PLANS.md`. `dispatch-balance.js` counts task overlap and
+  context and `.agent/PLANS.md`. `dispatch-balance` counts task overlap and
   nudges once per session when the lead serialises, puts both halves of a pair
   on one node, or pairs a long task with a short one -- the three ways to idle
   a server, none of which the lead can see for itself. Both are allowlist-first

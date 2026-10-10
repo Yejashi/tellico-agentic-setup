@@ -588,6 +588,14 @@ tellico_bin_on_path() {
 # OpenCode versions without that background service have no such flag, so
 # probe for it rather than assuming either shape.
 # TELLICO_OPENCODE_STANDALONE=0 or 1 overrides the probe.
+# OpenCode's major version, or nothing when it cannot be read. 1.x prints a
+# bare "1.18.30"; 2.x prints "opencode v2.0.26".
+tellico_opencode_major() {
+  opencode --version 2>/dev/null |
+    sed -n 's/^[^0-9]*\([0-9][0-9]*\)\..*/\1/p' |
+    head -n 1
+}
+
 tellico_opencode_standalone_flag() {
   case ${TELLICO_OPENCODE_STANDALONE:-auto} in
     1|true|yes|on)
@@ -643,16 +651,18 @@ tellico_check_config() {
 
   # A plugin the config names but the install did not copy across is silently
   # skipped by OpenCode, which would leave the credential guard off without
-  # saying so. Half an install is worth reporting as a broken one.
+  # saying so. Half an install is worth reporting as a broken one. Each plugin
+  # is a directory, which OpenCode 2 requires; it needs both files to load.
   while IFS= read -r tellico_config_plugin; do
     [ -n "$tellico_config_plugin" ] || continue
-    if [ ! -r "$tellico_config_plugin" ]; then
+    if [ ! -r "$tellico_config_plugin/index.js" ] ||
+      [ ! -r "$tellico_config_plugin/package.json" ]; then
       echo "plugin named by $tellico_config but not installed:" \
         "$tellico_config_plugin" >&2
       tellico_config_ok=false
     fi
   done <<EOF
-$(sed -n 's|.*"\(/[^"]*/plugins/[^"]*\.js\)".*|\1|p' "$tellico_config")
+$(sed -n 's|.*"\(/[^"]*/plugins/[^"]*\)".*|\1|p' "$tellico_config")
 EOF
 
   [ "$tellico_config_ok" = true ]
@@ -704,8 +714,10 @@ tellico_config_fingerprint() {
 TELLICO_INSTALLED_COPIES='lib/checks.sh
 prompts/orchestrate.md
 prompts/worker.md
-plugins/secret-guard.js
-plugins/dispatch-balance.js
+plugins/secret-guard/index.js
+plugins/secret-guard/package.json
+plugins/dispatch-balance/index.js
+plugins/dispatch-balance/package.json
 plugins/tui/subagent-watch.js'
 
 # Commands installed into the PATH directory rather than the config directory.
