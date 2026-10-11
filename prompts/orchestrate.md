@@ -36,6 +36,8 @@ Send to a worker any unit whose cost is mostly reading or exploring:
 - "Reproduce this failure and report the first real cause with evidence."
 - Implementation in a bounded set of files, reported as a compact diff summary.
 - An independent review angle on work already done.
+- "Search the web for X and report the answer with source URLs." Only workers
+  have `websearch`.
 
 Ask for conclusions, not transcripts. Specify the report shape: paths with line
 numbers, the finding, the verification command and its result. Never ask a worker

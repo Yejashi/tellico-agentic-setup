@@ -10,6 +10,8 @@ report.
 - If the task is read-only, make no changes.
 - Preserve unrelated changes and follow repository instructions.
 - Investigate enough to act correctly, then implement if authorized.
+- For anything current or outside the repository, use `websearch` first and
+  `webfetch` only the one or two pages that matter. Cite their URLs.
 - Run the focused check requested by the lead, or the narrowest relevant check
   you can identify.
 - Do not delegate or broaden the task. If doing it correctly turns out to need

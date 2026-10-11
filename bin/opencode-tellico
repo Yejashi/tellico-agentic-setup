@@ -12,6 +12,7 @@ node=
 think=${TELLICO_THINK:-}
 solo=${TELLICO_SOLO:-0}
 steps=${TELLICO_STEPS:-}
+websearch=${TELLICO_WEBSEARCH:-tavily}
 
 usage() {
   cat <<'EOF'
@@ -80,6 +81,12 @@ environment:
                    Unset, the flag is used when this OpenCode supports it,
                    because OpenCode's shared background service ignores
                    OPENCODE_CONFIG.
+  TELLICO_WEBSEARCH
+                   Which service answers the agents' websearch tool: tavily
+                   (the default), exa, parallel, random, or off for work whose
+                   queries should not leave this machine. Every query is sent
+                   to that service. OpenCode 1 has no Tavily, so there it uses
+                   Exa unless parallel is chosen.
 EOF
 }
 
@@ -140,6 +147,15 @@ case $steps in
   '') ;;
   *[!0-9]* | 0)
     echo "opencode-tellico: --steps must be a positive number, got '$steps'" >&2
+    exit 2
+    ;;
+esac
+
+case $websearch in
+  tavily|exa|parallel|random|off) ;;
+  *)
+    echo "opencode-tellico: unknown TELLICO_WEBSEARCH '$websearch'" >&2
+    echo 'Use one of: tavily, exa, parallel, random, off' >&2
     exit 2
     ;;
 esac
@@ -257,6 +273,32 @@ if [ "${opencode_major:-1}" -ge 2 ] && [ -z "${OPENCODE_CLI_CONFIG_CONTENT:-}" ]
     export OPENCODE_CLI_CONFIG_CONTENT="$cli_overlay"
   fi
 fi
+# OpenCode's own websearch tool is the agents' web search: one "query"
+# argument, results capped by tool_output like any other tool. An MCP search
+# server was considered and rejected, because its four tool schemas would ride
+# along on every turn of every agent and its extract tool duplicates webfetch.
+# OpenCode 2 takes the provider from config; left unset it asks the user on
+# first use, which a background worker would wait on for a minute and then
+# cancel. Tavily is pinned rather than "random" because its results are a
+# quarter of the size of Exa's, so less of them is lost to the tool_output cap;
+# the cost is no failover when keyless use is rate limited, which a
+# TAVILY_API_KEY in the environment lifts. OpenCode 1 has only Exa and
+# Parallel, enabled by an environment variable rather than config.
+websearch_config=
+websearch_env=
+if [ "${opencode_major:-1}" -ge 2 ]; then
+  case $websearch in
+    off) websearch_config=',"websearch":false' ;;
+    *) websearch_config=",\"websearch\":{\"provider\":\"${websearch}\"}" ;;
+  esac
+else
+  case $websearch in
+    off) ;;
+    parallel) websearch_env=OPENCODE_ENABLE_PARALLEL=1 ;;
+    *) websearch_env=OPENCODE_ENABLE_EXA=1 ;;
+  esac
+fi
+
 # A thinking level is a model variant, so it is set per agent, and it overrides
 # the medium that config/opencode.json gives every work agent. All six get it,
 # not only the one this session opens on, because "tab" switches primary agent
@@ -290,25 +332,25 @@ for tellico_agent in orchestrate-tellico-0 orchestrate-tellico-1 \
   fi
 done
 
-runtime_config="{\"model\":\"${model}\",\"small_model\":\"${model}\",\"default_agent\":\"${lead_agent}\",\"agent\":{\"compaction\":{\"model\":\"${model}\"},\"summary\":{\"model\":\"${model}\"},\"title\":{\"model\":\"${model}\"}${think_overrides}}}"
+runtime_config="{\"model\":\"${model}\",\"small_model\":\"${model}\",\"default_agent\":\"${lead_agent}\",\"agent\":{\"compaction\":{\"model\":\"${model}\"},\"summary\":{\"model\":\"${model}\"},\"title\":{\"model\":\"${model}\"}${think_overrides}}${websearch_config}}"
 
 # OpenCode's interactive command takes no --model (v2.0.24 rejects the flag
 # outright), so the lead model and agent reach the session through
 # $runtime_config. "opencode run" does accept it, and passing it there keeps a
 # non-interactive run from depending on config precedence alone.
-# $standalone_flag and $background_env are each one word or empty, so both
-# must stay unquoted.
+# $standalone_flag, $background_env and $websearch_env are each one word or
+# empty, so all three must stay unquoted.
 # shellcheck disable=SC2086
 if [ "${1:-}" = run ]; then
   shift
   # No later turn to deliver a background result into; see above.
   background_env=
-  exec env $background_env OPENCODE_CONFIG="$client_config" \
+  exec env $background_env $websearch_env OPENCODE_CONFIG="$client_config" \
     OPENCODE_CONFIG_CONTENT="$runtime_config" \
     opencode run $standalone_flag --model "$model" "$@"
 fi
 
 # shellcheck disable=SC2086
-exec env $background_env OPENCODE_CONFIG="$client_config" \
+exec env $background_env $websearch_env OPENCODE_CONFIG="$client_config" \
   OPENCODE_CONFIG_CONTENT="$runtime_config" \
   opencode $standalone_flag "$@"

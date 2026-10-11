@@ -219,6 +219,22 @@ touches all of them.
   serial-dispatch nudges, which hold either way. The plugin reads the variable
   from its own environment, which works because the launcher exports it into
   the process OpenCode runs in.
+- Web search is OpenCode's own `websearch` tool, not an MCP server: an MCP
+  server's tool schemas cost tokens on every turn of every agent, and its
+  extract tool duplicates `webfetch`. OpenCode 2 reads the provider from a
+  `websearch` config key, which `bin/opencode-tellico` sets from
+  `TELLICO_WEBSEARCH` (default `tavily`, keyless; `off` removes the tool).
+  Leaving the key unset makes the first search ask the user, which a
+  background worker waits on for a minute and then cancels. OpenCode 1 has
+  only Exa and Parallel, enabled by `OPENCODE_ENABLE_EXA` /
+  `OPENCODE_ENABLE_PARALLEL` rather than config; the launcher sets the key only
+  on OpenCode 2 because OpenCode 1 was never shown to accept it. Results go
+  through the `tool_output` cap like any tool: a Tavily search measured
+  2,830 tokens raw and was truncated to 8 KiB. Only workers and
+  `build-tellico` can search; the lead's `"*": "deny"` keeps result pages out
+  of its context. Verified on 2.0.26 on 2026-10-10 with a real
+  `build-tellico-0` run (`provider: tavily`, no prompt); the OpenCode 1 path
+  was read from the 1.18.30 binary, not run.
 - Thinking level is a model *variant*, not a model or an agent. The four
   variants in `config/opencode.json` (`off`, `low`, `medium`, `xhigh`) are the
   only values the Qwen3.8 template accepts -- it raises `Unexpected reasoning

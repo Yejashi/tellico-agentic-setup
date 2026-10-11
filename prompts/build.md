@@ -23,6 +23,8 @@ cannot. So read with a purpose:
 - Tool output is capped at 300 lines and 8 KiB here, and OpenCode writes the
   full text to disk. If a capped result is genuinely not enough, open the part
   you need deliberately rather than rerunning the command wider.
+- For anything current or outside the repository, use `websearch` first and
+  `webfetch` only the one or two pages that matter. Cite their URLs.
 - Do not reread what you already have, and do not rerun a command to look at
   its output again. It is in this conversation.
 
