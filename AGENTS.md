@@ -163,9 +163,10 @@ touches all of them.
   `prompts/orchestrate.md` tells the lead to size a pair. Do not "fix" it by
   adding more workers. On the 27B two requests on one node ran at half speed
   each for no aggregate gain; the GSQ IQ3_S build with DFlash2 does gain in
-  aggregate (72-86 tok/s alone on code, 52-70 each at two) but every extra
-  request still slows the others, and the four slots are shared by up to three
-  users.
+  aggregate (on the 2026-10-11 engine, 157-187 tok/s alone at 2k-16k on the
+  agent replay, 130-170 each at two; the deciding factor per task is draft
+  acceptance, not depth) but every extra request still slows the others, and
+  the four slots are shared by up to three users.
   The fastest capacity is still a node with *nothing* running on it.
 - The barrier is not absolute, and `bin/opencode-tellico` now removes it. The
   older claim here that OpenCode has no background task primitive was wrong:
@@ -401,8 +402,9 @@ touches all of them.
   that the server rejects, so the level travels in `extra_body` and Crush adds
   nothing of its own.
 - `option request-timeout 3600`. Crush's default is 60 seconds of inactivity,
-  and prompt reading counts as inactivity: at the measured 430-650 tok/s a cold
-  110k-token prompt waits about four minutes for its first token, so every deep
+  and prompt reading counts as inactivity: at the 1300-1900 tok/s prefill of
+  the 2026-10-11 engine a cold 110k-token prompt still waits 60-85 seconds for
+  its first token (four minutes on the engine before it), so every deep
   session would die on the default. It is the same thing `headerTimeout` and
   `chunkTimeout` do in `config/opencode.json`.
 - `crush/hooks/secret-guard.sh` is POSIX sh because Crush exports
