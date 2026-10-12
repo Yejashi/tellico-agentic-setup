@@ -68,8 +68,8 @@ OpenCode gets two primary agents per node and two node-pinned subagents:
 
 | Agent | What it is |
 |---|---|
-| `orchestrate-tellico-0`, `orchestrate-tellico-1` | The default. Implements, checks and integrates directly; delegates substantial independent work when it helps. Workers may remain idle. |
-| `build-tellico-0`, `build-tellico-1` | One agent, one server, no delegation. Reads, edits and runs checks itself. Started with `--solo`. |
+| `build-tellico-0`, `build-tellico-1` | The default. One agent, one server, no delegation. Reads, edits and runs checks itself. |
+| `orchestrate-tellico-0`, `orchestrate-tellico-1` | Started with `--orchestrate`. Implements, checks and integrates directly; delegates substantial independent work when it helps. Workers may remain idle. |
 | `tellico-worker-0`, `tellico-worker-1` | Subagents the orchestrate lead dispatches to, one pinned to each node. |
 
 `tab` switches between the primaries inside a session, so the choice at launch
@@ -79,7 +79,7 @@ is only where the session starts. See
 The same two servers also back two more harnesses, both single-agent:
 `pi-tellico` runs the [pi](https://pi.dev) coding agent and `crush-tellico`
 runs [Crush](https://github.com/charmbracelet/crush). Each is the counterpart
-of `opencode-tellico --solo` in its own harness. See
+of the default `opencode-tellico` session in its own harness. See
 [The pi harness](#the-pi-harness) and
 [The Crush harness](#the-crush-harness).
 
@@ -285,9 +285,9 @@ Or put the lead on node 1:
 opencode-tellico 1
 ```
 
-Both commands can use both node-pinned subagents. The number only chooses the
-model that hosts the lightweight lead conversation. For a single agent that
-does the work itself instead of delegating, add `--solo`; see
+The number chooses the server the session's agent runs on. By default that
+agent does the work itself; to start on the lead that can also delegate to
+both node-pinned subagents, add `--orchestrate`; see
 [Orchestrate or solo](#orchestrate-or-solo).
 
 With no number, the lead node is derived from the device, so that several users
@@ -303,17 +303,19 @@ window cannot simply be made bigger instead.
 
 ### Orchestrate or solo
 
-The default engineer can read, edit, run checks and perform authorized Git
-operations itself. It delegates substantial independent work when that helps
-complete the task, rather than requiring a two-worker round for every increment.
-It prefers the opposite node for the first worker while its own node is busy.
+Sessions open on `build-tellico` by default: one engineer that reads, edits,
+runs checks and performs authorized Git operations itself, with delegation
+disabled. (`--solo` is still accepted and means the same.)
 
-`--solo` opens on `build-tellico`: the same direct workflow with delegation
-disabled. It is useful for comparing a sequential task against orchestration.
+`--orchestrate` opens on `orchestrate-tellico`: the same direct workflow, plus
+delegating substantial independent work when that helps complete the task,
+rather than requiring a two-worker round for every increment. It prefers the
+opposite node for the first worker while its own node is busy. `tab` switches
+between the two inside a session.
 
 ```bash
-opencode-tellico 0 --solo
-TELLICO_SOLO=1 opencode-tellico
+opencode-tellico 0 --orchestrate
+TELLICO_SOLO=0 opencode-tellico
 ```
 
 Both primary agents default to 200 tool steps per turn. For a long unattended
@@ -322,7 +324,7 @@ session, `--steps` extends both primaries, including one selected later with
 
 ```bash
 opencode-tellico 0 --steps 100000
-opencode-tellico 0 --solo --steps 100000
+opencode-tellico 0 --orchestrate --steps 100000
 ```
 
 Both modes use medium reasoning by default and retain the credential guard and
@@ -561,9 +563,9 @@ pi-tellico --continue            # pi's own flags are passed through
 
 Pi is a deliberately small harness: four core tools, no subagents, no plan
 mode. So there is no orchestrate-or-worker choice here -- one agent, one
-server, which is the same shape as `opencode-tellico --solo`. Use it when you
-want a harness that does less, and `opencode-tellico` when you want two
-servers working at once.
+server, which is the same shape as the default `opencode-tellico` session.
+Use it when you want a harness that does less, and `opencode-tellico
+--orchestrate` when you want two servers working at once.
 
 What it gets from this setup:
 
@@ -605,7 +607,7 @@ crush-tellico 0 --continue       # Crush's own flags are passed through
 ```
 
 Crush is single-agent here too: its subagent support is an open pull request,
-so this is its counterpart of `--solo`. What it adds over OpenCode and pi is a
+so this is its counterpart of the default `build-tellico` session. What it adds over OpenCode and pi is a
 permission prompt in front of every tool call, `PreToolUse` hooks, and LSP
 integration, in a single Go binary with no Node dependency.
 

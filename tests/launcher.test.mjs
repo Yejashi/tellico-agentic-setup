@@ -53,13 +53,22 @@ cli: process.env.OPENCODE_CLI_CONFIG_CONTENT
   };
 }
 
-test("default launch keeps medium and enables interactive background dispatch", t => {
+test("default launch opens on build-tellico, keeps medium and enables interactive background dispatch", t => {
   const { captured, status } = fixture(t).run();
   assert.equal(status, 0);
   assert.equal(captured.background, "true");
-  assert.equal(captured.config.default_agent, "orchestrate-tellico-1");
+  assert.equal(captured.config.default_agent, "build-tellico-1");
   assert.equal(config.agent[captured.config.default_agent].variant, "medium");
   assert.equal(captured.config.websearch.provider, "tavily");
+});
+
+test("orchestrate opens on the delegating lead", t => {
+  const f = fixture(t);
+  for (const launch of [f.run(["0", "--orchestrate"]), f.run(["0"], { TELLICO_SOLO: "0" })]) {
+    assert.equal(launch.status, 0);
+    assert.equal(launch.captured.config.default_agent, "orchestrate-tellico-0");
+  }
+  assert.equal(f.run(["0", "--solo"]).captured.config.default_agent, "build-tellico-0");
 });
 
 test("disabled mode overrides an inherited upstream enable flag", t => {

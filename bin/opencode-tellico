@@ -10,7 +10,7 @@ tunnel_command="$script_dir/tellico-qwen-tunnel"
 
 node=
 think=${TELLICO_THINK:-}
-solo=${TELLICO_SOLO:-0}
+solo=${TELLICO_SOLO:-1}
 steps=${TELLICO_STEPS:-}
 websearch=${TELLICO_WEBSEARCH:-tavily}
 magic_context=${TELLICO_MAGIC_CONTEXT:-1}
@@ -25,18 +25,18 @@ magic_context_config="$config_home/cortexkit/magic-context.jsonc"
 
 usage() {
   cat <<'EOF'
-usage: opencode-tellico [0|1] [--solo] [--think LEVEL] [--steps N] [--no-magic-context] [OPENCODE_ARGS...]
+usage: opencode-tellico [0|1] [--orchestrate] [--think LEVEL] [--steps N] [--no-magic-context] [OPENCODE_ARGS...]
 
-Starts OpenCode with a Tellico engineer that works directly and delegates
-useful independent tasks to node-pinned workers. The optional 0 or 1
-selects the lead model; both node-pinned workers remain available.
+Starts OpenCode on build-tellico: one Tellico engineer that does the whole
+job on one server, reading and editing and running checks itself, with no
+workers and no delegation. The optional 0 or 1 selects that server.
 
---solo opens the session on build-tellico instead: one agent that does the
-whole job on one server, reading and editing and running checks itself, with
-no workers and no delegation. Use it when the task does not split into
-independent units, or when a single agent is simply easier to follow. Both
-agents are always defined, so "tab" switches between them mid-session; --solo
-only picks which one the session starts on.
+--orchestrate opens the session on orchestrate-tellico instead: the same
+engineer, which may also delegate useful independent tasks to the two
+node-pinned workers. Use it when the work splits into independent units. Both
+agents are always defined, so "tab" switches between them mid-session;
+--orchestrate only picks which one the session starts on. --solo, the old
+switch for build-tellico, is still accepted.
 
 With no number, the lead node is derived from this device, so that several
 users do not all lead on node 0 and compete for one server's prompt cache.
@@ -65,9 +65,9 @@ session; see "Magic Context" in the README for what the plugin costs.
 
 examples:
   opencode-tellico 0
-  opencode-tellico 0 --solo
+  opencode-tellico 0 --orchestrate
   opencode-tellico 1 --think low
-  opencode-tellico 1 --solo --think off
+  opencode-tellico 1 --orchestrate --think off
   opencode-tellico 0 --no-magic-context
   opencode-tellico 1 /path/to/project
   opencode-tellico 0 run 'Review this repository'
@@ -76,8 +76,8 @@ environment:
   TELLICO_THINK    Default thinking level, same values as --think, which
                    overrides it. Unset, the agents' configured level
                    (medium) applies.
-  TELLICO_SOLO     Set to 1 to open on build-tellico by default, as --solo
-                   does.
+  TELLICO_SOLO     Set to 0 to open on orchestrate-tellico by default, as
+                   --orchestrate does. Unset, sessions open on build-tellico.
   TELLICO_STEPS    Tool steps either primary agent may take in one turn before it
                    is made to stop and report, same as --steps, which
                    overrides it. Unset, the configured 200 applies. Raise it
@@ -125,7 +125,7 @@ case ${1:-} in
 esac
 
 # After the node, so "opencode-tellico 1 --think low" reads naturally. A loop
-# rather than a fixed order, so --solo and --think can be given either way
+# rather than a fixed order, so --orchestrate and --think can be given either way
 # round; anything else is OpenCode's own argument and is passed through
 # untouched.
 while [ "$#" -gt 0 ]; do
@@ -140,6 +140,10 @@ while [ "$#" -gt 0 ]; do
       ;;
     --solo)
       solo=1
+      shift
+      ;;
+    --orchestrate)
+      solo=0
       shift
       ;;
     --magic-context)
@@ -283,9 +287,9 @@ case ${TELLICO_BACKGROUND_SUBAGENTS:-1} in
 esac
 
 model="tellico-${node}/qwen3.8-27b-gsq-iq3s"
-# Which primary agent the session opens on. The orchestrate lead can do the
-# work directly and delegate useful independent units; build-tellico does the
-# whole job on one server and cannot dispatch at all. Both are defined for
+# Which primary agent the session opens on: build-tellico by default, which
+# does the whole job on one server and cannot dispatch at all, or with
+# --orchestrate the lead that can also delegate useful independent units. Both are defined for
 # both nodes, so "tab" still switches between them inside a session -- this only picks the one the
 # session starts with.
 if [ "$solo" = 1 ]; then

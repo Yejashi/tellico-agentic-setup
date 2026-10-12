@@ -268,8 +268,10 @@ gateway defaults; a model swap touches all of them.
   silently skipped by OpenCode, which is why `tellico_check_config` fails on a
   missing one rather than warning.
 - Agents: two primaries per node plus two node-pinned workers.
-  `orchestrate-tellico-0|1` implements and verifies directly and may delegate;
-  `build-tellico-0|1` has the same direct tools with delegation denied. Both
+  `build-tellico-0|1`, the launcher's default, implements and verifies
+  directly with delegation denied; `orchestrate-tellico-0|1`
+  (`--orchestrate`, or `TELLICO_SOLO=0`) has the same direct tools and may
+  also delegate. Both
   list tools explicitly rather than blanket allow, retaining OpenCode's
   external-directory behavior. Primaries default to 200 steps; `--steps`
   extends both, while workers remain bounded at 200. Repository-specific
@@ -323,7 +325,7 @@ gateway defaults; a model swap touches all of them.
   them to `<agent-dir>/sessions`, and that would make `uninstall.sh` choose
   between leaving files behind and deleting transcripts.
 - Pi is a single-agent harness -- no subagents, no plan mode -- so `pi-tellico`
-  is the counterpart of `opencode-tellico --solo` and there is nothing for
+  is the counterpart of the default `build-tellico` session and there is nothing for
   `prompts/orchestrate.md` or `plugins/dispatch-balance/` to do there. Do not
   try to rebuild the lead/worker split in it.
 - `pi/APPEND_SYSTEM.md`, not `SYSTEM.md`: pi's `SYSTEM.md` *replaces* its own
