@@ -18,7 +18,8 @@ usage() {
   cat <<'EOF'
 usage: opencode-tellico [0|1] [--solo] [--think LEVEL] [--steps N] [OPENCODE_ARGS...]
 
-Starts OpenCode with dual-node Tellico orchestration. The optional 0 or 1
+Starts OpenCode with a Tellico engineer that works directly and delegates
+useful independent tasks to node-pinned workers. The optional 0 or 1
 selects the lead model; both node-pinned workers remain available.
 
 --solo opens the session on build-tellico instead: one agent that does the
@@ -61,10 +62,10 @@ environment:
                    (medium) applies.
   TELLICO_SOLO     Set to 1 to open on build-tellico by default, as --solo
                    does.
-  TELLICO_STEPS    Tool steps build-tellico may take in one turn before it
+  TELLICO_STEPS    Tool steps either primary agent may take in one turn before it
                    is made to stop and report, same as --steps, which
                    overrides it. Unset, the configured 200 applies. Raise it
-                   for a long unattended solo session, which otherwise
+                   for a long unattended session, which otherwise
                    stops and waits for input at the limit.
   TELLICO_LEAD_NODE
                    Force the lead node to 0 or 1 instead of deriving it from
@@ -87,6 +88,10 @@ environment:
                    queries should not leave this machine. Every query is sent
                    to that service. OpenCode 1 has no Tavily, so there it uses
                    Exa unless parallel is chosen.
+  TELLICO_AGENT_TRACE
+                   Optional absolute JSONL path for tool/dispatch timing.
+                   Logs metadata only, never commands, prompts or outputs.
+                   Background timings measure dispatch return, not completion.
 EOF
 }
 
@@ -224,7 +229,7 @@ fi
 # has further turns and is the only place the notification can be delivered.
 case ${TELLICO_BACKGROUND_SUBAGENTS:-1} in
   0|false|no|off)
-    background_env=
+    background_env=OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS=false
     ;;
   *)
     background_env=OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS=true
@@ -232,10 +237,10 @@ case ${TELLICO_BACKGROUND_SUBAGENTS:-1} in
 esac
 
 model="tellico-${node}/qwen3.8-27b-gsq-iq3s"
-# Which primary agent the session opens on. The orchestrate lead delegates and
-# can only read, grep and edit itself; build-tellico does the whole job on one
-# server and cannot dispatch at all. Both are defined for both nodes, so "tab"
-# still switches between them inside a session -- this only picks the one the
+# Which primary agent the session opens on. The orchestrate lead can do the
+# work directly and delegate useful independent units; build-tellico does the
+# whole job on one server and cannot dispatch at all. Both are defined for
+# both nodes, so "tab" still switches between them inside a session -- this only picks the one the
 # session starts with.
 if [ "$solo" = 1 ]; then
   lead_agent="build-tellico-${node}"
@@ -243,10 +248,8 @@ else
   lead_agent="orchestrate-tellico-${node}"
 fi
 # The lead's own generation lands on this node, so plugins/dispatch-balance.js
-# needs to know which one it is: a worker pinned to the same server as the
-# lead competes with it, and nothing in the plugin API says where the lead
-# runs. Exporting the resolved value also makes it visible to anything else in
-# the session, and matches the variable a user would have set by hand.
+# records it in optional traces. Exporting the resolved value also makes it
+# visible to other session helpers, and matches an explicit user selection.
 export TELLICO_LEAD_NODE="$node"
 # Background workers run while the lead keeps talking, so their entries
 # scroll out of view. tui.json loads a sidebar panel listing them, and binds
@@ -308,10 +311,9 @@ fi
 # plugins/compaction-guard, so that a summary cannot spend its output budget on
 # reasoning and come back truncated -- which ends the session.
 #
-# --steps applies to build-tellico only. The orchestrate lead and the workers
-# keep their limits: a worker's budget is part of how a bounded task stays
-# bounded, and the lead's is a guard against dispatching without end. One JSON
-# object per agent carries both settings, because a repeated key would let the
+# --steps applies to both primary agents. Workers keep their bounded limits
+# so extending an unattended session does not extend every delegated task.
+# One JSON object per agent carries both settings, because a repeated key lets the
 # later one silently replace the earlier.
 think_overrides=""
 for tellico_agent in orchestrate-tellico-0 orchestrate-tellico-1 \
@@ -321,7 +323,7 @@ for tellico_agent in orchestrate-tellico-0 orchestrate-tellico-1 \
     tellico_fields="\"variant\":\"${think}\""
   fi
   case $tellico_agent in
-    build-tellico-*)
+    build-tellico-*|orchestrate-tellico-*)
       if [ -n "$steps" ]; then
         tellico_fields="${tellico_fields:+${tellico_fields},}\"steps\":${steps}"
       fi
@@ -344,7 +346,7 @@ runtime_config="{\"model\":\"${model}\",\"small_model\":\"${model}\",\"default_a
 if [ "${1:-}" = run ]; then
   shift
   # No later turn to deliver a background result into; see above.
-  background_env=
+  background_env=OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS=false
   exec env $background_env $websearch_env OPENCODE_CONFIG="$client_config" \
     OPENCODE_CONFIG_CONTENT="$runtime_config" \
     opencode run $standalone_flag --model "$model" "$@"

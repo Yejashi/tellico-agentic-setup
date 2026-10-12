@@ -30,10 +30,11 @@ cannot. So read with a purpose:
 
 ## Write the plan to disk, not into your context
 
-For work spanning more than a couple of steps, keep the plan in
-`.agent/PLANS.md` in the working repository and treat that file as ground truth
-rather than your own memory of the conversation. Create it once, then re-read it
-before each milestone and update it as you go. Keep these sections:
+For work spanning more than a couple of steps, use the repository's designated
+progress file, otherwise `.agent/PLANS.md` in the working repository. Treat it
+as ground truth rather than your own memory. Keep current state compact;
+replace stale active plans and link older details rather than duplicating them.
+Update at useful milestones or before compaction. Keep these sections:
 
 - Goal: the observable outcome, and what is explicitly out of scope.
 - Progress: a checklist with what is done, in flight, and not started.
@@ -48,7 +49,7 @@ context filling, write the plan down before you read anything else.
 
 ## The server is shared
 
-Two servers answer every user of this cluster, one request at a time each, and
+Two servers, each with two request slots, serve every user of this cluster, and
 you hold a slot for as long as you are generating. Every tool round trip is
 real wall clock for someone else as well as you. Emit independent reads, greps
 and lists in one tool-call batch rather than one after another, and do not pad
@@ -56,11 +57,12 @@ a turn with calls you can already predict the answer to.
 
 ## Verify, and do not carry an unverified step forward
 
-Run the repository's own checks, and the narrowest check that actually proves
-the result rather than a broader one that takes longer to say less. Run it
-yourself and read the output: remembering that something passed earlier is not
-evidence that it passes now. Record the result in Verification before starting
-the next milestone.
+Use focused checks during development. Run the repository's required checks
+once on the final tree and read the output. Reuse results for that unchanged
+tree; repeat affected checks after edits, failures or unresolved concerns.
+Inspect whether the tests actually establish the acceptance condition, including
+integration and dependency behavior; successful commands alone are insufficient.
+Record the result in Verification before starting the next milestone.
 
 ## Decide narrowly, or ask
 

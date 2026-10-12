@@ -13,7 +13,9 @@ run the servers.
 - `./install.sh --no-start` — install files only. Use this when a session is
   live: plain `./install.sh` restarts the SSH tunnel and drops it.
 - `./install.sh` — full install, including tunnel restart and validation.
-- `sh -n <script>` — syntax check. There is no test suite and no CI.
+- `sh tests/run.sh` — offline regression suite (Node 22+ and Python 3); GitHub
+  Actions runs it too. No live services or credentials required.
+- `sh -n <script>` — POSIX shell syntax check.
 - `python3 -m json.tool config/opencode.json` — validate the config before
   installing it.
 - `opencode debug config` — show the config OpenCode actually resolved.
@@ -157,69 +159,32 @@ touches all of them.
   for -- strictly less parallel than OpenCode here. The gateway keeps
   `/v1/responses` and `fold_system_items` because they are generic
   Responses-API support, not Codex-specific.
-- A tool-call batch is a barrier: one assistant message with N tool calls needs
-  all N results before the model can speak again, so the lead cannot act on the
-  first worker's report while the second still runs. That shapes how
-  `prompts/orchestrate.md` tells the lead to size a pair. Do not "fix" it by
-  adding more workers. On the 27B two requests on one node ran at half speed
-  each for no aggregate gain; the GSQ IQ3_S build with DFlash2 does gain in
-  aggregate (on the 2026-10-11 engine, 157-187 tok/s alone at 2k-16k on the
-  agent replay, 130-170 each at two; the deciding factor per task is draft
-  acceptance, not depth) but every extra request still slows the others, and
-  the four slots are shared by up to three users.
-  The fastest capacity is still a node with *nothing* running on it.
-- The barrier is not absolute, and `bin/opencode-tellico` now removes it. The
-  older claim here that OpenCode has no background task primitive was wrong:
-  the 1.18.30 binary defines the task tool twice, once as `{description,
-  prompt, subagent_type, task_id, command}` and once with `background` added
-  -- "Run the agent in the background. You will be notified when it completes.
-  DO NOT sleep, poll, or proactively check on its progress" -- and
-  `OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS` is what selects the second. So
-  the launcher exports it, and `prompts/orchestrate.md` tells the lead to pass
-  `background: true` and to refill the server that just came free. Without
-  both halves nothing changes: the flag only offers the parameter, and the
-  model has to ask for it.
-- `task_id` is the other half of that schema and is not used yet: it resumes a
-  prior subagent session instead of creating a fresh one, which would keep a
-  worker's prompt cache warm across dispatches. Worth trying once background
-  dispatch has settled.
-- Background dispatch is off for `opencode run` and the launcher enforces that,
-  because a one-shot run loses every background result. Measured with the same
-  two-worker dispatch both ways: in the foreground the lead collects both
-  reports and answers; in the background both workers finish, the lead regains
-  control immediately -- which is the feature working -- and then ends its turn
-  saying "Waiting for their reports", having lost both. A background result
-  arrives as a notification and needs a later turn to land in, and a run has
-  none. This is the shape of upstream issue 48826.
-- So the interactive path is the only one that can deliver a result, and it is
-  live but not yet proven end to end: a TUI session cannot be driven from a
-  script, so nobody has watched a notification actually land. If a worker's
-  report ever goes missing, `TELLICO_BACKGROUND_SUBAGENTS=0` is the first
-  thing to try, and the symptom to look for is a lead that announces it is
-  waiting for reports and then stops.
-- The capacity argument above is untouched either way: the slot count is
-  what it is, and a third worker still costs the others speed. What changed
-  is only that a finished worker's slot can now be refilled.
-- Background dispatch moved the lead's own slot from free to occupied, and that
-  changed which worker the lead should reach for first. The lead generates on
-  its own node, and it used to park while workers ran, so a worker on that same
-  node cost nothing. Now the lead keeps working, so `tellico-worker-N` competes
-  with `orchestrate-tellico-N` for one server. Observed live: node 1 at 2 of 2
-  requests with the lead and `tellico-worker-1` halving each other, node 0 at 0
-  of 2 and a whole GPU idle. `prompts/orchestrate.md` therefore sends the first
-  unit of a round to the far node, and `plugins/dispatch-balance/` nudges
-  when a task goes to the lead's own node while the far node has nothing in
-  flight -- only under background dispatch, since in the foreground the lead
-  parks and a lone worker there is fine. It needs to know where the lead runs
-  and no plugin hook reports that, so `bin/opencode-tellico` exports the
-  resolved `TELLICO_LEAD_NODE`; with the variable absent the nudge stays
-  silent rather than guessing.
-- Sizing a pair by cost was advice for the barrier, so it is gone from
-  `prompts/orchestrate.md` and `plugins/dispatch-balance/` suppresses its
-  imbalance nudge when the flag is set, keeping the same-node and
-  serial-dispatch nudges, which hold either way. The plugin reads the variable
-  from its own environment, which works because the launcher exports it into
-  the process OpenCode runs in.
+- The default engineer does ordinary reads, edits, checks and authorized Git
+  itself; delegate substantial independent units only when it helps finish
+  correctly. Keep exact write scopes and one shared build/Git owner. Idle
+  workers are acceptable. Optimize verified completion time, not occupied slots.
+- Foreground tool-call batches wait for every result. Interactive background
+  dispatch permits useful overlap, but a tool return there is only an
+  acknowledgement; track completion notifications and reports separately. The
+  launcher explicitly sets the upstream flag true/false, including false for
+  `opencode run`, so inherited environment cannot override a disabled mode.
+  The plugin adds mode-specific instructions. Live notification delivery still
+  needs an end-to-end check on the installed OpenCode version. Fall back with
+  `TELLICO_BACKGROUND_SUBAGENTS=0` if reports go missing.
+- The lead and same-numbered worker share a node. Prefer the far worker while
+  the lead is generating, but other users may occupy either server. Current
+  measurements show aggregate gains for two requests on the 2026-10-11 engine;
+  do not claim all sharing halves speed or that an untracked node is idle.
+- Consecutive work in one subsystem may resume a worker using the returned
+  session ID if supported (`task_id` on OpenCode 1). Use a fresh session for
+  unrelated work or stale/crowded context; continuity is not a cache guarantee.
+- `plugins/dispatch-balance` no longer nudges serial dispatch or unequal task
+  sizes. Only known overlapping foreground calls to the same worker receive
+  one scope/placement nudge. Background/unknown calls are excluded because
+  execute-after may be dispatch return rather than worker completion. Optional
+  `TELLICO_AGENT_TRACE` writes metadata-only tool/dispatch timing to an absolute
+  JSONL path; no prompts, arguments or outputs. It is not model timing, real
+  node occupancy, or proof of task success. Trace failures never fail work.
 - Web search is OpenCode's own `websearch` tool, not an MCP server: an MCP
   server's tool schemas cost tokens on every turn of every agent, and its
   extract tool duplicates `webfetch`. OpenCode 2 reads the provider from a
@@ -231,9 +196,9 @@ touches all of them.
   `OPENCODE_ENABLE_PARALLEL` rather than config; the launcher sets the key only
   on OpenCode 2 because OpenCode 1 was never shown to accept it. Results go
   through the `tool_output` cap like any tool: a Tavily search measured
-  2,830 tokens raw and was truncated to 8 KiB. Only workers and
-  `build-tellico` can search; the lead's `"*": "deny"` keeps result pages out
-  of its context. Verified on 2.0.26 on 2026-10-10 with a real
+  2,830 tokens raw and was truncated to 8 KiB. Both primaries and workers can
+  search; use targeted results and delegate large independent investigations
+  when useful. Verified on 2.0.26 on 2026-10-10 with a real
   `build-tellico-0` run (`provider: tavily`, no prompt); the OpenCode 1 path
   was read from the 1.18.30 binary, not run.
 - Thinking level is a model *variant*, not a model or an agent. The four
@@ -283,10 +248,9 @@ touches all of them.
   `edit`, `bash`, `webfetch`, `doom_loop` and `external_directory` but has no
   pattern gate for `read` at all, and both workers run `"*": "allow"`, so
   without it a credential can reach a worker report and from there the lead's
-  context and `.agent/PLANS.md`. `dispatch-balance` counts task overlap and
-  nudges once per session when the lead serialises, puts both halves of a pair
-  on one node, or pairs a long task with a short one -- the three ways to idle
-  a server, none of which the lead can see for itself. `compaction-guard`
+  context and `.agent/PLANS.md`. `dispatch-balance` supplies dispatch-mode
+  guidance, detects duplicate foreground worker calls and traces metadata;
+  it never requires work merely to occupy a server. `compaction-guard`
   forces `enable_thinking: false` on the three native overhead agents
   (compaction, summary, title): `agent.compaction.options` in the config says
   the same thing, but a model variant is merged *after* agent options and
@@ -304,20 +268,19 @@ touches all of them.
   silently skipped by OpenCode, which is why `tellico_check_config` fails on a
   missing one rather than warning.
 - Agents: two primaries per node plus two node-pinned workers.
-  `orchestrate-tellico-0|1` delegates, and `build-tellico-0|1` is the solo
-  alternative that does the work itself and cannot dispatch at all
-  (`--solo` / `TELLICO_SOLO=1` only chooses which one a session opens on;
-  `tab` switches between them). Their permissions are deliberately opposite
-  where it counts: the lead has no `bash` beyond read-only `git` because its
-  job is to delegate commands, and `build-tellico` has full `bash` and `edit`
-  with `task` denied. `build-tellico` does not say `"*": "allow"` the way the
-  workers do -- it lists what it needs, so OpenCode's own `external_directory:
-  ask` survives for an agent a user is driving directly. A prompt file is
-  always-on context for its agent, so every line added to
-  `prompts/orchestrate.md` or `prompts/build.md` costs tokens on every turn of
-  that agent. Keep them tight, and keep what is genuinely shared --
-  `.agent/PLANS.md` as the thing that survives compaction, the credential
-  rule, verify-before-you-carry-forward -- saying the same thing in both.
+  `orchestrate-tellico-0|1` implements and verifies directly and may delegate;
+  `build-tellico-0|1` has the same direct tools with delegation denied. Both
+  list tools explicitly rather than blanket allow, retaining OpenCode's
+  external-directory behavior. Primaries default to 200 steps; `--steps`
+  extends both, while workers remain bounded at 200. Repository-specific
+  instructions can still restrict checks or Git to a worker. Do not override
+  those by changing the client permission configuration alone.
+  Always-on prompts cost context each turn: keep them concise, honor the
+  repository's designated progress file before `.agent/PLANS.md`, and keep
+  durable state compact. Use focused checks during development, then one
+  required pass on the final tree; repeat after affected edits/failures, or
+  when the repository requires it. Verify acceptance boundaries, not just
+  that a command or worker returned successfully.
 - `pi/` is the whole pi harness: `models.json`, `settings.json`,
   `APPEND_SYSTEM.md` and `extensions/`, installed to
   `~/.config/tellico-qwen/pi` with `PI_CODING_AGENT_DIR` pointing at it. Pi

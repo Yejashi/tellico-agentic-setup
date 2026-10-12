@@ -1,295 +1,147 @@
-// Measures what prompts/orchestrate.md can only ask for: that the lead keeps
-// both servers busy. Counts task dispatches and their overlap, and when the
-// lead wastes a node it pushes one line into the next system prompt.
-//
-// Why a plugin and not more prose. The whole point of this setup is two
-// servers running at once, and the three ways to lose that are invisible to
-// the lead itself: dispatching serially, pinning both halves of a pair to one
-// node, and pairing a long task with a short one. Prose asks for all three on
-// every turn and pays tokens for it whether or not the lead is getting it
-// right. Here the cost is paid only when something actually went wrong.
-//
-// It only ever nudges, once per kind per session, and never throws: a wrong
-// count must not be able to break a session. Workers cannot call task (the
-// lead's permission block denies it), so every dispatch seen here is the
-// lead's.
-//
-// It loads under both OpenCode 1 and 2; see plugins/secret-guard/index.js for
-// the two contracts. OpenCode 2 renamed the task tool to subagent and its
-// subagent_type argument to agent, and its nudge goes in through the session
-// context hook rather than experimental.chat.system.transform. The accounting
-// below is shared; only the wiring at the bottom differs.
+// Dispatch guidance and optional metadata-only timing for OpenCode 1 and 2.
+// A background tool returns an acknowledgement, not worker completion. Never
+// infer node occupancy from it or encourage tasks just to occupy both servers.
+import { constants, openSync, closeSync, fstatSync, writeSync } from "node:fs";
+import { isAbsolute } from "node:path";
+import { performance } from "node:perf_hooks";
 
 const DISPATCH_TOOLS = new Set(["task", "subagent"]);
-
 const WORKER_NODE_RE = /^tellico-worker-([01])$/;
+const MAX_TRACKED = 4096;
 
-// A long task beside a short one idles a server for the difference. Below
-// this the batch is too short for the imbalance to be worth a line.
-const IMBALANCE_MIN_MS = 20000;
-const IMBALANCE_RATIO = 3;
-
-// Two dispatches that each ran alone is a pattern; one is a judgement call
-// the lead is allowed to make.
-const SOLO_RUN_LIMIT = 2;
-
-// With background dispatch a short task no longer holds its server until a
-// long one ends -- the lead is notified as each lands and can refill the slot
-// -- so telling it to pair halves by cost would be advice for a barrier that
-// is no longer there. The other two nudges still hold: an empty server is
-// wasted either way, and two tasks on one node still halve each other.
-function backgroundDispatchEnabled() {
-  const value = process.env.OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS;
-  return value === "true" || value === "1";
-}
-
-// Which node the lead itself generates on, exported by bin/opencode-tellico.
-// Nothing in the plugin API reports it, and it matters: the lead occupies a
-// slot on its own node whenever it is generating, so a worker pinned there
-// competes with it.
-function leadNode() {
-  const value = process.env.TELLICO_LEAD_NODE;
-  return value === "0" || value === "1" ? value : null;
-}
-
-function nodeOf(agent) {
-  const match = WORKER_NODE_RE.exec(agent);
-  return match ? match[1] : null;
-}
-
-function stateFor(states, sessionID) {
-  let state = states.get(sessionID);
-  if (!state) {
-    state = {
-      inflight: new Map(),
-      soloRun: 0,
-      lastPaired: null,
-      fired: new Set(),
-      pending: [],
-    };
-    states.set(sessionID, state);
-  }
-  return state;
-}
-
-function nudge(state, kind, line) {
-  if (state.fired.has(kind)) return;
-  state.fired.add(kind);
-  state.pending.push(line);
-}
-
-function agentOf(args) {
-  if (!args || typeof args !== "object") return "";
-  const value = args.subagent_type || args.agent || args.agentName;
-  return typeof value === "string" ? value : "";
-}
-
-function otherNode(agent) {
-  const node = nodeOf(agent);
-  if (!node) return null;
-  return node === "0" ? "tellico-worker-1" : "tellico-worker-0";
-}
-
-// The accounting, independent of how OpenCode delivers the events.
 function createTracker() {
-  const states = new Map();
-  const backgroundDispatch = backgroundDispatchEnabled();
-  const lead = leadNode();
+  const calls = new Map();
+  const pending = new Map();
+  const warned = new Set();
+  const value = process.env.OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS;
+  const background = value === "true" || value === "1";
+  const tracePath = process.env.TELLICO_AGENT_TRACE;
+  const tracing = tracePath && isAbsolute(tracePath);
+  const lead = process.env.TELLICO_LEAD_NODE;
+  const modeLine = background
+    ? "Dispatch mode: background is enabled. Use background: true only if the tool supports it; a dispatch return is an acknowledgement, not worker completion. Collect completion reports for every required task. Idle workers are acceptable."
+    : "Dispatch mode: foreground. Omit background (or set false if supported); collect all worker reports before finishing. Idle workers are acceptable.";
+
+  function trace(record) {
+    if (!tracing) return;
+    let fd;
+    try {
+      // Never follow a symlink or block on a pipe/device. Files created here
+      // are private; existing files keep the permissions the user chose.
+      fd = openSync(tracePath, constants.O_WRONLY | constants.O_APPEND |
+        constants.O_CREAT | constants.O_NOFOLLOW | constants.O_NONBLOCK, 0o600);
+      if (!fstatSync(fd).isFile()) return;
+      writeSync(fd, JSON.stringify({ at: new Date().toISOString(),
+        pid: process.pid, ...record }) + "\n");
+    } catch {
+      // Diagnostics must never block a tool or fail a session.
+    } finally {
+      if (fd !== undefined) { try { closeSync(fd); } catch { /* Best effort. */ } }
+    }
+  }
 
   function before(sessionID, callID, tool, args) {
     try {
-      if (!DISPATCH_TOOLS.has(tool) || !sessionID) return;
-      const state = stateFor(states, sessionID);
-      const agent = agentOf(args);
-
-      // Both halves of a pair on one server run at half speed each for no
-      // aggregate gain, and leave the other server with nothing.
-      for (const entry of state.inflight.values()) {
-        if (entry.agent && entry.agent === agent) {
-          const other = otherNode(agent);
-          if (other) {
-            nudge(
-              state,
-              "same-node",
-              `Dispatch: two tasks are in flight on ${agent} at once, so ` +
-                `the other server is idle and both halves run at half ` +
-                `speed. Send one of a concurrent pair to ${other}.`,
-            );
-          }
+      if (!sessionID || !callID) return;
+      const dispatch = DISPATCH_TOOLS.has(tool);
+      if (!dispatch && !tracing) return;
+      const agentValue = args && (args.subagent_type || args.agent || args.agentName);
+      const agent = dispatch && typeof agentValue === "string" ? agentValue : "";
+      const node = WORKER_NODE_RE.exec(agent)?.[1] || null;
+      // Classify the actual call. Unknown mode is excluded from occupancy
+      // accounting: launch-time enablement does not prove a call's mode.
+      const taskMode = !dispatch ? null
+        : args?.background === true ? "background"
+        : args?.background === false || !background ? "foreground" : "unknown";
+      if (dispatch && taskMode === "foreground" && node && !warned.has(sessionID)) {
+        const duplicate = [...calls.values()].some(entry =>
+          entry.sessionID === sessionID && entry.agent === agent &&
+          entry.taskMode === "foreground");
+        if (duplicate) {
+          if (warned.size >= MAX_TRACKED) warned.delete(warned.values().next().value);
+          warned.add(sessionID);
+          if (pending.size >= MAX_TRACKED) pending.delete(pending.keys().next().value);
+          pending.set(sessionID,
+            `Dispatch: concurrent foreground calls target ${agent}. If independent, use separate workers; if dependent, run sequentially. Do not create extra work to fill a server.`);
         }
       }
-
-      // The lead shares a server with the worker whose number matches its
-      // own, and under background dispatch it keeps generating rather than
-      // parking, so that slot stays taken. Sending work there while the
-      // other server has nothing on it is the one unambiguous waste: both
-      // requests on the busy node halve each other while a whole GPU idles.
-      // Only under background dispatch -- in the foreground the lead parks
-      // and holds no slot, so a lone worker on the lead's node is fine.
-      const node = nodeOf(agent);
-      if (backgroundDispatch && lead && node === lead) {
-        let otherBusy = false;
-        for (const entry of state.inflight.values()) {
-          if (entry.node && entry.node !== lead) otherBusy = true;
-        }
-        if (!otherBusy) {
-          nudge(
-            state,
-            "lead-node",
-            `Dispatch: you generate on node ${lead}, so ${agent} shares a ` +
-              `server with you while node ${lead === "0" ? "1" : "0"} has ` +
-              `nothing on it. Both of you then run at half speed for no ` +
-              `aggregate gain. Send this to ${otherNode(agent)} instead.`,
-          );
-        }
-      }
-
-      // Every task already running has now overlapped at least one other.
-      for (const entry of state.inflight.values()) entry.overlapped = true;
-
-      state.inflight.set(callID, {
-        agent,
-        node: nodeOf(agent),
-        start: Date.now(),
-        overlapped: state.inflight.size > 0,
-      });
+      const key = JSON.stringify([sessionID, callID]);
+      if (calls.size >= MAX_TRACKED) calls.delete(calls.keys().next().value);
+      // Store no arguments, prompt text, commands, paths or tool outputs.
+      calls.set(key, { sessionID, callID, tool, dispatch, agent, node,
+        taskMode, start: performance.now() });
+      trace({ event: dispatch ? "dispatch_start" : "tool_start",
+        session: sessionID, call: callID, tool,
+        lead_node: lead === "0" || lead === "1" ? lead : null,
+        ...(dispatch ? { worker: node ? agent : null, node, mode: taskMode,
+          resumed: typeof args?.task_id === "string" && args.task_id.length > 0 } : {}) });
     } catch {
-      // Accounting is never worth failing a dispatch over.
+      // Optional guidance must never fail the user's work.
     }
   }
 
   function after(sessionID, callID, tool) {
     try {
-      if (!DISPATCH_TOOLS.has(tool) || !sessionID) return;
-      const state = states.get(sessionID);
-      if (!state) return;
-
-      const entry = state.inflight.get(callID);
-      if (!entry) return;
-      state.inflight.delete(callID);
-
-      const duration = Date.now() - entry.start;
-
-      if (entry.overlapped) {
-        state.soloRun = 0;
-        // Pair halves of similar expected cost: a batch ends only when its
-        // slowest member ends.
-        const partner = state.lastPaired;
-        if (
-          !backgroundDispatch &&
-          partner &&
-          Math.max(duration, partner) >= IMBALANCE_MIN_MS &&
-          Math.max(duration, partner) > Math.min(duration, partner) * IMBALANCE_RATIO
-        ) {
-          nudge(
-            state,
-            "imbalance",
-            `Dispatch: that batch's halves took ${Math.round(partner / 1000)}s ` +
-              `and ${Math.round(duration / 1000)}s, so one server idled for ` +
-              `most of it. Pair halves of similar expected cost, or put the ` +
-              `small half's work in your own tool-call batch beside the large one.`,
-          );
-        }
-        state.lastPaired = duration;
-        return;
-      }
-
-      state.lastPaired = null;
-      state.soloRun += 1;
-      if (state.soloRun >= SOLO_RUN_LIMIT) {
-        nudge(
-          state,
-          "serial",
-          `Dispatch: the last ${state.soloRun} tasks each ran alone, so one ` +
-            `server was idle throughout. Before the next dispatch, name two ` +
-            `independent units and emit both task calls in one tool-call ` +
-            `batch; if the work genuinely will not divide, say so in one line.`,
-        );
-      }
-    } catch {
-      // As above.
-    }
+      const key = JSON.stringify([sessionID, callID]);
+      const entry = calls.get(key);
+      if (!entry || entry.tool !== tool) return;
+      calls.delete(key);
+      trace({ event: entry.dispatch ? "dispatch_return" : "tool_return",
+        session: sessionID, call: callID, tool,
+        duration_ms: Math.round(performance.now() - entry.start),
+        ...(entry.dispatch ? { worker: entry.node ? entry.agent : null,
+          node: entry.node, mode: entry.taskMode,
+          // Tool return does not prove success, even for a foreground task.
+          completion_observable: entry.taskMode === "foreground" } : {}) });
+    } catch { /* As above. */ }
   }
 
-  // The nudges waiting for this session's next system prompt, emptied.
-  function drain(sessionID) {
-    try {
-      const state = sessionID && states.get(sessionID);
-      if (!state || state.pending.length === 0) return [];
-      const lines = state.pending;
-      state.pending = [];
-      return lines;
-    } catch {
-      return [];
-    }
+  function context(sessionID) {
+    const lines = [modeLine];
+    const nudge = pending.get(sessionID);
+    if (nudge) { pending.delete(sessionID); lines.push(nudge); }
+    return lines;
   }
-
-  return { before, after, drain };
+  return { before, after, context };
 }
 
-// OpenCode 1: a server function that returns hook objects.
 export const DispatchBalancePlugin = async () => {
   const tracker = createTracker();
-
   return {
     "tool.execute.before": async (input, output) => {
-      if (!input) return;
-      tracker.before(input.sessionID, input.callID, input.tool, output && output.args);
+      if (input) tracker.before(input.sessionID, input.callID, input.tool, output?.args);
     },
-
-    "tool.execute.after": async (input) => {
-      if (!input) return;
-      tracker.after(input.sessionID, input.callID, input.tool);
+    "tool.execute.after": async input => {
+      if (input) tracker.after(input.sessionID, input.callID, input.tool);
     },
-
     "experimental.chat.system.transform": async (input, output) => {
-      try {
-        if (!input || !output || !Array.isArray(output.system)) return;
-        for (const line of tracker.drain(input.sessionID)) output.system.push(line);
-      } catch {
-        // As above.
-      }
+      if (!input || !Array.isArray(output?.system)) return;
+      output.system.push(...tracker.context(input.sessionID));
     },
   };
 };
 
-// OpenCode 2: hooks registered on the context. A system part there is a
-// {type: "text", text} object, the shape OpenCode's own plugins push.
 async function setup(context) {
   const tracker = createTracker();
   const registrations = [
-    await context.tool.hook("execute.before", (event) => {
-      if (!event) return;
-      tracker.before(event.sessionID, event.id, event.tool, event.input);
+    await context.tool.hook("execute.before", event => {
+      if (event) tracker.before(event.sessionID, event.id, event.tool, event.input);
     }),
-    await context.tool.hook("execute.after", (event) => {
-      if (!event) return;
-      tracker.after(event.sessionID, event.id, event.tool);
+    await context.tool.hook("execute.after", event => {
+      if (event) tracker.after(event.sessionID, event.id, event.tool);
     }),
-    await context.session.hook("context", (request) => {
-      try {
-        if (!request || !Array.isArray(request.system)) return;
-        for (const line of tracker.drain(request.sessionID)) {
-          request.system.push({ type: "text", text: line });
-        }
-      } catch {
-        // As above.
+    await context.session.hook("context", request => {
+      if (!Array.isArray(request?.system)) return;
+      for (const text of tracker.context(request.sessionID)) {
+        request.system.push({ type: "text", text });
       }
     }),
   ];
   return async () => {
     for (const registration of registrations) {
-      try {
-        await registration.dispose();
-      } catch {
-        // Shutting down; nothing left to protect.
-      }
+      try { await registration.dispose(); } catch { /* Shutting down. */ }
     }
   };
 }
 
-export default {
-  id: "tellico-dispatch-balance",
-  server: DispatchBalancePlugin,
-  setup,
-};
+export default { id: "tellico-dispatch-balance", server: DispatchBalancePlugin, setup };

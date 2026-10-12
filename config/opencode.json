@@ -259,30 +259,24 @@
   "subagent_depth": 1,
   "agent": {
     "orchestrate-tellico-0": {
-      "description": "Dual-node Tellico lead on node 0. Decomposes work and dispatches independent tasks to both node-pinned workers in parallel.",
+      "description": "Tellico engineer on node 0. Implements and verifies directly; delegates useful independent work to node-pinned workers.",
       "mode": "primary",
       "model": "tellico-0/qwen3.8-27b-gsq-iq3s",
       "variant": "medium",
       "temperature": 0.6,
       "top_p": 0.95,
       "prompt": "{file:./prompts/orchestrate.md}",
-      "steps": 100,
+      "steps": 200,
       "permission": {
-        "*": "deny",
         "read": "allow",
         "glob": "allow",
         "grep": "allow",
         "list": "allow",
         "edit": "allow",
+        "bash": "allow",
         "webfetch": "allow",
+        "websearch": "allow",
         "lsp": "allow",
-        "bash": {
-          "*": "deny",
-          "git status*": "allow",
-          "git diff*": "allow",
-          "git log*": "allow",
-          "git show*": "allow"
-        },
         "task": {
           "*": "deny",
           "tellico-worker-0": "allow",
@@ -292,30 +286,24 @@
       }
     },
     "orchestrate-tellico-1": {
-      "description": "Dual-node Tellico lead on node 1. Decomposes work and dispatches independent tasks to both node-pinned workers in parallel.",
+      "description": "Tellico engineer on node 1. Implements and verifies directly; delegates useful independent work to node-pinned workers.",
       "mode": "primary",
       "model": "tellico-1/qwen3.8-27b-gsq-iq3s",
       "variant": "medium",
       "temperature": 0.6,
       "top_p": 0.95,
       "prompt": "{file:./prompts/orchestrate.md}",
-      "steps": 100,
+      "steps": 200,
       "permission": {
-        "*": "deny",
         "read": "allow",
         "glob": "allow",
         "grep": "allow",
         "list": "allow",
         "edit": "allow",
+        "bash": "allow",
         "webfetch": "allow",
+        "websearch": "allow",
         "lsp": "allow",
-        "bash": {
-          "*": "deny",
-          "git status*": "allow",
-          "git diff*": "allow",
-          "git log*": "allow",
-          "git show*": "allow"
-        },
         "task": {
           "*": "deny",
           "tellico-worker-0": "allow",
