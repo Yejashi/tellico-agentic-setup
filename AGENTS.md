@@ -281,11 +281,13 @@ gateway defaults; a model swap touches all of them.
   required pass on the final tree; repeat after affected edits/failures, or
   when the repository requires it. Verify acceptance boundaries, not just
   that a command or worker returned successfully.
-- `--magic-context` is an opt-in experiment, never the default. It names
-  `@cortexkit/opencode-magic-context` at a pinned version in the launcher's
-  runtime config, not in `config/opencode.json`: the package comes from npm,
-  which OpenCode fetches itself, so the default session must not depend on
-  the network. Name only that package there. A runtime `plugin` list is
+- Magic Context is on by default in `opencode-tellico` and `pi-tellico`;
+  `--no-magic-context` (or `TELLICO_MAGIC_CONTEXT=0`) turns it off for
+  OpenCode. The launcher names `@cortexkit/opencode-magic-context` at a
+  pinned version in its runtime config, not in `config/opencode.json`, so
+  that switch can leave it out: the package comes from npm, which OpenCode
+  fetches itself, and the switch is how to start without the network. Name
+  only that package there. A runtime `plugin` list is
   *appended* to the installed file's list, and a plugin named in both loads
   twice -- measured on 2.0.26 with probe plugins whose server hook wrote a
   marker. Its historian is a hidden child session that holds a cluster slot,
@@ -299,6 +301,17 @@ gateway defaults; a model swap touches all of them.
   `compaction.reserved` is inert. The per-request cost is about 1,400 tokens
   of guidance in the `full` preset (the installed config picks `light`) plus
   about 2,500 tokens of `ctx_*` tool schemas.
+- Under pi it is `npm:@cortexkit/pi-magic-context` in `pi/settings.json`'s
+  `packages`; pi installs it into `~/.config/tellico-qwen/pi/npm` on the
+  next start, and the extension cancels pi's own compaction itself, so
+  `compaction.reserveTokens` only matters when it is not loaded. Keep both
+  packages at the same version: they share one SQLite database and
+  mismatched versions block each other's migrations (a test enforces it).
+  The pi historian is a child `pi --print` that inherits
+  `PI_CODING_AGENT_DIR`, so `historian.pi` names `tellico-1`/`tellico-0`
+  with `thinking_level: off` -- pi has no worker providers. Historian model
+  settings are honoured only from the user-level config, never a project's
+  `.cortexkit/`. Crush has no Magic Context port.
 - `pi/` is the whole pi harness: `models.json`, `settings.json`,
   `APPEND_SYSTEM.md` and `extensions/`, installed to
   `~/.config/tellico-qwen/pi` with `PI_CODING_AGENT_DIR` pointing at it. Pi

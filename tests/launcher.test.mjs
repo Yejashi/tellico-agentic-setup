@@ -126,15 +126,9 @@ test("lead can implement and verify directly without enabling arbitrary subagent
   assert.equal(config.compaction.reserved, 40000);
 });
 
-test("default launch names no plugin, so the installed list is not appended to", t => {
-  const { captured } = fixture(t).run(["0"]);
-  assert.equal(captured.config.plugin, undefined);
-  assert.equal(captured.config.compaction, undefined);
-});
-
-test("magic-context names only its pinned package and turns native compaction off", t => {
+test("magic-context is on by default, names only its pinned package and turns native compaction off", t => {
   const f = fixture(t);
-  for (const launch of [f.run(["0", "--magic-context"]), f.run(["0"], { TELLICO_MAGIC_CONTEXT: "1" })]) {
+  for (const launch of [f.run(["0"]), f.run(["0", "--magic-context"]), f.run(["0"], { TELLICO_MAGIC_CONTEXT: "1" })]) {
     assert.equal(launch.status, 0);
     const { plugin, compaction } = launch.captured.config;
     // A runtime plugin list is appended to the file's, and a plugin named in
@@ -146,13 +140,32 @@ test("magic-context names only its pinned package and turns native compaction of
   assert.equal(f.run(["0"], { TELLICO_MAGIC_CONTEXT: "maybe" }).status, 2);
 });
 
+test("no-magic-context names no plugin, so the installed list is not appended to", t => {
+  const f = fixture(t);
+  for (const launch of [f.run(["0", "--no-magic-context"]), f.run(["0"], { TELLICO_MAGIC_CONTEXT: "0" })]) {
+    assert.equal(launch.status, 0);
+    assert.equal(launch.captured.config.plugin, undefined);
+    assert.equal(launch.captured.config.compaction, undefined);
+  }
+});
+
 test("magic-context refuses to start without the plugin's config", t => {
   const f = fixture(t);
   rmSync(join(f.dir, "config/cortexkit/magic-context.jsonc"));
-  const result = f.run(["0", "--magic-context"]);
+  const result = f.run(["0"]);
   assert.equal(result.status, 1);
   assert.match(result.stderr, /install\.sh --no-start/);
-  assert.equal(f.run(["0"]).status, 0);
+  assert.match(result.stderr, /--no-magic-context/);
+  assert.equal(f.run(["0", "--no-magic-context"]).status, 0);
+});
+
+test("pi loads the same pinned Magic Context version as opencode-tellico", () => {
+  const settings = JSON.parse(readFileSync(join(root, "pi/settings.json"), "utf8"));
+  const launcher = readFileSync(join(root, "bin/opencode-tellico"), "utf8");
+  const opencodeVersion = launcher.match(/@cortexkit\/opencode-magic-context@(\d+\.\d+\.\d+)/)[1];
+  // Both processes share one database, and mismatched versions on it block
+  // each other's migrations.
+  assert.deepEqual(settings.packages, [`npm:@cortexkit/pi-magic-context@${opencodeVersion}`]);
 });
 
 test("the magic-context template points its historian at worker providers without thinking", () => {
@@ -166,6 +179,14 @@ test("the magic-context template points its historian at worker providers withou
     assert.match(provider, /^tellico-[01]-worker$/);
     const model = config.provider[provider].models[modelID];
     assert.equal(model.variants[entry.variant].chat_template_kwargs.enable_thinking, false);
+  }
+  const piModels = JSON.parse(readFileSync(join(root, "pi/models.json"), "utf8"));
+  const piEntries = [mc.historian.pi.model, ...mc.historian.pi.fallback_models];
+  assert.deepEqual(piEntries.map(entry => entry.model.split("/")[0]), ["tellico-1", "tellico-0"]);
+  for (const entry of piEntries) {
+    const [provider, modelID] = entry.model.split("/");
+    assert.ok(piModels.providers[provider].models.some(model => model.id === modelID));
+    assert.equal(entry.thinking_level, "off");
   }
   assert.equal(mc.embedding.provider, "off");
   assert.equal(mc.prompt_surface.default, "light");

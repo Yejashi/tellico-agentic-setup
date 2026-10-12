@@ -13,5 +13,8 @@
     "reserveTokens": 40960
   },
   "cacheWarming": "off",
+  "packages": [
+    "npm:@cortexkit/pi-magic-context@0.47.0"
+  ],
   "showCacheMissNotices": true
 }

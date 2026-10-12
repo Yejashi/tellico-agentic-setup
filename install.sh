@@ -495,8 +495,8 @@ else
 fi
 install -m 755 "$script_dir/bin/opencode-tellico" "$bin_dir/opencode-tellico"
 
-# Magic Context, the optional replacement for OpenCode's compaction that
-# opencode-tellico --magic-context turns on. The plugin reads one user-level
+# Magic Context, which replaces native compaction in opencode-tellico and
+# pi-tellico sessions by default. The plugin reads one user-level
 # file, $XDG_CONFIG_HOME/cortexkit/magic-context.jsonc, and nothing points it
 # elsewhere, so the installed copy lives with the rest of this setup and that
 # path is a symlink to it. A file of the user's own there is left alone and
@@ -510,7 +510,7 @@ if [ -L "$magic_context_link" ] || [ ! -e "$magic_context_link" ]; then
   ln -sfn "$config_dir/magic-context.jsonc" "$magic_context_link"
 else
   echo "Left $magic_context_link alone: it is not this setup's symlink, so"
-  echo "--magic-context sessions use that file rather than the installed copy."
+  echo "Magic Context sessions use that file rather than the installed copy."
 fi
 
 # Codex support was removed: it exposes no delegation tool, so it could not

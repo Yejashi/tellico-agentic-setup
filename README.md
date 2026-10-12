@@ -479,20 +479,29 @@ is lost from disk, only the conversation.
 
 ### Magic Context
 
-`--magic-context` (or `TELLICO_MAGIC_CONTEXT=1`) replaces OpenCode's
-compaction for the session with the [Magic
-Context](https://github.com/cortexkit/magic-context) plugin. Instead of one
-blocking summary when the window fills, a background "historian" summarises
-old history into tiers that stand in for it, stale tool output is dropped
-by rule, and decisions and conventions it notices are kept as project memory
-that every later session inherits.
+`opencode-tellico` and `pi-tellico` both replace their harness's compaction
+with the [Magic Context](https://github.com/cortexkit/magic-context) plugin by
+default. Instead of one blocking summary when the window fills, a background
+"historian" summarises old history into tiers that stand in for it, stale
+tool output is dropped by rule, and decisions and conventions it notices are
+kept as project memory that every later session inherits.
 
 ```sh
-opencode-tellico 0 --magic-context
+opencode-tellico 0 --no-magic-context   # OpenCode's own compaction instead
+TELLICO_MAGIC_CONTEXT=0 opencode-tellico  # the same, for every session
 ```
 
-It is an experiment, and it is off by default for reasons that are measured,
-not guessed:
+Under pi it is the `npm:@cortexkit/pi-magic-context` entry in
+`pi/settings.json`'s `packages`, which pi installs into its agent directory on
+the first start after install; delete that entry and rerun `./install.sh
+--no-start` to turn it off there, and pi's own compaction takes over again.
+Both are pinned to the same version, because they share one database and
+processes of different versions on it block each other's migrations. Under pi
+the historian is a child `pi --print` through the `tellico-1` provider, with
+`tellico-0` as the fallback, since pi has no worker providers. Crush has no
+Magic Context port, so `crush-tellico` keeps its own auto-summarize.
+
+It is on by default, but it has measured costs worth knowing:
 
 - **The historian is a session on the cluster.** It runs as a hidden child
   session through OpenCode, so it holds one of the four slots while it reads
@@ -523,8 +532,9 @@ not guessed:
   SQLite database under `~/.local/share/cortexkit/`, outside this setup and
   outside `secret-guard`'s reach.
 
-The plugin is named only in the session's runtime config, never in
-`config/opencode.json`, so the default session does not depend on npm.
+Under OpenCode the plugin is named only in the session's runtime config,
+never in `config/opencode.json`, so `--no-magic-context` can leave it out and
+start a session that does not depend on npm.
 OpenCode appends a runtime `plugin` list to the installed file's list rather
 than merging them, and a plugin named in both loads twice -- measured on
 2.0.26 with marker-writing probe plugins -- which is why the launcher names

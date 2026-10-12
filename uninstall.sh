@@ -102,6 +102,9 @@ rmdir "$config_dir/plugins/dispatch-balance" 2>/dev/null || true
 rmdir "$config_dir/plugins/compaction-guard" 2>/dev/null || true
 rmdir "$config_dir/pi/extensions/secret-guard" 2>/dev/null || true
 rmdir "$config_dir/pi/extensions" 2>/dev/null || true
+# Pi installs the packages pi/settings.json names (Magic Context) under its
+# agent directory, which is this setup's own, so the copy is ours to remove.
+rm -rf "$config_dir/pi/npm"
 # Sessions live under $XDG_DATA_HOME/tellico-qwen, not here, so removing this
 # directory never deletes a transcript. It is left in place deliberately.
 rmdir "$config_dir/pi" 2>/dev/null || true

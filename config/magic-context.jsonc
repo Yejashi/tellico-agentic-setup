@@ -1,5 +1,6 @@
-// Magic Context (https://github.com/cortexkit/magic-context) settings for an
-// opencode-tellico session started with --magic-context. install.sh copies
+// Magic Context (https://github.com/cortexkit/magic-context) settings for
+// opencode-tellico and pi-tellico sessions, both of which load the plugin by
+// default (opencode-tellico --no-magic-context turns it off). install.sh copies
 // this file to ~/.config/tellico-qwen/magic-context.jsonc and links it from
 // ~/.config/cortexkit/magic-context.jsonc, the only user-level path the plugin
 // reads. Edit it here and rerun ./install.sh --no-start; an edit to the
@@ -19,11 +20,21 @@
   // OpenCode's own summaries, which this agent is not covered by. Node 1
   // first and node 0 as the fallback: the plugin has one config for every
   // session, so it cannot follow the lead to the far node.
+  //
+  // Under pi the historian is a child "pi --print" that inherits
+  // PI_CODING_AGENT_DIR, so it sees pi/models.json, which has no worker
+  // providers: it goes through the lead providers instead, in the same order.
   "historian": {
     "opencode": {
       "model": { "model": "tellico-1-worker/qwen3.8-27b-gsq-iq3s", "variant": "off" },
       "fallback_models": [
         { "model": "tellico-0-worker/qwen3.8-27b-gsq-iq3s", "variant": "off" }
+      ]
+    },
+    "pi": {
+      "model": { "model": "tellico-1/qwen3.8-27b-gsq-iq3s", "thinking_level": "off" },
+      "fallback_models": [
+        { "model": "tellico-0/qwen3.8-27b-gsq-iq3s", "thinking_level": "off" }
       ]
     }
   },
@@ -41,7 +52,7 @@
   // tool schemas cost about 2,500 tokens on top, on every request.
   "prompt_surface": { "default": "light" },
 
-  // bin/opencode-tellico pins the package version, so the plugin must not
-  // rewrite opencode.json to advance it.
+  // bin/opencode-tellico and pi/settings.json pin the package versions, so
+  // the plugin must not rewrite either to advance them.
   "auto_update": false
 }

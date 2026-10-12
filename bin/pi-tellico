@@ -25,6 +25,11 @@ overrides it.
 Pi is a single-agent harness: it has no subagents, so there is no orchestrate
 or worker split here. It is the pi counterpart of "opencode-tellico --solo".
 
+Like opencode-tellico, it loads the Magic Context extension, which replaces
+pi's compaction with background summaries and project memory. Pi fetches the
+package from npm on the first start after install. See "Magic Context" in the
+README.
+
 Everything after the options goes to pi unchanged, so its own interface is
 available: a prompt to start with, @file to attach one, --print for one-shot
 output, --continue to resume, --mode json, and so on. See "pi --help".
