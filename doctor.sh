@@ -134,6 +134,13 @@ else
   tellico_status_line harnesses OK "$doctor_harnesses"
 fi
 
+# Pi fetches its Magic Context package with npm, which nothing else here
+# needs; without it pi-tellico still starts, just with no Magic Context.
+if command -v pi >/dev/null 2>&1 && ! command -v npm >/dev/null 2>&1; then
+  tellico_status_line pi-npm WARN \
+    'npm not on PATH: pi cannot fetch Magic Context (install nodejs)'
+fi
+
 # Crush is the only harness here that needs a line in a file outside this
 # setup's own directory, so it is the only one that can be half-installed.
 if [ -r "$config_dir/crush/tellico.crushrc" ]; then
