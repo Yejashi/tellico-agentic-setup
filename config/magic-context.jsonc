@@ -1,0 +1,47 @@
+// Magic Context (https://github.com/cortexkit/magic-context) settings for an
+// opencode-tellico session started with --magic-context. install.sh copies
+// this file to ~/.config/tellico-qwen/magic-context.jsonc and links it from
+// ~/.config/cortexkit/magic-context.jsonc, the only user-level path the plugin
+// reads. Edit it here and rerun ./install.sh --no-start; an edit to the
+// installed copy shows up as drift in ./doctor.sh.
+//
+// Every value below is a departure from the plugin's defaults, chosen for a
+// 131,072-token slot on a four-slot cluster shared with other users. See
+// "Magic Context" in README.md for the measurements behind them.
+{
+  "$schema": "https://raw.githubusercontent.com/cortexkit/magic-context/master/assets/magic-context.schema.json",
+
+  // The historian summarises old history in a hidden child session, which is
+  // a real request on the cluster and holds a slot while it runs. It goes
+  // through a worker provider so the gateway queues it behind every lead, and
+  // with thinking off so the summary cannot spend its output budget on
+  // reasoning -- the failure plugins/compaction-guard exists to prevent for
+  // OpenCode's own summaries, which this agent is not covered by. Node 1
+  // first and node 0 as the fallback: the plugin has one config for every
+  // session, so it cannot follow the lead to the far node.
+  "historian": {
+    "opencode": {
+      "model": { "model": "tellico-1-worker/qwen3.8-27b-gsq-iq3s", "variant": "off" },
+      "fallback_models": [
+        { "model": "tellico-0-worker/qwen3.8-27b-gsq-iq3s", "variant": "off" }
+      ]
+    }
+  },
+
+  // No dreamer: it would run more hidden sessions on the cluster overnight,
+  // and those slots belong to whoever is working then.
+
+  // Keyword search instead of embeddings: the local embedding model is a
+  // 90 MB download on first use plus a native ONNX runtime, and the plugin
+  // works without it. Context management is unaffected.
+  "embedding": { "provider": "off" },
+
+  // The guidance block the plugin adds to every request is about 1,400
+  // tokens in its full form; "light" is the smaller preset. The five ctx_*
+  // tool schemas cost about 2,500 tokens on top, on every request.
+  "prompt_surface": { "default": "light" },
+
+  // bin/opencode-tellico pins the package version, so the plugin must not
+  // rewrite opencode.json to advance it.
+  "auto_update": false
+}

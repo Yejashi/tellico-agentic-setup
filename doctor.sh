@@ -146,6 +146,23 @@ if [ -r "$config_dir/crush/tellico.crushrc" ]; then
   fi
 fi
 
+# Magic Context reads one user-level path, which install.sh links to the
+# installed copy. Optional, so a user's own file there is reported, not failed:
+# --magic-context sessions follow that file, not this repository's.
+magic_context_link="$config_home/cortexkit/magic-context.jsonc"
+if [ -r "$config_dir/magic-context.jsonc" ]; then
+  if [ -L "$magic_context_link" ] &&
+    [ "$(readlink "$magic_context_link")" = "$config_dir/magic-context.jsonc" ]; then
+    tellico_status_line magic-context OK 'linked to the installed config'
+  elif [ -e "$magic_context_link" ]; then
+    tellico_status_line magic-context WARN \
+      "$magic_context_link is the user's own, not the installed copy"
+  else
+    tellico_status_line magic-context WARN \
+      "$magic_context_link missing; rerun install.sh --no-start"
+  fi
+fi
+
 # Only meaningful once the commands exist.
 path_warning=false
 config_failed=false

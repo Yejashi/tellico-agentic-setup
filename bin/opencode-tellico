@@ -13,10 +13,17 @@ think=${TELLICO_THINK:-}
 solo=${TELLICO_SOLO:-0}
 steps=${TELLICO_STEPS:-}
 websearch=${TELLICO_WEBSEARCH:-tavily}
+magic_context=${TELLICO_MAGIC_CONTEXT:-0}
+# Exact version, never @latest: OpenCode 2 may remove an unpinned package
+# mid-session when a newer one appears, and the plugin's own updater is told
+# not to advance it (auto_update in config/magic-context.jsonc). Verified
+# 0.47.0 against the OpenCode in use when it was added; bump deliberately.
+magic_context_package='@cortexkit/opencode-magic-context@0.47.0'
+magic_context_config="$config_home/cortexkit/magic-context.jsonc"
 
 usage() {
   cat <<'EOF'
-usage: opencode-tellico [0|1] [--solo] [--think LEVEL] [--steps N] [OPENCODE_ARGS...]
+usage: opencode-tellico [0|1] [--solo] [--think LEVEL] [--steps N] [--magic-context] [OPENCODE_ARGS...]
 
 Starts OpenCode with a Tellico engineer that works directly and delegates
 useful independent tasks to node-pinned workers. The optional 0 or 1
@@ -48,11 +55,18 @@ work agent to medium. There are three ways to change it:
   medium   the default for the leads, build-tellico and both workers
   xhigh    the most the chat template allows
 
+--magic-context replaces OpenCode's compaction with the Magic Context plugin
+for this session: old history is summarised in the background by a hidden
+worker-slot session instead of in one blocking summary, and project memory
+persists across sessions. It is an experiment; see "Magic Context" in the
+README for what it costs before leaving it on.
+
 examples:
   opencode-tellico 0
   opencode-tellico 0 --solo
   opencode-tellico 1 --think low
   opencode-tellico 1 --solo --think off
+  opencode-tellico 0 --magic-context
   opencode-tellico 1 /path/to/project
   opencode-tellico 0 run 'Review this repository'
 
@@ -82,6 +96,8 @@ environment:
                    Unset, the flag is used when this OpenCode supports it,
                    because OpenCode's shared background service ignores
                    OPENCODE_CONFIG.
+  TELLICO_MAGIC_CONTEXT
+                   Set to 1 to start every session with --magic-context.
   TELLICO_WEBSEARCH
                    Which service answers the agents' websearch tool: tavily
                    (the default), exa, parallel, random, or off for work whose
@@ -124,6 +140,10 @@ while [ "$#" -gt 0 ]; do
       solo=1
       shift
       ;;
+    --magic-context)
+      magic_context=1
+      shift
+      ;;
     --steps)
       if [ "$#" -lt 2 ]; then
         echo 'opencode-tellico: --steps requires a number' >&2
@@ -152,6 +172,16 @@ case $steps in
   '') ;;
   *[!0-9]* | 0)
     echo "opencode-tellico: --steps must be a positive number, got '$steps'" >&2
+    exit 2
+    ;;
+esac
+
+case $magic_context in
+  0|1) ;;
+  false|no|off) magic_context=0 ;;
+  true|yes|on) magic_context=1 ;;
+  *)
+    echo "opencode-tellico: TELLICO_MAGIC_CONTEXT must be 0 or 1, got '$magic_context'" >&2
     exit 2
     ;;
 esac
@@ -189,6 +219,15 @@ fi
 if [ ! -r "$checks" ]; then
   echo "opencode-tellico: missing $checks" >&2
   echo 'Rerun install.sh from the tellico-agentic-setup repository.' >&2
+  exit 1
+fi
+
+# Without its config the plugin loads but its historian has no model, so the
+# session is never summarised and runs into the plugin's overflow refusal
+# instead. Better to stop here than to start a session that fails late.
+if [ "$magic_context" = 1 ] && [ ! -r "$magic_context_config" ]; then
+  echo "opencode-tellico: --magic-context needs $magic_context_config" >&2
+  echo 'Rerun install.sh --no-start from the tellico-agentic-setup repository.' >&2
   exit 1
 fi
 # Installed by install.sh alongside this script.
@@ -334,7 +373,23 @@ for tellico_agent in orchestrate-tellico-0 orchestrate-tellico-1 \
   fi
 done
 
-runtime_config="{\"model\":\"${model}\",\"small_model\":\"${model}\",\"default_agent\":\"${lead_agent}\",\"agent\":{\"compaction\":{\"model\":\"${model}\"},\"summary\":{\"model\":\"${model}\"},\"title\":{\"model\":\"${model}\"}${think_overrides}}${websearch_config}}"
+# Magic Context is added here rather than in config/opencode.json because it is
+# an opt-in and because the package comes from npm: OpenCode fetches it itself
+# on first use, which needs the network, so the default session must not
+# depend on it. Only the package is named. A "plugin" list given this way is
+# appended to the installed file's list, not merged with it, and a plugin
+# named in both loads twice -- measured on 2.0.26 with marker-writing probe
+# plugins, where the duplicate's server hook ran twice -- so repeating the
+# three local plugins here would double every guard. OpenCode 1 and 2 both
+# read "plugin". The plugin owns the window from here, so OpenCode's own
+# compaction and pruning are turned off the way its setup wizard does;
+# compaction.reserved and the rest of that block become inert for the session.
+magic_context_config_json=
+if [ "$magic_context" = 1 ]; then
+  magic_context_config_json=",\"plugin\":[\"${magic_context_package}\"],\"compaction\":{\"auto\":false,\"prune\":false}"
+fi
+
+runtime_config="{\"model\":\"${model}\",\"small_model\":\"${model}\",\"default_agent\":\"${lead_agent}\",\"agent\":{\"compaction\":{\"model\":\"${model}\"},\"summary\":{\"model\":\"${model}\"},\"title\":{\"model\":\"${model}\"}${think_overrides}}${websearch_config}${magic_context_config_json}}"
 
 # OpenCode's interactive command takes no --model (v2.0.24 rejects the flag
 # outright), so the lead model and agent reach the session through

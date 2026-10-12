@@ -20,6 +20,8 @@ function fixture(t) {
   copyFileSync(join(root, "bin/opencode-tellico"), join(bin, "opencode-tellico"));
   writeFileSync(join(bin, "tellico-qwen-tunnel"), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
   writeFileSync(join(installed, "opencode.json"), JSON.stringify(config));
+  mkdirSync(join(configHome, "cortexkit"));
+  writeFileSync(join(configHome, "cortexkit/magic-context.jsonc"), "{}\n");
   writeFileSync(join(installed, "lib/checks.sh"), `
 tellico_default_lead_node() { printf '1\\n'; }
 tellico_opencode_standalone_flag() { printf '%s\\n' --standalone; }
@@ -40,6 +42,7 @@ cli: process.env.OPENCODE_CLI_CONFIG_CONTENT
     TELLICO_TEST_MAJOR: "2", TELLICO_TEST_NODE: process.execPath,
     TELLICO_TEST_CAPTURE: capture };
   return {
+    dir,
     run(args = [], extraEnv = {}) {
       const result = spawnSync("sh", [join(bin, "opencode-tellico"), ...args], {
         env: { ...env, ...extraEnv }, encoding: "utf8", timeout: 5000,
@@ -121,4 +124,51 @@ test("lead can implement and verify directly without enabling arbitrary subagent
     assert.equal(model.variants.medium.chat_template_kwargs.reasoning_effort, "medium");
   }
   assert.equal(config.compaction.reserved, 40000);
+});
+
+test("default launch names no plugin, so the installed list is not appended to", t => {
+  const { captured } = fixture(t).run(["0"]);
+  assert.equal(captured.config.plugin, undefined);
+  assert.equal(captured.config.compaction, undefined);
+});
+
+test("magic-context names only its pinned package and turns native compaction off", t => {
+  const f = fixture(t);
+  for (const launch of [f.run(["0", "--magic-context"]), f.run(["0"], { TELLICO_MAGIC_CONTEXT: "1" })]) {
+    assert.equal(launch.status, 0);
+    const { plugin, compaction } = launch.captured.config;
+    // A runtime plugin list is appended to the file's, and a plugin named in
+    // both loads twice, so the three local plugins must not be repeated here.
+    assert.equal(plugin.length, 1);
+    assert.match(plugin[0], /^@cortexkit\/opencode-magic-context@\d+\.\d+\.\d+$/);
+    assert.deepEqual(compaction, { auto: false, prune: false });
+  }
+  assert.equal(f.run(["0"], { TELLICO_MAGIC_CONTEXT: "maybe" }).status, 2);
+});
+
+test("magic-context refuses to start without the plugin's config", t => {
+  const f = fixture(t);
+  rmSync(join(f.dir, "config/cortexkit/magic-context.jsonc"));
+  const result = f.run(["0", "--magic-context"]);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /install\.sh --no-start/);
+  assert.equal(f.run(["0"]).status, 0);
+});
+
+test("the magic-context template points its historian at worker providers without thinking", () => {
+  const text = readFileSync(join(root, "config/magic-context.jsonc"), "utf8")
+    .split("\n").filter(line => !/^\s*\/\//.test(line)).join("\n");
+  const mc = JSON.parse(text);
+  const entries = [mc.historian.opencode.model, ...mc.historian.opencode.fallback_models];
+  assert.equal(entries.length, 2);
+  for (const entry of entries) {
+    const [provider, modelID] = entry.model.split("/");
+    assert.match(provider, /^tellico-[01]-worker$/);
+    const model = config.provider[provider].models[modelID];
+    assert.equal(model.variants[entry.variant].chat_template_kwargs.enable_thinking, false);
+  }
+  assert.equal(mc.embedding.provider, "off");
+  assert.equal(mc.prompt_surface.default, "light");
+  assert.equal(mc.auto_update, false);
+  assert.equal(mc.dreamer, undefined);
 });

@@ -144,8 +144,8 @@ Those cluster-side values live in `/data/gclab/qwen38/service.env`, outside both
 repos. Changing the model, slot count, micro-batch or speculative decoding there
 changes what fits, which changes this repo. The model id (`qwen3.8-27b-gsq-iq3s`) is
 the cluster's `QWEN38_MODEL_ALIAS` and appears in `config/opencode.json`,
-`bin/opencode-tellico`, `lib/checks.sh` and the gateway defaults; a model swap
-touches all of them.
+`bin/opencode-tellico`, `lib/checks.sh`, `config/magic-context.jsonc` and the
+gateway defaults; a model swap touches all of them.
 
 ## Architecture boundaries
 
@@ -281,6 +281,24 @@ touches all of them.
   required pass on the final tree; repeat after affected edits/failures, or
   when the repository requires it. Verify acceptance boundaries, not just
   that a command or worker returned successfully.
+- `--magic-context` is an opt-in experiment, never the default. It names
+  `@cortexkit/opencode-magic-context` at a pinned version in the launcher's
+  runtime config, not in `config/opencode.json`: the package comes from npm,
+  which OpenCode fetches itself, so the default session must not depend on
+  the network. Name only that package there. A runtime `plugin` list is
+  *appended* to the installed file's list, and a plugin named in both loads
+  twice -- measured on 2.0.26 with probe plugins whose server hook wrote a
+  marker. Its historian is a hidden child session that holds a cluster slot,
+  so `config/magic-context.jsonc` routes it through a worker provider with
+  `variant: off`; `compaction-guard` does not cover it because it keys on
+  OpenCode's own agent names. The plugin reads only
+  `$XDG_CONFIG_HOME/cortexkit/magic-context.jsonc`, so `install.sh` links
+  that path to the installed copy and never overwrites a user's own file
+  there; `doctor.sh` reports which is in use. With it on, OpenCode's
+  compaction is off for the whole session, workers included, and
+  `compaction.reserved` is inert. The per-request cost is about 1,400 tokens
+  of guidance in the `full` preset (the installed config picks `light`) plus
+  about 2,500 tokens of `ctx_*` tool schemas.
 - `pi/` is the whole pi harness: `models.json`, `settings.json`,
   `APPEND_SYSTEM.md` and `extensions/`, installed to
   `~/.config/tellico-qwen/pi` with `PI_CODING_AGENT_DIR` pointing at it. Pi

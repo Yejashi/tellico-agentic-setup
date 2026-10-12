@@ -28,7 +28,7 @@ tellico_identity_opts() {
 : "${TELLICO_MODEL_PORT:=8000}"
 
 tellico_status_line() {
-  printf '  %-12s %-5s %s\n' "$1" "$2" "$3"
+  printf '  %-13s %-5s %s\n' "$1" "$2" "$3"
 }
 
 # user@hostname:port that "$ssh_host" actually resolves to, or empty.
@@ -882,6 +882,15 @@ EOF
       tellico_drifted="$tellico_drifted pi/models.json"
     fi
     rm -f "$tellico_drift_tmp"
+  fi
+
+  # Installed under a different path from the checkout's config/, so it is
+  # not in TELLICO_INSTALLED_COPIES; copied verbatim, so a plain compare.
+  if [ ! -r "$tellico_drift_config/magic-context.jsonc" ]; then
+    tellico_drift_absent="$tellico_drift_absent magic-context.jsonc"
+  elif ! cmp -s "$tellico_drift_repo/config/magic-context.jsonc" \
+    "$tellico_drift_config/magic-context.jsonc"; then
+    tellico_drifted="$tellico_drifted magic-context.jsonc"
   fi
 
   if [ ! -r "$tellico_drift_config/crush/tellico.crushrc" ]; then

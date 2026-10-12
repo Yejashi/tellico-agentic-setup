@@ -55,7 +55,18 @@ rm -f \
   "$bin_dir/tellico-gateway" \
   "$lib_dir/tellico_gateway.py" \
   "$systemd_dir/$gateway_unit" \
-  "$gateway_dir/gateway.env"
+  "$gateway_dir/gateway.env" \
+  "$config_dir/magic-context.jsonc"
+
+# install.sh pointed Magic Context's user-level config path at the copy above
+# with a symlink. Remove only a symlink, and only ours; a file of the user's
+# own at that path was never touched by the installer.
+magic_context_link="$config_home/cortexkit/magic-context.jsonc"
+if [ -L "$magic_context_link" ] &&
+  [ "$(readlink "$magic_context_link")" = "$config_dir/magic-context.jsonc" ]; then
+  rm -f "$magic_context_link"
+  rmdir "$config_home/cortexkit" 2>/dev/null || true
+fi
 
 # install.sh appended one marked line to the user's own crushrc. Take out that
 # line and the comment above it, and nothing else: the rest of the file is

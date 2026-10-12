@@ -477,6 +477,63 @@ Both are closed now:
 If it ever does fail, the session cannot be rescued: start a new one. Nothing
 is lost from disk, only the conversation.
 
+### Magic Context
+
+`--magic-context` (or `TELLICO_MAGIC_CONTEXT=1`) replaces OpenCode's
+compaction for the session with the [Magic
+Context](https://github.com/cortexkit/magic-context) plugin. Instead of one
+blocking summary when the window fills, a background "historian" summarises
+old history into tiers that stand in for it, stale tool output is dropped
+by rule, and decisions and conventions it notices are kept as project memory
+that every later session inherits.
+
+```sh
+opencode-tellico 0 --magic-context
+```
+
+It is an experiment, and it is off by default for reasons that are measured,
+not guessed:
+
+- **The historian is a session on the cluster.** It runs as a hidden child
+  session through OpenCode, so it holds one of the four slots while it reads
+  the old history. `config/magic-context.jsonc` sends it through the
+  `tellico-1-worker` provider with `tellico-0-worker` as the fallback, so the
+  gateway queues it behind every lead, and with thinking off, so it cannot
+  spend its output budget on reasoning the way OpenCode's own summary once
+  did. `plugins/compaction-guard/` does not cover it: that guard keys on
+  OpenCode's compaction, summary and title agents by name.
+- **Every request pays for it.** The plugin's guidance block is about 1,400
+  tokens in its full form and the five `ctx_*` tool schemas about 2,500 more,
+  on every lead and worker request. The installed config picks the `light`
+  preset; the tools stay.
+- **Workers lose compaction.** Turning OpenCode's compaction off is global to
+  the session, and the plugin's own feature matrix gives subagents no
+  historian and no compartments, only rule-based drops and an overflow
+  refusal. A long worker run has less protection than it does today.
+- **Its cache deferral was designed for paid prompt caching.** Drops wait
+  until the plugin assumes the provider's cached prefix has expired. On
+  llama.cpp the prefix cache is a slot's KV state, which another user's
+  request evicts at any time, so the wait may buy nothing.
+- **The package comes from npm.** OpenCode fetches
+  `@cortexkit/opencode-magic-context` itself on first use, which needs the
+  network; the version is pinned in `bin/opencode-tellico` because OpenCode 2
+  may remove an unpinned package mid-session when a newer one appears. The
+  installed config turns embeddings off, which avoids a 90 MB model download
+  and a native ONNX runtime; search falls back to keywords. Its state is a
+  SQLite database under `~/.local/share/cortexkit/`, outside this setup and
+  outside `secret-guard`'s reach.
+
+The plugin is named only in the session's runtime config, never in
+`config/opencode.json`, so the default session does not depend on npm.
+OpenCode appends a runtime `plugin` list to the installed file's list rather
+than merging them, and a plugin named in both loads twice -- measured on
+2.0.26 with marker-writing probe plugins -- which is why the launcher names
+the one package and not the three local plugins as well. Its settings are
+`config/magic-context.jsonc`, installed to `~/.config/tellico-qwen/` and
+linked from `~/.config/cortexkit/magic-context.jsonc`, the one user-level
+path the plugin reads; a file of your own there is left alone and wins. The
+plugin needs OpenCode 2.0.22 or newer, or OpenCode 1.
+
 ### The pi harness
 
 `pi-tellico` runs [pi](https://pi.dev) against the same two servers. Install pi
@@ -612,6 +669,7 @@ Client side, on each user's own device:
 ~/.config/tellico-qwen/plugins/
 ~/.config/tellico-qwen/pi/
 ~/.config/tellico-qwen/crush/
+~/.config/tellico-qwen/magic-context.jsonc
 ~/.config/tellico-qwen/api-key
 ~/.local/bin/opencode-tellico
 ~/.local/bin/pi-tellico
@@ -619,8 +677,10 @@ Client side, on each user's own device:
 ~/.local/bin/tellico-qwen-tunnel
 ```
 
-Plus one marked line in `~/.config/crush/crushrc`, which is the only file this
-setup writes outside its own directory; `./uninstall.sh` removes it again.
+Plus one marked line in `~/.config/crush/crushrc` and a symlink at
+`~/.config/cortexkit/magic-context.jsonc`, the only things this setup writes
+outside its own directory; `./uninstall.sh` removes both again, the symlink
+only if it is still this setup's.
 
 `pi/` is the whole configuration for the pi harness -- `models.json`,
 `settings.json`, `APPEND_SYSTEM.md` and `extensions/` -- and
