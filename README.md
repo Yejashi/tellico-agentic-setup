@@ -42,10 +42,13 @@ GB, publisher-reported lossless on LiveCodeBench v6), with a DFlash2 draft
 model for speculative decoding, chosen on 2026-10-09 for agentic coding at
 128k. On a 12-task unit-tested coding suite it passed 11/12 against 4/12 for
 the Qwen3.6-35B-A3B it replaced, and its tool calls held up where the 35B's
-did not. Measured on one node: 72-86 tok/s for a lone request on code, 52-70
-each with two running, about 33 tok/s for a session 64-110k tokens deep. Cold
-prompt reading runs 430-650 tok/s, so a fresh 110k prompt waits about four
-minutes; the prompt cache spares a returning session most of that.
+did not. Historical measurements before the latest engine work were 72-86 tok/s alone,
+52-70 each with two requests and 430-650 tok/s cold prefill. The 2026-10-11
+engine snapshot recorded 157-187 tok/s alone at 2k-16k context on the agent
+replay, 130-170 each at two, and 1300-1900 tok/s cold prefill. These are named
+measurement snapshots, not guarantees for every task or context length; draft
+acceptance, cache reuse and concurrency affect the result. Measure completed,
+verified work as well as token throughput.
 
 Slots are not free in VRAM: a third 128k slot does not fit beside the drafter
 (it does without it, at 24-34 tok/s each, which is slower for everyone). Speculation makes the model evaluate a block
@@ -65,7 +68,7 @@ OpenCode gets two primary agents per node and two node-pinned subagents:
 
 | Agent | What it is |
 |---|---|
-| `orchestrate-tellico-0`, `orchestrate-tellico-1` | The default. Plans, delegates and integrates; dispatches one bounded task to each server in the same Task batch, keeping concurrent write scopes separate. Cannot run shell commands beyond read-only `git`. |
+| `orchestrate-tellico-0`, `orchestrate-tellico-1` | The default. Implements, checks and integrates directly; delegates substantial independent work when it helps. Workers may remain idle. |
 | `build-tellico-0`, `build-tellico-1` | One agent, one server, no delegation. Reads, edits and runs checks itself. Started with `--solo`. |
 | `tellico-worker-0`, `tellico-worker-1` | Subagents the orchestrate lead dispatches to, one pinned to each node. |
 
@@ -300,41 +303,75 @@ window cannot simply be made bigger instead.
 
 ### Orchestrate or solo
 
-The default agent plans and delegates. It keeps its own window clear by
-spending a worker's instead, which is what makes a long task survive on a
-128k model, and it runs two servers at once on work that splits. It is also
-the slower, more indirect way to change three lines.
+The default engineer can read, edit, run checks and perform authorized Git
+operations itself. It delegates substantial independent work when that helps
+complete the task, rather than requiring a two-worker round for every increment.
+It prefers the opposite node for the first worker while its own node is busy.
 
-`--solo` opens on `build-tellico` instead: one agent, one server, doing the
-reading and editing and checking itself.
+`--solo` opens on `build-tellico`: the same direct workflow with delegation
+disabled. It is useful for comparing a sequential task against orchestration.
 
 ```bash
 opencode-tellico 0 --solo
-TELLICO_SOLO=1 opencode-tellico        # same thing, as an environment variable
+TELLICO_SOLO=1 opencode-tellico
 ```
 
-`build-tellico` stops after 200 tool steps in one turn, reports, and waits for
-input. For a long solo session left running on its own, raise that for the
-session only; the orchestrate lead and the workers keep their limits:
+Both primary agents default to 200 tool steps per turn. For a long unattended
+session, `--steps` extends both primaries, including one selected later with
+`tab`; worker limits remain 200:
 
 ```bash
+opencode-tellico 0 --steps 100000
 opencode-tellico 0 --solo --steps 100000
 ```
 
-Reach for `--solo` when the task does not split into independent units, when
-you want to watch exactly what is happening, or when delegation would cost
-more round trips than it saves. Reach for the default on anything broad enough
-to have two independent halves, or long enough that the lead's context would
-otherwise fill.
+Both modes use medium reasoning by default and retain the credential guard and
+OpenCode's external-directory permission behavior. Repository instructions
+still apply: a project that restricts the lead to read-only Git or requires a
+separate commit worker retains that workflow until its own rules are revised.
 
-Both are always defined, for both nodes, so `tab` switches between them
-mid-session and the flag only chooses where the session starts. The difference
-in what they may do is deliberate: the orchestrate lead cannot run shell
-commands beyond read-only `git`, because its job is to delegate them;
-`build-tellico` has full `bash` and `edit` and cannot dispatch at all. Neither
-can read the API key, `client.env` or an SSH private key -- that is blocked at
-the tool layer for every agent -- and both still ask before touching anything
-outside the working directory.
+Foreground dispatch is mandatory for `opencode run`. Interactive sessions offer
+background dispatch by default; `TELLICO_BACKGROUND_SUBAGENTS=0` disables it,
+including an inherited upstream enable flag. The dispatch plugin tells the
+agent which mode is active. Background acknowledgements do not count as
+completed tasks; collect completion notifications and reports before claiming
+success. Interactive notification delivery still needs a live end-to-end check
+on the installed OpenCode version; foreground is the fallback for missing
+reports.
+
+For consecutive slices in the same subsystem, the prompt allows resuming the
+worker session if the tool provides that facility (`task_id` on OpenCode 1).
+Use a fresh session for unrelated work or stale/crowded context. This can avoid
+repeated orientation but does not guarantee prompt-cache reuse.
+
+### Measuring agent overhead
+
+The existing gateway monitor shows request load, queueing, generation/prefill
+rates and aggregate cache behavior. An optional client-side trace adds tool and
+dispatch durations for both supported plugin APIs:
+
+```bash
+TELLICO_AGENT_TRACE="$PWD/tellico-agent-trace.jsonl" opencode-tellico 0
+```
+
+The path must be absolute and its parent must exist. The plugin creates a
+private append-only JSONL file (existing files retain their permissions), logging
+timestamps, process/session/call IDs, tool names, worker/node, dispatch mode and
+duration. It records no prompts, command text, file paths, outputs or keys.
+Trace write failures never fail a tool. Rotate/remove the file between measured
+runs; it has no automatic size limit. The file is gitignored by basename.
+
+`tool_return.duration_ms` measures a tool call; `dispatch_return.duration_ms`
+measures foreground task latency or background acknowledgement latency.
+`completion_observable: false` means the return cannot establish worker
+completion. Even foreground return is not proof that acceptance passed. The
+trace does not measure model generation, reasoning tokens or request prefill:
+use server timings and session exports alongside it. Do not add overlapping
+agent/tool durations to estimate total wall time.
+
+Compare similar bounded tasks from the same starting code, recording elapsed
+time, retries and verified acceptance conditions. Prompt-guidance changes and
+mock regression tests are not a demonstrated speedup.
 
 ### Watching the workers
 
@@ -726,3 +763,16 @@ other people's credentials.
   attribution. Users who come in through [`gateway/`](gateway/README.md) already
   get this: each holds only their own key, and the shared cluster key never
   leaves the gateway host.
+
+## Development checks
+
+Run `sh tests/run.sh` with Node 22+ and Python 3 available. It checks POSIX shell
+syntax, JSON, launcher overlays/fallback modes and both dispatch-plugin API
+adapters with local mocks; no cluster, credentials, tunnel or live gateway is
+needed. GitHub Actions runs the same checks. These tests do not validate live
+OpenCode schema loading, background notifications or Tellico performance.
+
+After pulling changes to config, prompts, plugins or launchers, run
+`./install.sh --no-start`, restart the OpenCode session, and run `./doctor.sh`
+to check that installed copies match. This updates client files without
+restarting a live tunnel.

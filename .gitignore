@@ -13,3 +13,6 @@ __pycache__/
 *.swp
 *.swo
 *~
+
+# Optional client-side tool/dispatch timing trace.
+tellico-agent-trace.jsonl
