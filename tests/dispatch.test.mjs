@@ -52,6 +52,17 @@ test("serial foreground work stays valid without a utilization nudge", async t =
   assert.equal(records(path).filter(r => r.event === "dispatch_return").length, 4);
 });
 
+test("guidance joins the existing system prompt instead of adding a second system message", async t => {
+  const { hooks } = await fixture(t);
+  await before(hooks, "a", { subagent_type: "tellico-worker-0" });
+  await before(hooks, "b", { subagent_type: "tellico-worker-0" });
+  const output = { system: ["You are the lead."] };
+  await hooks["experimental.chat.system.transform"]({ sessionID: "lead" }, output);
+  assert.equal(output.system.length, 1);
+  assert.match(output.system[0], /^You are the lead\.\n\nDispatch mode: foreground/);
+  assert.match(output.system[0], /concurrent foreground calls/);
+});
+
 test("only known simultaneous foreground calls receive a single placement nudge", async t => {
   const { hooks } = await fixture(t);
   await before(hooks, "a", { subagent_type: "tellico-worker-0" });

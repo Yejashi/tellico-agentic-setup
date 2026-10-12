@@ -116,7 +116,16 @@ export const DispatchBalancePlugin = async () => {
     },
     "experimental.chat.system.transform": async (input, output) => {
       if (!input || !Array.isArray(output?.system)) return;
-      output.system.push(...tracker.context(input.sessionID));
+      const lines = tracker.context(input.sessionID);
+      // OpenCode 1 sends each entry as its own system message, and the Qwen
+      // template rejects any system message after the first, so join ours
+      // onto the last entry rather than adding one.
+      const last = output.system.length - 1;
+      if (last >= 0 && typeof output.system[last] === "string") {
+        output.system[last] = [output.system[last], ...lines].join("\n\n");
+      } else {
+        output.system.push(...lines);
+      }
     },
   };
 };
