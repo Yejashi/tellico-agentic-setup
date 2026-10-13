@@ -459,7 +459,22 @@ gateway defaults; a model swap touches all of them.
   a change to agents, prompts or context must hold for both. `install.sh`,
   `doctor.sh` and `tellico-qwen-tunnel` all branch on it, and in gateway mode
   `tellico-qwen-tunnel start` only probes the gateway -- which is why
-  `opencode-tellico` needs no mode logic of its own.
+  `opencode-tellico` needs no mode logic of its own for the installed mode.
+- `opencode-tellico --connection tunnel|gateway` (`TELLICO_CONNECTION`)
+  runs one launch over either mode without a reinstall; the VS Code
+  extension's SSH/gateway switch is exactly this. It leaves the installed
+  config alone and adds per-launch `provider` entries for all four providers
+  with only `baseURL` and `apiKey`; OpenCode merges them over the installed
+  ones, keeping models, variants and the worker header (verified on 2.0.26).
+  `tellico-qwen-tunnel` reads the same variable after `client.env`, so it
+  tunnels or only probes to match. The modes use different keys, so
+  `tellico_key_file` gives the installed mode `api-key` and the other
+  `api-key.<mode>`: a tunnel never overwrites a gateway key or the reverse,
+  and every existing install is unchanged. The three secret guards already
+  match `api-key` with any suffix. `install.sh` records the built-in gateway
+  URL in tunnel mode too, so a tunnel install can switch to the gateway; the
+  gateway key itself is written by the extension (mode 600, atomically) or
+  by hand. Pi and Crush still use only the installed mode.
 - `gateway/tellico_monitor.py` is read-only and reports from three sources:
   each server's `/metrics` and `/slots` (ground truth, includes tunnel users),
   the gateway's runtime state file (exact per-user concurrency), and the

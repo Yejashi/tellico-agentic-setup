@@ -524,7 +524,9 @@ env_tmp="$config_dir/.client.env.tmp.$$"
 trap 'rm -f "$env_tmp"' EXIT HUP INT TERM
 {
   printf "TELLICO_MODE='%s'\n" "$mode"
-  printf "TELLICO_GATEWAY_URL='%s'\n" "$gateway_url"
+  # Recorded in tunnel mode too, so "opencode-tellico --connection gateway"
+  # (and the VS Code extension) can reach the gateway without a reinstall.
+  printf "TELLICO_GATEWAY_URL='%s'\n" "${gateway_url:-${default_gateway_url%/}}"
   printf "TELLICO_SSH_HOST='%s'\n" "$ssh_host"
   printf "TELLICO_QWEN_PORT0='%s'\n" "$port0"
   printf "TELLICO_QWEN_PORT1='%s'\n" "$port1"

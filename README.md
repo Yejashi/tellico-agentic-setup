@@ -697,6 +697,22 @@ OPENCODE_PASSWORD=choose-one opencode-tellico serve --port 4123
 An install made before `serve` existed makes the extension say so; rerun
 `./install.sh --no-start` to update the launcher.
 
+The extension can use **either connection, whichever way you installed**: a
+plug icon in its chat box switches between the SSH tunnel and the API
+gateway, and asks once for a gateway key. From a terminal the same thing is
+`--connection`:
+
+```bash
+opencode-tellico --connection gateway      # this launch through the gateway
+opencode-tellico --connection tunnel       # this launch over SSH
+```
+
+Each connection keeps its own key: the one you installed with stays in
+`~/.config/tellico-qwen/api-key`, the other goes in `api-key.gateway` or
+`api-key.tunnel` (mode 600), so switching never overwrites anything. A tunnel
+connection fetches its key over SSH as usual. pi and Crush use only the
+installed connection.
+
 ## What gets installed
 
 Client side, on each user's own device:

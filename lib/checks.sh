@@ -731,6 +731,24 @@ tellico_base_url() {
   fi
 }
 
+# The API key file for a connection. The two modes use different keys -- the
+# cluster's model key over the tunnel, a per-user key at the gateway -- so a
+# device that uses both keeps both. The installed mode keeps "api-key", which
+# leaves every existing install unchanged; the other mode gets
+# "api-key.<mode>", so starting a tunnel never overwrites a gateway key or the
+# reverse. All three secret guards already match "api-key" plus any suffix.
+tellico_key_file() {
+  tellico_key_dir=$1
+  tellico_key_installed=$2
+  tellico_key_connection=$3
+
+  if [ "$tellico_key_connection" = "$tellico_key_installed" ]; then
+    printf '%s/api-key\n' "$tellico_key_dir"
+  else
+    printf '%s/api-key.%s\n' "$tellico_key_dir" "$tellico_key_connection"
+  fi
+}
+
 # The template with every placeholder filled in, on stdout.
 tellico_render_config() {
   sed \

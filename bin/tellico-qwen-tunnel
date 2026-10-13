@@ -14,12 +14,28 @@ fi
 ssh_host=${TELLICO_SSH_HOST:-tellico}
 port0=${TELLICO_QWEN_PORT0:-18080}
 port1=${TELLICO_QWEN_PORT1:-18081}
-key_file="$config_dir/api-key"
 : "${TELLICO_REMOTE_KEY_PATH:=/data/gclab/qwen38/secrets/api-key}"
 runtime_parent=${XDG_RUNTIME_DIR:-"$HOME/.cache"}
 runtime_dir="$runtime_parent/tellico-qwen"
 control_socket="$runtime_dir/control"
 unit_name=tellico-qwen-tunnel.service
+installed_mode=${TELLICO_MODE:-tunnel}
+
+# opencode-tellico sets TELLICO_CONNECTION to run one launch over the other
+# connection than the one installed, which is how the VS Code extension
+# switches between SSH and the gateway without a reinstall. It is read after
+# client.env so that file cannot override it.
+case ${TELLICO_CONNECTION:-} in
+  '') ;;
+  tunnel|gateway) TELLICO_MODE=$TELLICO_CONNECTION ;;
+  *)
+    echo "tellico-qwen-tunnel: TELLICO_CONNECTION must be tunnel or gateway, got '$TELLICO_CONNECTION'" >&2
+    exit 2
+    ;;
+esac
+if [ -n "${TELLICO_CONNECTION_GATEWAY_URL:-}" ]; then
+  TELLICO_GATEWAY_URL=$TELLICO_CONNECTION_GATEWAY_URL
+fi
 mode=${TELLICO_MODE:-tunnel}
 
 # An explicit key, for when ssh_config names one ssh cannot use and cannot be
@@ -41,6 +57,9 @@ load_checks() {
   # shellcheck disable=SC1090
   . "$checks"
 }
+
+load_checks
+key_file=$(tellico_key_file "$config_dir" "$installed_mode" "$mode")
 
 have_user_unit() {
   command -v systemctl >/dev/null 2>&1 &&

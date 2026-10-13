@@ -22,7 +22,9 @@ function fixture(t) {
   writeFileSync(join(installed, "opencode.json"), JSON.stringify(config));
   mkdirSync(join(configHome, "cortexkit"));
   writeFileSync(join(configHome, "cortexkit/magic-context.jsonc"), "{}\n");
-  writeFileSync(join(installed, "lib/checks.sh"), `
+  // The real library, so helpers such as tellico_key_file are the shipped
+  // ones; the stubs below then replace what would touch the system.
+  writeFileSync(join(installed, "lib/checks.sh"), readFileSync(join(root, "lib/checks.sh"), "utf8") + `
 tellico_default_lead_node() { printf '1\\n'; }
 tellico_opencode_standalone_flag() { printf '%s\\n' --standalone; }
 tellico_opencode_major() { printf '%s\\n' "$TELLICO_TEST_MAJOR"; }
@@ -34,6 +36,8 @@ args: process.argv.slice(2),
 config: JSON.parse(process.env.OPENCODE_CONFIG_CONTENT),
 background: process.env.OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS,
 lead: process.env.TELLICO_LEAD_NODE,
+connection: process.env.TELLICO_CONNECTION,
+gatewayUrl: process.env.TELLICO_CONNECTION_GATEWAY_URL,
 exa: process.env.OPENCODE_ENABLE_EXA,
 cli: process.env.OPENCODE_CLI_CONFIG_CONTENT
 }));`);
@@ -43,6 +47,7 @@ cli: process.env.OPENCODE_CLI_CONFIG_CONTENT
     TELLICO_TEST_CAPTURE: capture };
   return {
     dir,
+    installed,
     run(args = [], extraEnv = {}) {
       const result = spawnSync("sh", [join(bin, "opencode-tellico"), ...args], {
         env: { ...env, ...extraEnv }, encoding: "utf8", timeout: 5000,
@@ -103,6 +108,61 @@ test("serve still honours a disabled background mode", t => {
   const { captured } = fixture(t).run(["serve"], { TELLICO_BACKGROUND_SUBAGENTS: "0" });
   assert.equal(captured.background, "false");
   assert.deepEqual(captured.args, ["serve"]);
+});
+
+test("no --connection leaves the installed providers alone", t => {
+  const { captured } = fixture(t).run(["serve"]);
+  assert.equal(captured.config.provider, undefined);
+  assert.equal(captured.connection, undefined);
+});
+
+test("--connection gateway repoints all four providers at the gateway with its own key file", t => {
+  const f = fixture(t);
+  writeFileSync(join(f.installed, "client.env"),
+    "TELLICO_MODE='tunnel'\nTELLICO_GATEWAY_URL='https://gw.example/v1'\nTELLICO_QWEN_PORT0='18080'\nTELLICO_QWEN_PORT1='18081'\n");
+  writeFileSync(join(f.installed, "api-key.gateway"), "k", { mode: 0o600 });
+  const { captured, status } = f.run(["--connection", "gateway", "serve"]);
+  assert.equal(status, 0);
+  const key = `{file:${join(f.installed, "api-key.gateway")}}`;
+  assert.deepEqual(captured.config.provider, {
+    "tellico-0": { options: { baseURL: "https://gw.example/v1/node0", apiKey: key } },
+    "tellico-0-worker": { options: { baseURL: "https://gw.example/v1/node0", apiKey: key } },
+    "tellico-1": { options: { baseURL: "https://gw.example/v1/node1", apiKey: key } },
+    "tellico-1-worker": { options: { baseURL: "https://gw.example/v1/node1", apiKey: key } },
+  });
+  // The tunnel helper sees the same choice, so it only probes the gateway.
+  assert.equal(captured.connection, "gateway");
+  assert.equal(captured.gatewayUrl, "https://gw.example/v1");
+});
+
+test("--connection gateway refuses to start without a gateway key", t => {
+  const f = fixture(t);
+  writeFileSync(join(f.installed, "client.env"), "TELLICO_MODE='tunnel'\nTELLICO_GATEWAY_URL='https://gw.example/v1'\n");
+  const r = f.run(["serve"], { TELLICO_CONNECTION: "gateway" });
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /no gateway API key/);
+});
+
+test("--connection tunnel on a gateway install uses loopback ports and api-key.tunnel", t => {
+  const f = fixture(t);
+  writeFileSync(join(f.installed, "client.env"), "TELLICO_MODE='gateway'\nTELLICO_GATEWAY_URL='https://gw.example/v1'\nTELLICO_QWEN_PORT0='19000'\n");
+  const { captured } = f.run(["serve"], { TELLICO_CONNECTION: "tunnel" });
+  assert.equal(captured.config.provider["tellico-0"].options.baseURL, "http://127.0.0.1:19000/v1");
+  assert.equal(captured.config.provider["tellico-1-worker"].options.baseURL, "http://127.0.0.1:18081/v1");
+  assert.equal(captured.config.provider["tellico-1"].options.apiKey, `{file:${join(f.installed, "api-key.tunnel")}}`);
+});
+
+test("--connection on the installed mode keeps the installed key file", t => {
+  const f = fixture(t);
+  writeFileSync(join(f.installed, "client.env"), "TELLICO_MODE='tunnel'\n");
+  const { captured } = f.run(["serve"], { TELLICO_CONNECTION: "tunnel" });
+  assert.equal(captured.config.provider["tellico-0"].options.apiKey, `{file:${join(f.installed, "api-key")}}`);
+});
+
+test("an unknown connection fails before anything starts", t => {
+  const r = fixture(t).run(["--connection", "ssh"]);
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /unknown connection/);
 });
 
 test("step and thinking overlays extend both primaries but keep worker limits", t => {
