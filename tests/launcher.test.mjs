@@ -165,6 +165,81 @@ test("an unknown connection fails before anything starts", t => {
   assert.match(r.stderr, /unknown connection/);
 });
 
+test("every thinking setting reaches the request on OpenCode 1 and 2", () => {
+  // OpenCode 2 sends only `extraBody` from model options and variants
+  // (measured on 2.0.26); OpenCode 1 sends the keys themselves. Each must
+  // carry both, identically, or one release silently loses thinking control.
+  for (const [id, provider] of Object.entries(config.provider)) {
+    const model = provider.models["qwen3.8-27b-gsq-iq3s"];
+    for (const [level, variant] of Object.entries(model.variants)) {
+      assert.deepEqual(variant.extraBody?.chat_template_kwargs, variant.chat_template_kwargs, `${id} ${level}`);
+    }
+    for (const key of ["temperature", "top_p", "parallel_tool_calls"]) {
+      assert.deepEqual(model.options.extraBody[key], model.options[key], `${id} ${key}`);
+    }
+    // Deliberately absent: a per-launch config can add a key to the
+    // installed model's extraBody but not replace one (measured on 2.0.26),
+    // so a default here would make --think a no-op on OpenCode 2.
+    assert.equal(model.options.extraBody.chat_template_kwargs, undefined, id);
+  }
+});
+
+test("each provider has a no-thinking twin of the model for session overhead", () => {
+  for (const [id, provider] of Object.entries(config.provider)) {
+    const model = provider.models["qwen3.8-27b-gsq-iq3s"];
+    const quiet = provider.models["qwen3.8-27b-gsq-iq3s-quiet"];
+    assert.ok(quiet, id);
+    // Same server model and context coupling; only thinking differs.
+    assert.equal(quiet.id, "qwen3.8-27b-gsq-iq3s");
+    assert.deepEqual(quiet.limit, model.limit);
+    // No variants, so a session's variant has nothing to switch back on.
+    assert.equal(quiet.variants, undefined);
+    assert.equal(quiet.options.chat_template_kwargs.enable_thinking, false);
+    assert.equal(quiet.options.extraBody.chat_template_kwargs.enable_thinking, false);
+  }
+});
+
+test("title, summary, compaction and small_model use the no-thinking model", t => {
+  const { captured } = fixture(t).run(["0", "--think", "xhigh"]);
+  const quiet = "tellico-0/qwen3.8-27b-gsq-iq3s-quiet";
+  assert.equal(captured.config.model, "tellico-0/qwen3.8-27b-gsq-iq3s");
+  assert.equal(captured.config.small_model, quiet);
+  for (const agent of ["title", "summary", "compaction"]) assert.equal(captured.config.agent[agent].model, quiet);
+});
+
+test("--think sets the model-level level on OpenCode 2, where agent variants are not applied", t => {
+  const f = fixture(t);
+  const { captured } = f.run(["0", "--think", "low"]);
+  for (const id of ["tellico-0", "tellico-0-worker", "tellico-1", "tellico-1-worker"]) {
+    assert.deepEqual(captured.config.provider[id], {
+      models: { "qwen3.8-27b-gsq-iq3s": { options: { extraBody: { chat_template_kwargs: { enable_thinking: true, reasoning_effort: "low" } } } } },
+    });
+  }
+  const off = f.run(["0", "--think", "off"]).captured;
+  assert.deepEqual(off.config.provider["tellico-1"].models["qwen3.8-27b-gsq-iq3s"].options.extraBody.chat_template_kwargs, { enable_thinking: false });
+  // The quiet model is never overridden.
+  assert.equal(off.config.provider["tellico-1"].models["qwen3.8-27b-gsq-iq3s-quiet"], undefined);
+});
+
+test("OpenCode 1 gets --think through agent variants only", t => {
+  const { captured } = fixture(t).run(["0", "--think", "low"], { TELLICO_TEST_MAJOR: "1" });
+  assert.equal(captured.config.provider, undefined);
+  assert.equal(captured.config.agent["build-tellico-0"].variant, "low");
+  // and keeps the plain model for overhead, where compaction-guard applies.
+  assert.equal(captured.config.agent.title.model, "tellico-0/qwen3.8-27b-gsq-iq3s");
+  assert.equal(captured.config.small_model, "tellico-0/qwen3.8-27b-gsq-iq3s");
+});
+
+test("--connection and --think share one provider block", t => {
+  const f = fixture(t);
+  writeFileSync(join(f.installed, "client.env"), "TELLICO_MODE='tunnel'\nTELLICO_GATEWAY_URL='https://gw.example/v1'\n");
+  writeFileSync(join(f.installed, "api-key.gateway"), "k", { mode: 0o600 });
+  const { captured } = f.run(["--connection", "gateway", "--think", "xhigh", "serve"]);
+  const entry = captured.config.provider["tellico-1-worker"];
+  assert.equal(entry.options.baseURL, "https://gw.example/v1/node1");
+  assert.equal(entry.models["qwen3.8-27b-gsq-iq3s"].options.extraBody.chat_template_kwargs.reasoning_effort, "xhigh");
+});
+
 test("step and thinking overlays extend both primaries but keep worker limits", t => {
   const { captured } = fixture(t).run(["1", "--solo", "--think", "low", "--steps", "100000"]);
   assert.equal(captured.config.default_agent, "build-tellico-1");

@@ -222,18 +222,24 @@ gateway defaults; a model swap touches all of them.
   comes from its agent config at dispatch. `config/tui.json` is the keybind
   channel: `keybinds` is a TUI-config key, and `opencode.json` has no such
   key at all.
-  **Open problem on OpenCode 2:** 2.0.26 forwards none of it. A logging proxy
-  in front of llama-server on 2026-10-13 showed request bodies carrying only
-  `model`, `stream`, `stream_options`, `store` and `max_completion_tokens` --
-  no `chat_template_kwargs`, no `temperature`, no `top_p` -- whether the
-  variant came from the session, `/api/session/{id}/model` or `--think`
-  agent config, and with the provider-level `chat_template_kwargs` removed.
-  `GET /api/model` lists the variants correctly, so the config is read; it
-  is the request that drops them. Thinking therefore follows the server's
-  `--reasoning-effort medium` and sampling the server defaults (slots showed
-  temperature 1.0). The same `enable_thinking: false` sent straight to
-  llama-server is honoured. Until this is fixed, do not claim a thinking
-  level or sampling setting takes effect on OpenCode 2.
+  **OpenCode 2 needs `extraBody`.** 2.0.26 turns a v1-style options or
+  variant object into `settings`, which the openai-compatible route never
+  sends; only an `extraBody` key becomes request JSON (`qE` in the binary,
+  confirmed with a logging proxy on 2026-10-13). So every variant and the
+  model's `options` carry `extraBody` beside the v1 keys: OpenCode 1 sends
+  the keys, OpenCode 2 sends `extraBody`, and llama-server ignores whichever
+  it does not use (tested). Three more things measured on 2.0.26 shape the
+  rest: an agent's `variant` is not applied when a session opens, a session's
+  variant is applied to every request in it -- title, summary and compaction
+  included -- and a per-launch config can *add* a key to a model's
+  `extraBody` but not replace one. Hence: the model-level `extraBody` holds
+  no `chat_template_kwargs` (the server default, medium, applies), `--think`
+  adds it per launch on OpenCode 2, a session variant (`ctrl+t`, `/think-*`,
+  the VS Code picker) still wins over that, and the overhead agents use a
+  `qwen3.8-27b-gsq-iq3s-quiet` twin with thinking hard-off and no variants
+  (OpenCode 2 only; OpenCode 1 keeps `compaction-guard`). Each fact has a
+  test in `tests/launcher.test.mjs`. The server also defaults `--temp 0.6`
+  (qwen38-cluster 03a9d46), so sampling holds for any client.
 - `bin/opencode-tellico` derives the default lead node from `$USER@$(uname -n)`
   so concurrent users spread across both servers instead of all leading on
   node 0. It must stay *stable* per device: the point is prompt-cache affinity,

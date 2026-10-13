@@ -29,33 +29,91 @@
             "parallel_tool_calls": true,
             "chat_template_kwargs": {
               "enable_thinking": true
+            },
+            "extraBody": {
+              "temperature": 0.6,
+              "top_p": 0.95,
+              "parallel_tool_calls": true
             }
           },
           "variants": {
             "off": {
               "chat_template_kwargs": {
                 "enable_thinking": false
+              },
+              "extraBody": {
+                "chat_template_kwargs": {
+                  "enable_thinking": false
+                }
               }
             },
             "low": {
               "chat_template_kwargs": {
                 "enable_thinking": true,
                 "reasoning_effort": "low"
+              },
+              "extraBody": {
+                "chat_template_kwargs": {
+                  "enable_thinking": true,
+                  "reasoning_effort": "low"
+                }
               }
             },
             "medium": {
               "chat_template_kwargs": {
                 "enable_thinking": true,
                 "reasoning_effort": "medium"
+              },
+              "extraBody": {
+                "chat_template_kwargs": {
+                  "enable_thinking": true,
+                  "reasoning_effort": "medium"
+                }
               }
             },
             "xhigh": {
               "chat_template_kwargs": {
                 "enable_thinking": true,
                 "reasoning_effort": "xhigh"
+              },
+              "extraBody": {
+                "chat_template_kwargs": {
+                  "enable_thinking": true,
+                  "reasoning_effort": "xhigh"
+                }
               }
             }
           }
+        },
+        "qwen3.8-27b-gsq-iq3s-quiet": {
+          "name": "Qwen3.8 27B GSQ IQ3_S 128k no-think - Tellico 0",
+          "temperature": true,
+          "reasoning": true,
+          "interleaved": {
+            "field": "reasoning_content"
+          },
+          "limit": {
+            "context": 131072,
+            "input": 131072,
+            "output": 32768
+          },
+          "options": {
+            "temperature": 0.6,
+            "top_p": 0.95,
+            "parallel_tool_calls": true,
+            "chat_template_kwargs": {
+              "enable_thinking": false
+            },
+            "extraBody": {
+              "temperature": 0.6,
+              "top_p": 0.95,
+              "parallel_tool_calls": true,
+              "chat_template_kwargs": {
+                "enable_thinking": false
+              }
+            }
+          },
+          "id": "qwen3.8-27b-gsq-iq3s"
         }
       }
     },
@@ -87,33 +145,91 @@
             "parallel_tool_calls": true,
             "chat_template_kwargs": {
               "enable_thinking": true
+            },
+            "extraBody": {
+              "temperature": 0.6,
+              "top_p": 0.95,
+              "parallel_tool_calls": true
             }
           },
           "variants": {
             "off": {
               "chat_template_kwargs": {
                 "enable_thinking": false
+              },
+              "extraBody": {
+                "chat_template_kwargs": {
+                  "enable_thinking": false
+                }
               }
             },
             "low": {
               "chat_template_kwargs": {
                 "enable_thinking": true,
                 "reasoning_effort": "low"
+              },
+              "extraBody": {
+                "chat_template_kwargs": {
+                  "enable_thinking": true,
+                  "reasoning_effort": "low"
+                }
               }
             },
             "medium": {
               "chat_template_kwargs": {
                 "enable_thinking": true,
                 "reasoning_effort": "medium"
+              },
+              "extraBody": {
+                "chat_template_kwargs": {
+                  "enable_thinking": true,
+                  "reasoning_effort": "medium"
+                }
               }
             },
             "xhigh": {
               "chat_template_kwargs": {
                 "enable_thinking": true,
                 "reasoning_effort": "xhigh"
+              },
+              "extraBody": {
+                "chat_template_kwargs": {
+                  "enable_thinking": true,
+                  "reasoning_effort": "xhigh"
+                }
               }
             }
           }
+        },
+        "qwen3.8-27b-gsq-iq3s-quiet": {
+          "name": "Qwen3.8 27B GSQ IQ3_S 128k no-think - Tellico 1",
+          "temperature": true,
+          "reasoning": true,
+          "interleaved": {
+            "field": "reasoning_content"
+          },
+          "limit": {
+            "context": 131072,
+            "input": 131072,
+            "output": 32768
+          },
+          "options": {
+            "temperature": 0.6,
+            "top_p": 0.95,
+            "parallel_tool_calls": true,
+            "chat_template_kwargs": {
+              "enable_thinking": false
+            },
+            "extraBody": {
+              "temperature": 0.6,
+              "top_p": 0.95,
+              "parallel_tool_calls": true,
+              "chat_template_kwargs": {
+                "enable_thinking": false
+              }
+            }
+          },
+          "id": "qwen3.8-27b-gsq-iq3s"
         }
       }
     },
@@ -148,33 +264,91 @@
             "parallel_tool_calls": true,
             "chat_template_kwargs": {
               "enable_thinking": true
+            },
+            "extraBody": {
+              "temperature": 0.6,
+              "top_p": 0.95,
+              "parallel_tool_calls": true
             }
           },
           "variants": {
             "off": {
               "chat_template_kwargs": {
                 "enable_thinking": false
+              },
+              "extraBody": {
+                "chat_template_kwargs": {
+                  "enable_thinking": false
+                }
               }
             },
             "low": {
               "chat_template_kwargs": {
                 "enable_thinking": true,
                 "reasoning_effort": "low"
+              },
+              "extraBody": {
+                "chat_template_kwargs": {
+                  "enable_thinking": true,
+                  "reasoning_effort": "low"
+                }
               }
             },
             "medium": {
               "chat_template_kwargs": {
                 "enable_thinking": true,
                 "reasoning_effort": "medium"
+              },
+              "extraBody": {
+                "chat_template_kwargs": {
+                  "enable_thinking": true,
+                  "reasoning_effort": "medium"
+                }
               }
             },
             "xhigh": {
               "chat_template_kwargs": {
                 "enable_thinking": true,
                 "reasoning_effort": "xhigh"
+              },
+              "extraBody": {
+                "chat_template_kwargs": {
+                  "enable_thinking": true,
+                  "reasoning_effort": "xhigh"
+                }
               }
             }
           }
+        },
+        "qwen3.8-27b-gsq-iq3s-quiet": {
+          "name": "Qwen3.8 27B GSQ IQ3_S 128k no-think - Tellico 0 worker",
+          "temperature": true,
+          "reasoning": true,
+          "interleaved": {
+            "field": "reasoning_content"
+          },
+          "limit": {
+            "context": 131072,
+            "input": 131072,
+            "output": 32768
+          },
+          "options": {
+            "temperature": 0.6,
+            "top_p": 0.95,
+            "parallel_tool_calls": true,
+            "chat_template_kwargs": {
+              "enable_thinking": false
+            },
+            "extraBody": {
+              "temperature": 0.6,
+              "top_p": 0.95,
+              "parallel_tool_calls": true,
+              "chat_template_kwargs": {
+                "enable_thinking": false
+              }
+            }
+          },
+          "id": "qwen3.8-27b-gsq-iq3s"
         }
       }
     },
@@ -209,33 +383,91 @@
             "parallel_tool_calls": true,
             "chat_template_kwargs": {
               "enable_thinking": true
+            },
+            "extraBody": {
+              "temperature": 0.6,
+              "top_p": 0.95,
+              "parallel_tool_calls": true
             }
           },
           "variants": {
             "off": {
               "chat_template_kwargs": {
                 "enable_thinking": false
+              },
+              "extraBody": {
+                "chat_template_kwargs": {
+                  "enable_thinking": false
+                }
               }
             },
             "low": {
               "chat_template_kwargs": {
                 "enable_thinking": true,
                 "reasoning_effort": "low"
+              },
+              "extraBody": {
+                "chat_template_kwargs": {
+                  "enable_thinking": true,
+                  "reasoning_effort": "low"
+                }
               }
             },
             "medium": {
               "chat_template_kwargs": {
                 "enable_thinking": true,
                 "reasoning_effort": "medium"
+              },
+              "extraBody": {
+                "chat_template_kwargs": {
+                  "enable_thinking": true,
+                  "reasoning_effort": "medium"
+                }
               }
             },
             "xhigh": {
               "chat_template_kwargs": {
                 "enable_thinking": true,
                 "reasoning_effort": "xhigh"
+              },
+              "extraBody": {
+                "chat_template_kwargs": {
+                  "enable_thinking": true,
+                  "reasoning_effort": "xhigh"
+                }
               }
             }
           }
+        },
+        "qwen3.8-27b-gsq-iq3s-quiet": {
+          "name": "Qwen3.8 27B GSQ IQ3_S 128k no-think - Tellico 1 worker",
+          "temperature": true,
+          "reasoning": true,
+          "interleaved": {
+            "field": "reasoning_content"
+          },
+          "limit": {
+            "context": 131072,
+            "input": 131072,
+            "output": 32768
+          },
+          "options": {
+            "temperature": 0.6,
+            "top_p": 0.95,
+            "parallel_tool_calls": true,
+            "chat_template_kwargs": {
+              "enable_thinking": false
+            },
+            "extraBody": {
+              "temperature": 0.6,
+              "top_p": 0.95,
+              "parallel_tool_calls": true,
+              "chat_template_kwargs": {
+                "enable_thinking": false
+              }
+            }
+          },
+          "id": "qwen3.8-27b-gsq-iq3s"
         }
       }
     }

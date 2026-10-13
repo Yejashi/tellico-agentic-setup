@@ -402,10 +402,11 @@ cluster happens to start `llama-server` with `--reasoning-effort medium` too,
 but the client no longer depends on that, and the template's own default is
 `xhigh`. Change `agent.*.variant` there to move the default.
 
-> **OpenCode 2 caveat.** OpenCode 2.0.26 does not pass the level to the
-> server, nor the configured `temperature` and `top_p` (measured on
-> 2026-10-13). On OpenCode 2 every session currently thinks at the server's
-> default (`medium`) whatever you pick below. OpenCode 1 was not re-measured.
+> **OpenCode 2:** fixed as of 2026-10-13. 2.0.26 only forwards settings
+> written as `extraBody`, so the config now carries both spellings, and the
+> session's title, summary and compaction run on a no-thinking twin of the
+> model. Measured end to end: `off` produces no reasoning at all, and a level
+> chosen inside the session overrides the one given at launch.
 
 There are three ways to change it, from widest to narrowest scope.
 
