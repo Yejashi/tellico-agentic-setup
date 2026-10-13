@@ -182,13 +182,16 @@ minute, and is simply absent on a host with no cluster account.
 ## Smooth streaming
 
 While one request is generating, another request's prompt is read on the same
-node in 1024-2048-token chunks, and each chunk pauses every other stream there
-for 0.5-1 s; speculative decoding also emits tokens in bursts of several. Read
-directly, that is text that stops dead and then jumps. So the gateway plays
+node in 1024-token chunks (`QWEN38_UBATCH` on the cluster), and each chunk
+pauses every other stream there for about 0.6 s (1 s at 2048); speculative
+decoding also emits tokens in bursts of several. Read directly, that is text
+that stops dead and then jumps. So the gateway plays
 streamed tokens out at an even rate behind a `TELLICO_GATEWAY_SMOOTH_MS` (1 s)
 buffer: the first token arrives that much later, and stalls shorter than the
 buffer are not seen at all. Measured on 2026-10-13 against a 30k-token prompt
-landing mid-stream, the reader saw three 1.0 s freezes in 12 s without it.
+landing mid-stream at ub 2048, the reader saw three 1.0 s freezes in 12 s
+without it and none longer than 28 ms with it; at ub 1024 the raw freezes are
+0.58 s, twice as often.
 
 It applies only where someone is reading. Requests marked
 `X-Tellico-Role: worker` pass straight through, a client can opt out with

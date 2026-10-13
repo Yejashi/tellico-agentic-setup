@@ -438,9 +438,10 @@ gateway defaults; a model swap touches all of them.
   that the server rejects, so the level travels in `extra_body` and Crush adds
   nothing of its own.
 - `option request-timeout 3600`. Crush's default is 60 seconds of inactivity,
-  and prompt reading counts as inactivity: at the 1300-1900 tok/s prefill of
-  the 2026-10-11 engine a cold 110k-token prompt still waits 60-85 seconds for
-  its first token (four minutes on the engine before it), so every deep
+  and prompt reading counts as inactivity: at the ~1050-1500 tok/s prefill of
+  the 2026-10-11 engine at `-b`/`-ub` 1024 (2026-10-13; 1300-1900 at 2048) a
+  cold 110k-token prompt still waits 75-105 seconds for its first token (four
+  minutes on the engine before it), so every deep
   session would die on the default. It is the same thing `headerTimeout` and
   `chunkTimeout` do in `config/opencode.json`.
 - `crush/hooks/secret-guard.sh` is POSIX sh because Crush exports

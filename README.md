@@ -45,7 +45,10 @@ the Qwen3.6-35B-A3B it replaced, and its tool calls held up where the 35B's
 did not. Historical measurements before the latest engine work were 72-86 tok/s alone,
 52-70 each with two requests and 430-650 tok/s cold prefill. The 2026-10-11
 engine snapshot recorded 157-187 tok/s alone at 2k-16k context on the agent
-replay, 130-170 each at two, and 1300-1900 tok/s cold prefill. These are named
+replay, 130-170 each at two, and 1300-1900 tok/s cold prefill; since
+2026-10-13 the server reads prompts in 1024-token rather than 2048-token
+chunks, which halves the stall a prompt causes other streams on its node and
+costs about 20% of that prefill speed. These are named
 measurement snapshots, not guarantees for every task or context length; draft
 acceptance, cache reuse and concurrency affect the result. Measure completed,
 verified work as well as token throughput.
