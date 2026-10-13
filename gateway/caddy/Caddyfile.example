@@ -19,10 +19,11 @@ qwen.example.com {
 	# Long generations: do not cut a request off mid-answer. This must be at
 	# least TELLICO_GATEWAY_REQUEST_TIMEOUT.
 	reverse_proxy 127.0.0.1:4000 {
+		# Stream tokens through instead of buffering the response.
+		flush_interval -1
 		transport http {
 			read_timeout 3700s
 			write_timeout 3700s
-			# Stream tokens through instead of buffering the response.
 			response_header_timeout 120s
 		}
 		header_up X-Forwarded-For {remote_host}

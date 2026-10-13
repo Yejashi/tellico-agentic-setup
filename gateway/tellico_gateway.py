@@ -758,7 +758,11 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             try:
                 while True:
-                    chunk = response.read(8192)
+                    # read1, not read: read(n) on a chunked response blocks
+                    # until n bytes arrive, which batches dozens of token
+                    # events into one jarring block. read1 returns as soon as
+                    # any data is available.
+                    chunk = response.read1(8192)
                     if not chunk:
                         break
                     self.wfile.write(b"%x\r\n" % len(chunk) + chunk + b"\r\n")
