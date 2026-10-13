@@ -168,8 +168,10 @@ gateway defaults; a model swap touches all of them.
   acknowledgement; track completion notifications and reports separately. The
   launcher explicitly sets the upstream flag true/false, including false for
   `opencode run`, so inherited environment cannot override a disabled mode.
-  The plugin adds mode-specific instructions. Live notification delivery still
-  needs an end-to-end check on the installed OpenCode version. Fall back with
+  The plugin adds mode-specific instructions. Live notification delivery was
+  verified end to end on 2.0.26 on 2026-10-13 over `opencode-tellico serve`:
+  the worker's completion arrived as a synthetic inbox item and the lead
+  resumed by itself. Recheck after an OpenCode upgrade, and fall back with
   `TELLICO_BACKGROUND_SUBAGENTS=0` if reports go missing.
 - The lead and same-numbered worker share a node. Prefer the far worker while
   the lead is generating, but other users may occupy either server. Current
@@ -220,6 +222,18 @@ gateway defaults; a model swap touches all of them.
   comes from its agent config at dispatch. `config/tui.json` is the keybind
   channel: `keybinds` is a TUI-config key, and `opencode.json` has no such
   key at all.
+  **Open problem on OpenCode 2:** 2.0.26 forwards none of it. A logging proxy
+  in front of llama-server on 2026-10-13 showed request bodies carrying only
+  `model`, `stream`, `stream_options`, `store` and `max_completion_tokens` --
+  no `chat_template_kwargs`, no `temperature`, no `top_p` -- whether the
+  variant came from the session, `/api/session/{id}/model` or `--think`
+  agent config, and with the provider-level `chat_template_kwargs` removed.
+  `GET /api/model` lists the variants correctly, so the config is read; it
+  is the request that drops them. Thinking therefore follows the server's
+  `--reasoning-effort medium` and sampling the server defaults (slots showed
+  temperature 1.0). The same `enable_thinking: false` sent straight to
+  llama-server is honoured. Until this is fixed, do not claim a thinking
+  level or sampling setting takes effect on OpenCode 2.
 - `bin/opencode-tellico` derives the default lead node from `$USER@$(uname -n)`
   so concurrent users spread across both servers instead of all leading on
   node 0. It must stay *stable* per device: the point is prompt-cache affinity,

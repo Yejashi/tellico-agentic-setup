@@ -402,6 +402,11 @@ cluster happens to start `llama-server` with `--reasoning-effort medium` too,
 but the client no longer depends on that, and the template's own default is
 `xhigh`. Change `agent.*.variant` there to move the default.
 
+> **OpenCode 2 caveat.** OpenCode 2.0.26 does not pass the level to the
+> server, nor the configured `temperature` and `top_p` (measured on
+> 2026-10-13). On OpenCode 2 every session currently thinks at the server's
+> default (`medium`) whatever you pick below. OpenCode 1 was not re-measured.
+
 There are three ways to change it, from widest to narrowest scope.
 
 For a whole session, at launch:
@@ -666,6 +671,31 @@ the change:
 That appends the line to `~/.zshrc`, `~/.bashrc` (`~/.bash_profile` on macOS),
 `~/.config/fish/config.fish`, or `~/.profile`, depending on `$SHELL`, and does
 nothing if the profile already sets it. Open a new terminal afterwards.
+
+### VS Code
+
+[tellico-vscode](https://github.com/Yejashi/tellico-vscode) is a chat panel
+for VS Code over this same setup: the same agents, workers, plugins and Magic
+Context, with streaming output, a workers tray, native diffs of what changed,
+and session history shared with the terminal. Download the `.vsix` from its
+releases and install it with:
+
+```bash
+code --install-extension tellico-vscode-<version>.vsix
+```
+
+It needs OpenCode 2 and this client installed first, in either mode -- a
+gateway user needs only `./install.sh --gateway` and a key. The extension
+runs no agent logic of its own. It starts `opencode-tellico serve` for the
+open folder, which is OpenCode's headless API server with exactly the runtime
+config the TUI gets, and drives that. You can run it yourself:
+
+```bash
+OPENCODE_PASSWORD=choose-one opencode-tellico serve --port 4123
+```
+
+An install made before `serve` existed makes the extension say so; rerun
+`./install.sh --no-start` to update the launcher.
 
 ## What gets installed
 
