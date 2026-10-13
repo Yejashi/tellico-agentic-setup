@@ -493,9 +493,14 @@ if [ "${opencode_major:-1}" -lt 2 ]; then
   quiet_model=$model
 fi
 think_kwargs=
+think_stop=
 if [ -n "$think" ] && [ "${opencode_major:-1}" -ge 2 ]; then
   if [ "$think" = off ]; then
     think_kwargs='{"enable_thinking":false}'
+    # See the "off" variant in config/opencode.json: with thinking off the
+    # model sometimes closes a reasoning block it never opened and starts
+    # its answer over; stopping at that tag keeps the first, whole answer.
+    think_stop=',"stop":["</think>"]'
   else
     think_kwargs="{\"enable_thinking\":true,\"reasoning_effort\":\"${think}\"}"
   fi
@@ -512,7 +517,7 @@ if [ -n "$connection" ] || [ -n "$think_kwargs" ]; then
       tellico_fields="\"options\":{\"baseURL\":\"${tellico_base}\",\"apiKey\":\"{file:${key_file}}\"}"
     fi
     if [ -n "$think_kwargs" ]; then
-      tellico_fields="${tellico_fields:+${tellico_fields},}\"models\":{\"${model_id}\":{\"options\":{\"extraBody\":{\"chat_template_kwargs\":${think_kwargs}}}}}"
+      tellico_fields="${tellico_fields:+${tellico_fields},}\"models\":{\"${model_id}\":{\"options\":{\"extraBody\":{\"chat_template_kwargs\":${think_kwargs}${think_stop}}}}}"
     fi
     provider_config="${provider_config}\"${tellico_provider}\":{${tellico_fields}},"
   done

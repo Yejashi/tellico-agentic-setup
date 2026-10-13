@@ -240,6 +240,17 @@ gateway defaults; a model swap touches all of them.
   (OpenCode 2 only; OpenCode 1 keeps `compaction-guard`). Each fact has a
   test in `tests/launcher.test.mjs`. The server also defaults `--temp 0.6`
   (qwen38-cluster 03a9d46), so sampling holds for any client.
+  **No-thinking replies stop at `</think>`.** With thinking off this model
+  sometimes writes its answer, then a `</think>` it never opened, then the
+  answer again -- 4 of ~70 replays of a captured OpenCode request on
+  2026-10-13 -- and once leaked a raw tool call into the text. The template
+  renders the empty think block correctly; this is the model. So the `off`
+  variant, the quiet model and `--think off` send `stop: ["</think>"]` (0 of
+  40 replays malformed with it), and the thinking variants send `stop: []`
+  to clear a launch-level stop, because there `</think>` is the real end of
+  reasoning. A rarer plain early stop mid-word (one glacier essay, 630
+  tokens, finish `stop`, no client disconnect in the server log) is not
+  explained by this and was not reproduced in ~110 direct replays.
 - `bin/opencode-tellico` derives the default lead node from `$USER@$(uname -n)`
   so concurrent users spread across both servers instead of all leading on
   node 0. It must stay *stable* per device: the point is prompt-cache affinity,

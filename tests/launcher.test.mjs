@@ -184,6 +184,26 @@ test("every thinking setting reaches the request on OpenCode 1 and 2", () => {
   }
 });
 
+test("every no-thinking path stops at a stray </think>", () => {
+  // With thinking off the model sometimes writes its answer, then "</think>",
+  // then the answer again (4 of ~70 replays of a real OpenCode request on
+  // 2026-10-13; 0 of 40 with this stop). Both spellings, for OpenCode 1 and 2.
+  for (const [id, provider] of Object.entries(config.provider)) {
+    const off = provider.models["qwen3.8-27b-gsq-iq3s"].variants.off;
+    assert.deepEqual(off.stop, ["</think>"], id);
+    assert.deepEqual(off.extraBody.stop, ["</think>"], id);
+    const quiet = provider.models["qwen3.8-27b-gsq-iq3s-quiet"].options;
+    assert.deepEqual(quiet.stop, ["</think>"], id);
+    assert.deepEqual(quiet.extraBody.stop, ["</think>"], id);
+    // A thinking level clears it explicitly: there the tag is the real end of
+    // reasoning, and a launch-level --think off adds the stop to the model,
+    // which the session's variant must override (measured on 2.0.26).
+    for (const level of ["low", "medium", "xhigh"]) {
+      assert.deepEqual(provider.models["qwen3.8-27b-gsq-iq3s"].variants[level].extraBody.stop, [], `${id} ${level}`);
+    }
+  }
+});
+
 test("each provider has a no-thinking twin of the model for session overhead", () => {
   for (const [id, provider] of Object.entries(config.provider)) {
     const model = provider.models["qwen3.8-27b-gsq-iq3s"];
@@ -217,6 +237,8 @@ test("--think sets the model-level level on OpenCode 2, where agent variants are
   }
   const off = f.run(["0", "--think", "off"]).captured;
   assert.deepEqual(off.config.provider["tellico-1"].models["qwen3.8-27b-gsq-iq3s"].options.extraBody.chat_template_kwargs, { enable_thinking: false });
+  assert.deepEqual(off.config.provider["tellico-1"].models["qwen3.8-27b-gsq-iq3s"].options.extraBody.stop, ["</think>"]);
+  assert.equal(captured.config.provider["tellico-0"].models["qwen3.8-27b-gsq-iq3s"].options.extraBody.stop, undefined);
   // The quiet model is never overridden.
   assert.equal(off.config.provider["tellico-1"].models["qwen3.8-27b-gsq-iq3s-quiet"], undefined);
 });

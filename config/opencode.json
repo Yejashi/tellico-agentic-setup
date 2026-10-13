@@ -44,8 +44,14 @@
               "extraBody": {
                 "chat_template_kwargs": {
                   "enable_thinking": false
-                }
-              }
+                },
+                "stop": [
+                  "</think>"
+                ]
+              },
+              "stop": [
+                "</think>"
+              ]
             },
             "low": {
               "chat_template_kwargs": {
@@ -56,7 +62,8 @@
                 "chat_template_kwargs": {
                   "enable_thinking": true,
                   "reasoning_effort": "low"
-                }
+                },
+                "stop": []
               }
             },
             "medium": {
@@ -68,7 +75,8 @@
                 "chat_template_kwargs": {
                   "enable_thinking": true,
                   "reasoning_effort": "medium"
-                }
+                },
+                "stop": []
               }
             },
             "xhigh": {
@@ -80,7 +88,8 @@
                 "chat_template_kwargs": {
                   "enable_thinking": true,
                   "reasoning_effort": "xhigh"
-                }
+                },
+                "stop": []
               }
             }
           }
@@ -110,8 +119,14 @@
               "parallel_tool_calls": true,
               "chat_template_kwargs": {
                 "enable_thinking": false
-              }
-            }
+              },
+              "stop": [
+                "</think>"
+              ]
+            },
+            "stop": [
+              "</think>"
+            ]
           },
           "id": "qwen3.8-27b-gsq-iq3s"
         }
@@ -160,8 +175,14 @@
               "extraBody": {
                 "chat_template_kwargs": {
                   "enable_thinking": false
-                }
-              }
+                },
+                "stop": [
+                  "</think>"
+                ]
+              },
+              "stop": [
+                "</think>"
+              ]
             },
             "low": {
               "chat_template_kwargs": {
@@ -172,7 +193,8 @@
                 "chat_template_kwargs": {
                   "enable_thinking": true,
                   "reasoning_effort": "low"
-                }
+                },
+                "stop": []
               }
             },
             "medium": {
@@ -184,7 +206,8 @@
                 "chat_template_kwargs": {
                   "enable_thinking": true,
                   "reasoning_effort": "medium"
-                }
+                },
+                "stop": []
               }
             },
             "xhigh": {
@@ -196,7 +219,8 @@
                 "chat_template_kwargs": {
                   "enable_thinking": true,
                   "reasoning_effort": "xhigh"
-                }
+                },
+                "stop": []
               }
             }
           }
@@ -226,8 +250,14 @@
               "parallel_tool_calls": true,
               "chat_template_kwargs": {
                 "enable_thinking": false
-              }
-            }
+              },
+              "stop": [
+                "</think>"
+              ]
+            },
+            "stop": [
+              "</think>"
+            ]
           },
           "id": "qwen3.8-27b-gsq-iq3s"
         }
@@ -279,8 +309,14 @@
               "extraBody": {
                 "chat_template_kwargs": {
                   "enable_thinking": false
-                }
-              }
+                },
+                "stop": [
+                  "</think>"
+                ]
+              },
+              "stop": [
+                "</think>"
+              ]
             },
             "low": {
               "chat_template_kwargs": {
@@ -291,7 +327,8 @@
                 "chat_template_kwargs": {
                   "enable_thinking": true,
                   "reasoning_effort": "low"
-                }
+                },
+                "stop": []
               }
             },
             "medium": {
@@ -303,7 +340,8 @@
                 "chat_template_kwargs": {
                   "enable_thinking": true,
                   "reasoning_effort": "medium"
-                }
+                },
+                "stop": []
               }
             },
             "xhigh": {
@@ -315,7 +353,8 @@
                 "chat_template_kwargs": {
                   "enable_thinking": true,
                   "reasoning_effort": "xhigh"
-                }
+                },
+                "stop": []
               }
             }
           }
@@ -345,8 +384,14 @@
               "parallel_tool_calls": true,
               "chat_template_kwargs": {
                 "enable_thinking": false
-              }
-            }
+              },
+              "stop": [
+                "</think>"
+              ]
+            },
+            "stop": [
+              "</think>"
+            ]
           },
           "id": "qwen3.8-27b-gsq-iq3s"
         }
@@ -398,8 +443,14 @@
               "extraBody": {
                 "chat_template_kwargs": {
                   "enable_thinking": false
-                }
-              }
+                },
+                "stop": [
+                  "</think>"
+                ]
+              },
+              "stop": [
+                "</think>"
+              ]
             },
             "low": {
               "chat_template_kwargs": {
@@ -410,7 +461,8 @@
                 "chat_template_kwargs": {
                   "enable_thinking": true,
                   "reasoning_effort": "low"
-                }
+                },
+                "stop": []
               }
             },
             "medium": {
@@ -422,7 +474,8 @@
                 "chat_template_kwargs": {
                   "enable_thinking": true,
                   "reasoning_effort": "medium"
-                }
+                },
+                "stop": []
               }
             },
             "xhigh": {
@@ -434,7 +487,8 @@
                 "chat_template_kwargs": {
                   "enable_thinking": true,
                   "reasoning_effort": "xhigh"
-                }
+                },
+                "stop": []
               }
             }
           }
@@ -464,8 +518,14 @@
               "parallel_tool_calls": true,
               "chat_template_kwargs": {
                 "enable_thinking": false
-              }
-            }
+              },
+              "stop": [
+                "</think>"
+              ]
+            },
+            "stop": [
+              "</think>"
+            ]
           },
           "id": "qwen3.8-27b-gsq-iq3s"
         }
