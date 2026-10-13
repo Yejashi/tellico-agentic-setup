@@ -228,6 +228,15 @@ gateway defaults; a model swap touches all of them.
 - `bin/opencode-tellico` selects the lead node and injects runtime config via
   `OPENCODE_CONFIG_CONTENT`. OpenCode's interactive command rejects `--model`,
   so the model and lead agent must travel through that env var.
+- `opencode-tellico serve` runs OpenCode 2's headless API server with that
+  same runtime config and no TUI; it is the whole interface of the separate
+  `tellico-vscode` extension, which spawns it per window with a random
+  `OPENCODE_PASSWORD` and port. Plain `opencode serve` is already private
+  (only `--service` registers the shared one), so it gets no `--standalone`,
+  which `serve` rejects. Background subagents keep the interactive default:
+  verified on 2.0.26 on 2026-10-13 that a background worker's completion
+  reaches the lead over `serve` and the lead resumes. Keep Tellico logic in
+  the launcher, not in the extension, so the two cannot drift.
 - `lib/checks.sh` holds shared validation used by both `install.sh` and
   `doctor.sh`. Add checks there, not in one caller. `tellico_base_url` and
   `tellico_render_config` live there for the same reason: they are the only

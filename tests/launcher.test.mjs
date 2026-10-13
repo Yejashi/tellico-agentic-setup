@@ -87,6 +87,24 @@ test("one-shot run is foreground despite both inherited background flags", t => 
     "tellico-0/qwen3.8-27b-gsq-iq3s", "Review this repository"]);
 });
 
+test("serve starts a private API server with the session config and interactive background dispatch", t => {
+  const { captured, status } = fixture(t).run(["0", "--orchestrate", "--think", "low", "serve",
+    "--hostname", "127.0.0.1", "--port", "4123"], { OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS: "false" });
+  assert.equal(status, 0);
+  // No --standalone: plain serve is already private, only --service is shared.
+  assert.deepEqual(captured.args, ["serve", "--hostname", "127.0.0.1", "--port", "4123"]);
+  assert.equal(captured.background, "true");
+  assert.equal(captured.config.default_agent, "orchestrate-tellico-0");
+  assert.equal(captured.config.agent["tellico-worker-1"].variant, "low");
+  assert.equal(captured.config.websearch.provider, "tavily");
+});
+
+test("serve still honours a disabled background mode", t => {
+  const { captured } = fixture(t).run(["serve"], { TELLICO_BACKGROUND_SUBAGENTS: "0" });
+  assert.equal(captured.background, "false");
+  assert.deepEqual(captured.args, ["serve"]);
+});
+
 test("step and thinking overlays extend both primaries but keep worker limits", t => {
   const { captured } = fixture(t).run(["1", "--solo", "--think", "low", "--steps", "100000"]);
   assert.equal(captured.config.default_agent, "build-tellico-1");
