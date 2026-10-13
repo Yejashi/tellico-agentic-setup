@@ -516,6 +516,10 @@ gateway defaults; a model swap touches all of them.
   capacity; it only moves the queue. `TELLICO_GATEWAY_MODEL_ALIASES` keeps
   old model ids (`qwen3.8-27b`) routing to the current model so gateway users
   configured before a swap do not start getting 404s.
+  Streamed lead requests are paced through `SmoothStream` behind a
+  `TELLICO_GATEWAY_SMOOTH_MS` buffer (1 s), because a prompt chunk on the
+  same node stalls every other stream there; workers, `X-Tellico-Smooth: 0`
+  and anything after the first tool-call delta pass straight through.
 - `TELLICO_GATEWAY_CONTEXT` is derived from `config/opencode.json` at install
   time, so it is bound by the same context coupling described above. A change
   to the cluster's per-slot context means rerunning the gateway installer too.

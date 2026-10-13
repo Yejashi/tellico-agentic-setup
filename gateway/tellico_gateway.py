@@ -58,6 +58,11 @@ QUEUE_TIMEOUT = _env_int("TELLICO_GATEWAY_QUEUE_TIMEOUT", 120)
 REQUEST_TIMEOUT = _env_int("TELLICO_GATEWAY_REQUEST_TIMEOUT", 3600)
 MAX_BODY = _env_int("TELLICO_GATEWAY_MAX_BODY", 32 * 1024 * 1024)
 HEALTH_INTERVAL = _env_int("TELLICO_GATEWAY_HEALTH_INTERVAL", 10)
+# Streamed tokens are held back this long and played out at an even rate, so
+# the ~1 s decode stall a prompt chunk on the same node causes, and the bursts
+# speculative decoding emits, do not reach a reader as stop-and-go text. 0
+# passes chunks straight through. See SmoothStream.
+SMOOTH_MS = _env_int("TELLICO_GATEWAY_SMOOTH_MS", 1000)
 
 MODEL = _env("TELLICO_GATEWAY_MODEL", "qwen3.8-27b-gsq-iq3s")
 # Earlier model ids that still route to MODEL, so a client configured before a
@@ -436,6 +441,122 @@ def fold_system_items(payload):
     return merged
 
 
+class SmoothStream:
+    """Play an SSE stream out at an even rate behind a small buffer.
+
+    A reader thread splits upstream bytes into events and timestamps them; the
+    caller's thread writes them out spaced by the recent average arrival
+    period, slowed while less than `delay` seconds is buffered and sped up
+    while more is, so a stall shorter than the buffer is absorbed instead of
+    shown. Rate and buffer are measured over a window that includes stalls,
+    which is what makes the long-run output rate match the input.
+
+    Tool-call deltas are for a program, not a reader: the first one flushes
+    the buffer and the rest of the stream passes straight through, so an
+    agent's turn ends when the server's does.
+    """
+
+    # Seconds of arrivals the rate is averaged over: longer than one cycle of
+    # --prefill-pace stall and recovery, so the rate does not swing with it.
+    WINDOW = 8.0
+
+    def __init__(self, read1, delay, clock=time.monotonic):
+        self._read1 = read1
+        self._delay = delay
+        self._clock = clock
+        self._cond = threading.Condition()
+        self._events = []  # (arrival, bytes), oldest first
+        self._arrivals = []  # arrival times inside WINDOW
+        self._first = None
+        self._done = False
+        self._error = None
+        self._thread = threading.Thread(target=self._pull, daemon=True)
+        self._thread.start()
+
+    def _pull(self):
+        pending = b""
+        try:
+            while True:
+                chunk = self._read1(8192)
+                if not chunk:
+                    break
+                pending += chunk
+                parts = pending.split(b"\n\n")
+                pending = parts.pop()
+                if parts:
+                    now = self._clock()
+                    with self._cond:
+                        if self._first is None:
+                            self._first = now
+                        for part in parts:
+                            self._events.append((now, part + b"\n\n"))
+                            self._arrivals.append(now)
+                        self._cond.notify()
+        except Exception as error:  # surfaced to the writer after a flush
+            self._error = error
+        finally:
+            with self._cond:
+                if pending:
+                    self._events.append((self._clock(), pending))
+                self._done = True
+                self._cond.notify()
+
+    def _period(self, now):
+        cutoff = now - self.WINDOW
+        while self._arrivals and self._arrivals[0] < cutoff:
+            self._arrivals.pop(0)
+        span = min(self.WINDOW, now - self._first)
+        if not self._arrivals or span <= 0:
+            return None
+        return span / len(self._arrivals)
+
+    def events(self):
+        """Yield event bytes at the pace a reader should see them."""
+        passthrough = self._delay <= 0
+        started = False
+        last_emit = None
+        period = 0.0
+        while True:
+            out = None
+            with self._cond:
+                while not self._events and not self._done:
+                    self._cond.wait()
+                if not self._events:
+                    break
+                now = self._clock()
+                if not passthrough and any(b'"tool_calls"' in e for _, e in self._events):
+                    passthrough = True
+                if passthrough:
+                    out = b"".join(e for _, e in self._events)
+                    del self._events[:]
+                elif not started and not self._done and now - self._first < self._delay:
+                    # Pre-buffer: the first token waits `delay` so there is a
+                    # reserve to spend on the first stall.
+                    self._cond.wait(self._delay - (now - self._first))
+                else:
+                    started = True
+                    period = self._period(now) or period
+                    buffered = len(self._events) * period
+                    if self._done:
+                        factor = 0.5  # upstream finished: drain at 2x
+                    elif buffered <= 0:
+                        factor = 1.0
+                    else:
+                        factor = max(0.5, min(2.0, self._delay / buffered))
+                    due = now if last_emit is None else last_emit + period * factor
+                    # Never hold one event much past the buffer's worth.
+                    if now >= due or now - self._events[0][0] >= 2.5 * self._delay:
+                        out = self._events.pop(0)[1]
+                    else:
+                        self._cond.wait(due - now)
+            if out is not None:
+                last_emit = self._clock()
+                yield out
+        self._thread.join(1)
+        if self._error is not None:
+            raise self._error
+
+
 def split_node_prefix(path):
     """"/v1/node0/chat/completions" -> (["node0"], "/v1/chat/completions").
 
@@ -648,7 +769,7 @@ class Handler(BaseHTTPRequestHandler):
             started = time.monotonic()
             try:
                 status, usage = self.forward(
-                    path, host, port, wire, stream, upstream_key
+                    path, host, port, wire, stream, upstream_key, role
                 )
             except (OSError, http.client.HTTPException) as error:
                 POOL.release(user, label, role)
@@ -710,7 +831,7 @@ class Handler(BaseHTTPRequestHandler):
                 {"Retry-After": "30"},
             )
 
-    def forward(self, path, host, port, wire, stream, upstream_key):
+    def forward(self, path, host, port, wire, stream, upstream_key, role="lead"):
         """Proxy one request. Raises on a connection-level failure."""
         conn = http.client.HTTPConnection(host, port, timeout=REQUEST_TIMEOUT)
         try:
@@ -756,15 +877,23 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Cache-Control", "no-cache")
             self.send_header("X-Accel-Buffering", "no")
             self.end_headers()
+            # Pacing is for a person reading: worker requests, and any client
+            # that opts out, get chunks as they arrive.
+            smooth = (
+                SMOOTH_MS > 0
+                and response.status == 200
+                and role != "worker"
+                and (self.headers.get("X-Tellico-Smooth") or "").strip() != "0"
+            )
+            # read1, not read: read(n) on a chunked response blocks until n
+            # bytes arrive, which batches dozens of token events into one
+            # jarring block. read1 returns as soon as any data is available.
+            if smooth:
+                chunks = SmoothStream(response.read1, SMOOTH_MS / 1000.0).events()
+            else:
+                chunks = iter(lambda: response.read1(8192), b"")
             try:
-                while True:
-                    # read1, not read: read(n) on a chunked response blocks
-                    # until n bytes arrive, which batches dozens of token
-                    # events into one jarring block. read1 returns as soon as
-                    # any data is available.
-                    chunk = response.read1(8192)
-                    if not chunk:
-                        break
+                for chunk in chunks:
                     self.wfile.write(b"%x\r\n" % len(chunk) + chunk + b"\r\n")
                     self.wfile.flush()
                 self.wfile.write(b"0\r\n\r\n")

@@ -142,6 +142,9 @@ TELLICO_GATEWAY_MAX_INFLIGHT="$inflight"
 TELLICO_GATEWAY_DEFAULT_MAX_PARALLEL="${TELLICO_GATEWAY_DEFAULT_MAX_PARALLEL:-1}"
 TELLICO_GATEWAY_QUEUE_TIMEOUT="${TELLICO_GATEWAY_QUEUE_TIMEOUT:-120}"
 TELLICO_GATEWAY_REQUEST_TIMEOUT="${TELLICO_GATEWAY_REQUEST_TIMEOUT:-3600}"
+# Hold streamed tokens this long and play them out evenly, so server stalls
+# and bursts do not reach readers as stop-and-go text. 0 turns it off.
+TELLICO_GATEWAY_SMOOTH_MS="${TELLICO_GATEWAY_SMOOTH_MS:-1000}"
 
 TELLICO_GATEWAY_MODEL="$model"
 # Old model ids that still route to the current one, so clients configured

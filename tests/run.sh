@@ -8,3 +8,4 @@ for script in bin/* install.sh uninstall.sh doctor.sh lib/checks.sh \
 done
 python3 -m json.tool config/opencode.json >/dev/null
 node --test tests/*.test.mjs
+python3 -I -m unittest discover -s tests -p '*_test.py'

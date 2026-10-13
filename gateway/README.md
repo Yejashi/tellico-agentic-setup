@@ -179,6 +179,23 @@ load, so they stay dim.
 The `job ... left` figure comes from `squeue` over SSH, refreshed once a
 minute, and is simply absent on a host with no cluster account.
 
+## Smooth streaming
+
+While one request is generating, another request's prompt is read on the same
+node in 1024-2048-token chunks, and each chunk pauses every other stream there
+for 0.5-1 s; speculative decoding also emits tokens in bursts of several. Read
+directly, that is text that stops dead and then jumps. So the gateway plays
+streamed tokens out at an even rate behind a `TELLICO_GATEWAY_SMOOTH_MS` (1 s)
+buffer: the first token arrives that much later, and stalls shorter than the
+buffer are not seen at all. Measured on 2026-10-13 against a 30k-token prompt
+landing mid-stream, the reader saw three 1.0 s freezes in 12 s without it.
+
+It applies only where someone is reading. Requests marked
+`X-Tellico-Role: worker` pass straight through, a client can opt out with
+`X-Tellico-Smooth: 0`, and the first tool-call delta flushes the buffer and
+switches the rest of the stream to pass-through, so an agent's turn still ends
+when the server's does.
+
 ## Concurrency is the real limit
 
 Tellico has **four slots cluster-wide** (2 nodes x 2). That, not the
@@ -275,6 +292,7 @@ scripted caller does not.
 | `TELLICO_GATEWAY_DEFAULT_MAX_PARALLEL` | `1` | Per-user default, overridden per key |
 | `TELLICO_GATEWAY_QUEUE_TIMEOUT` | `120` | Seconds to wait for a slot before `429` |
 | `TELLICO_GATEWAY_REQUEST_TIMEOUT` | `3600` | Upstream timeout, for long generations |
+| `TELLICO_GATEWAY_SMOOTH_MS` | `1000` | Streaming playout buffer; `0` passes tokens straight through |
 | `TELLICO_GATEWAY_MODEL` | `qwen3.8-27b-gsq-iq3s` | Base model id |
 | `TELLICO_GATEWAY_MODEL_ALIASES` | `qwen3.6-35b-a3b qwen3.8-27b` | Old ids that still route to it, space-separated |
 | `TELLICO_GATEWAY_CONTEXT` | from `opencode.json` | Context advertised on `/v1/models` |
