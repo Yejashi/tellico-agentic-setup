@@ -4,7 +4,7 @@ The second way in. Instead of installing this repository, holding an SSH key on
 Tellico and running a tunnel, a user gets a URL and their own API key:
 
 ```bash
-curl https://lab-pc.tail960ade.ts.net/v1/chat/completions \
+curl https://tellico-llm-tunnel.asc200035.projects.jetstream-cloud.org/v1/chat/completions \
   -H "Authorization: Bearer sk-tellico-..." \
   -H 'Content-Type: application/json' \
   -d '{"model":"qwen3.8-27b-gsq-iq3s","messages":[{"role":"user","content":"hello"}]}'

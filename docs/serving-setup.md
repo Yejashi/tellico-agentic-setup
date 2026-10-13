@@ -33,8 +33,8 @@ OpenCode (opencode-tellico)                     other clients (curl, SDKs)
   lead: orchestrate-tellico-0|1 -> tellico-N        |
   workers: tellico-worker-N -> tellico-N-worker      | HTTPS, per-user key
            (sends X-Tellico-Role: worker)            v
-  |                                         gateway on lab-pc (tailnet funnel)
-  | tunnel mode                               https://lab-pc.tail960ade.ts.net/v1
+  |                                         gateway on Jetstream2 VM (Caddy)  
+  | tunnel mode         https://tellico-llm-tunnel.asc200035.projects.jetstream-cloud.org/v1
   |   127.0.0.1:18080 -> compute0:8000        max 3 in flight, leads first
   |   127.0.0.1:18081 -> compute1:8000        routes to the less-busy node
   +------------------+-----------------------------+
