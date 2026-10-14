@@ -448,6 +448,8 @@ install -m 600 "$script_dir/prompts/build.md" "$config_dir/prompts/build.md"
 # directory with a package.json because OpenCode 2 refuses a bare plugin file;
 # OpenCode 1 accepts either.
 for plugin in secret-guard dispatch-balance compaction-guard disk-guard; do
+  # A plugin new since the last install has no directory yet.
+  mkdir -p "$plugin_dir/$plugin"
   install -m 644 "$script_dir/plugins/$plugin/index.js" "$plugin_dir/$plugin/index.js"
   install -m 644 "$script_dir/plugins/$plugin/package.json" "$plugin_dir/$plugin/package.json"
 done
