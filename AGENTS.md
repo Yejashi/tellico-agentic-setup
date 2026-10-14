@@ -278,9 +278,10 @@ gateway defaults; a model swap touches all of them.
   rest: an agent's `variant` is not applied when a session opens, a session's
   variant is applied to every request in it -- title, summary and compaction
   included -- and a per-launch config can *add* a key to a model's
-  `extraBody` but not replace one. Hence: the model-level `extraBody` holds
-  no `chat_template_kwargs` (the server default, medium, applies), `--think`
-  adds it per launch on OpenCode 2, a session variant (`ctrl+t`, `/think-*`,
+  `extraBody` but not replace one; nested objects merge key by key. Hence:
+  the model-level `chat_template_kwargs` holds only `preserve_thinking`, never
+  `enable_thinking` or `reasoning_effort` (the server default, medium,
+  applies), `--think` adds those per launch on OpenCode 2, a session variant (`ctrl+t`, `/think-*`,
   the VS Code picker) still wins over that, and the overhead agents use a
   `qwen3.8-27b-gsq-iq3s-quiet` twin with thinking hard-off and no variants
   (OpenCode 2 only; OpenCode 1 keeps `compaction-guard`). Each fact has a
@@ -352,6 +353,23 @@ gateway defaults; a model swap touches all of them.
   config root. A plugin the config names but the install did not copy is
   silently skipped by OpenCode, which is why `tellico_check_config` fails on a
   missing one rather than warning.
+- **Thinking loops are bounded at the request.** Measured 2026-10-14: the
+  Qwen template keeps *every* earlier turn's thinking by default
+  (`preserve_thinking`; llama-server says so at startup) and OpenCode sends
+  each step's `reasoning_content` back, so all past thinking -- a stopped
+  15k-character loop included -- stayed in the prompt and the model copied
+  it; loops grew more frequent through a session. Every request now sends
+  `chat_template_kwargs.preserve_thinking: false` (earlier turns' thinking
+  dropped; the current turn's tool steps keep theirs, checked with
+  `/apply-template`) and the work model sends `reasoning_budget_tokens: 8192`
+  with a `reasoning_budget_message`, after which the server ends the think
+  and the model acts (10/10 forced endings still made the correct edit; p99
+  of real steps is ~10k chars, the rest were loops). Field names are from the
+  server source; `reasoning_budget` is silently ignored. Verified through a
+  real 2.0.26 server for the plain launch, `--think`, session variants and
+  the quiet model, and through the gateway. The same could be set
+  server-wide with `--chat-template-kwargs` and `--reasoning-budget` in
+  qwen38-cluster's `serve-node`, which would also cover raw-API users.
 - `plugins/disk-guard` blocks a write-type tool call when the target's
   filesystem has less than 64 MiB (or twice the content) free, and says
   the disk is full. On a full disk OpenCode's write creates the file and then

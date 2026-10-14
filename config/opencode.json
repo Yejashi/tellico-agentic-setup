@@ -28,22 +28,31 @@
             "top_p": 0.95,
             "parallel_tool_calls": true,
             "chat_template_kwargs": {
-              "enable_thinking": true
+              "preserve_thinking": false
             },
             "extraBody": {
               "temperature": 0.6,
               "top_p": 0.95,
-              "parallel_tool_calls": true
-            }
+              "parallel_tool_calls": true,
+              "chat_template_kwargs": {
+                "preserve_thinking": false
+              },
+              "reasoning_budget_tokens": 8192,
+              "reasoning_budget_message": "I have thought about this enough; I will stop deliberating and take the next concrete step now."
+            },
+            "reasoning_budget_tokens": 8192,
+            "reasoning_budget_message": "I have thought about this enough; I will stop deliberating and take the next concrete step now."
           },
           "variants": {
             "off": {
               "chat_template_kwargs": {
-                "enable_thinking": false
+                "enable_thinking": false,
+                "preserve_thinking": false
               },
               "extraBody": {
                 "chat_template_kwargs": {
-                  "enable_thinking": false
+                  "enable_thinking": false,
+                  "preserve_thinking": false
                 },
                 "stop": [
                   "</think>"
@@ -56,12 +65,14 @@
             "low": {
               "chat_template_kwargs": {
                 "enable_thinking": true,
-                "reasoning_effort": "low"
+                "reasoning_effort": "low",
+                "preserve_thinking": false
               },
               "extraBody": {
                 "chat_template_kwargs": {
                   "enable_thinking": true,
-                  "reasoning_effort": "low"
+                  "reasoning_effort": "low",
+                  "preserve_thinking": false
                 },
                 "stop": []
               }
@@ -69,12 +80,14 @@
             "medium": {
               "chat_template_kwargs": {
                 "enable_thinking": true,
-                "reasoning_effort": "medium"
+                "reasoning_effort": "medium",
+                "preserve_thinking": false
               },
               "extraBody": {
                 "chat_template_kwargs": {
                   "enable_thinking": true,
-                  "reasoning_effort": "medium"
+                  "reasoning_effort": "medium",
+                  "preserve_thinking": false
                 },
                 "stop": []
               }
@@ -82,12 +95,14 @@
             "xhigh": {
               "chat_template_kwargs": {
                 "enable_thinking": true,
-                "reasoning_effort": "xhigh"
+                "reasoning_effort": "xhigh",
+                "preserve_thinking": false
               },
               "extraBody": {
                 "chat_template_kwargs": {
                   "enable_thinking": true,
-                  "reasoning_effort": "xhigh"
+                  "reasoning_effort": "xhigh",
+                  "preserve_thinking": false
                 },
                 "stop": []
               }
@@ -111,14 +126,16 @@
             "top_p": 0.95,
             "parallel_tool_calls": true,
             "chat_template_kwargs": {
-              "enable_thinking": false
+              "enable_thinking": false,
+              "preserve_thinking": false
             },
             "extraBody": {
               "temperature": 0.6,
               "top_p": 0.95,
               "parallel_tool_calls": true,
               "chat_template_kwargs": {
-                "enable_thinking": false
+                "enable_thinking": false,
+                "preserve_thinking": false
               },
               "stop": [
                 "</think>"
@@ -159,22 +176,31 @@
             "top_p": 0.95,
             "parallel_tool_calls": true,
             "chat_template_kwargs": {
-              "enable_thinking": true
+              "preserve_thinking": false
             },
             "extraBody": {
               "temperature": 0.6,
               "top_p": 0.95,
-              "parallel_tool_calls": true
-            }
+              "parallel_tool_calls": true,
+              "chat_template_kwargs": {
+                "preserve_thinking": false
+              },
+              "reasoning_budget_tokens": 8192,
+              "reasoning_budget_message": "I have thought about this enough; I will stop deliberating and take the next concrete step now."
+            },
+            "reasoning_budget_tokens": 8192,
+            "reasoning_budget_message": "I have thought about this enough; I will stop deliberating and take the next concrete step now."
           },
           "variants": {
             "off": {
               "chat_template_kwargs": {
-                "enable_thinking": false
+                "enable_thinking": false,
+                "preserve_thinking": false
               },
               "extraBody": {
                 "chat_template_kwargs": {
-                  "enable_thinking": false
+                  "enable_thinking": false,
+                  "preserve_thinking": false
                 },
                 "stop": [
                   "</think>"
@@ -187,12 +213,14 @@
             "low": {
               "chat_template_kwargs": {
                 "enable_thinking": true,
-                "reasoning_effort": "low"
+                "reasoning_effort": "low",
+                "preserve_thinking": false
               },
               "extraBody": {
                 "chat_template_kwargs": {
                   "enable_thinking": true,
-                  "reasoning_effort": "low"
+                  "reasoning_effort": "low",
+                  "preserve_thinking": false
                 },
                 "stop": []
               }
@@ -200,12 +228,14 @@
             "medium": {
               "chat_template_kwargs": {
                 "enable_thinking": true,
-                "reasoning_effort": "medium"
+                "reasoning_effort": "medium",
+                "preserve_thinking": false
               },
               "extraBody": {
                 "chat_template_kwargs": {
                   "enable_thinking": true,
-                  "reasoning_effort": "medium"
+                  "reasoning_effort": "medium",
+                  "preserve_thinking": false
                 },
                 "stop": []
               }
@@ -213,12 +243,14 @@
             "xhigh": {
               "chat_template_kwargs": {
                 "enable_thinking": true,
-                "reasoning_effort": "xhigh"
+                "reasoning_effort": "xhigh",
+                "preserve_thinking": false
               },
               "extraBody": {
                 "chat_template_kwargs": {
                   "enable_thinking": true,
-                  "reasoning_effort": "xhigh"
+                  "reasoning_effort": "xhigh",
+                  "preserve_thinking": false
                 },
                 "stop": []
               }
@@ -242,14 +274,16 @@
             "top_p": 0.95,
             "parallel_tool_calls": true,
             "chat_template_kwargs": {
-              "enable_thinking": false
+              "enable_thinking": false,
+              "preserve_thinking": false
             },
             "extraBody": {
               "temperature": 0.6,
               "top_p": 0.95,
               "parallel_tool_calls": true,
               "chat_template_kwargs": {
-                "enable_thinking": false
+                "enable_thinking": false,
+                "preserve_thinking": false
               },
               "stop": [
                 "</think>"
@@ -293,22 +327,31 @@
             "top_p": 0.95,
             "parallel_tool_calls": true,
             "chat_template_kwargs": {
-              "enable_thinking": true
+              "preserve_thinking": false
             },
             "extraBody": {
               "temperature": 0.6,
               "top_p": 0.95,
-              "parallel_tool_calls": true
-            }
+              "parallel_tool_calls": true,
+              "chat_template_kwargs": {
+                "preserve_thinking": false
+              },
+              "reasoning_budget_tokens": 8192,
+              "reasoning_budget_message": "I have thought about this enough; I will stop deliberating and take the next concrete step now."
+            },
+            "reasoning_budget_tokens": 8192,
+            "reasoning_budget_message": "I have thought about this enough; I will stop deliberating and take the next concrete step now."
           },
           "variants": {
             "off": {
               "chat_template_kwargs": {
-                "enable_thinking": false
+                "enable_thinking": false,
+                "preserve_thinking": false
               },
               "extraBody": {
                 "chat_template_kwargs": {
-                  "enable_thinking": false
+                  "enable_thinking": false,
+                  "preserve_thinking": false
                 },
                 "stop": [
                   "</think>"
@@ -321,12 +364,14 @@
             "low": {
               "chat_template_kwargs": {
                 "enable_thinking": true,
-                "reasoning_effort": "low"
+                "reasoning_effort": "low",
+                "preserve_thinking": false
               },
               "extraBody": {
                 "chat_template_kwargs": {
                   "enable_thinking": true,
-                  "reasoning_effort": "low"
+                  "reasoning_effort": "low",
+                  "preserve_thinking": false
                 },
                 "stop": []
               }
@@ -334,12 +379,14 @@
             "medium": {
               "chat_template_kwargs": {
                 "enable_thinking": true,
-                "reasoning_effort": "medium"
+                "reasoning_effort": "medium",
+                "preserve_thinking": false
               },
               "extraBody": {
                 "chat_template_kwargs": {
                   "enable_thinking": true,
-                  "reasoning_effort": "medium"
+                  "reasoning_effort": "medium",
+                  "preserve_thinking": false
                 },
                 "stop": []
               }
@@ -347,12 +394,14 @@
             "xhigh": {
               "chat_template_kwargs": {
                 "enable_thinking": true,
-                "reasoning_effort": "xhigh"
+                "reasoning_effort": "xhigh",
+                "preserve_thinking": false
               },
               "extraBody": {
                 "chat_template_kwargs": {
                   "enable_thinking": true,
-                  "reasoning_effort": "xhigh"
+                  "reasoning_effort": "xhigh",
+                  "preserve_thinking": false
                 },
                 "stop": []
               }
@@ -376,14 +425,16 @@
             "top_p": 0.95,
             "parallel_tool_calls": true,
             "chat_template_kwargs": {
-              "enable_thinking": false
+              "enable_thinking": false,
+              "preserve_thinking": false
             },
             "extraBody": {
               "temperature": 0.6,
               "top_p": 0.95,
               "parallel_tool_calls": true,
               "chat_template_kwargs": {
-                "enable_thinking": false
+                "enable_thinking": false,
+                "preserve_thinking": false
               },
               "stop": [
                 "</think>"
@@ -427,22 +478,31 @@
             "top_p": 0.95,
             "parallel_tool_calls": true,
             "chat_template_kwargs": {
-              "enable_thinking": true
+              "preserve_thinking": false
             },
             "extraBody": {
               "temperature": 0.6,
               "top_p": 0.95,
-              "parallel_tool_calls": true
-            }
+              "parallel_tool_calls": true,
+              "chat_template_kwargs": {
+                "preserve_thinking": false
+              },
+              "reasoning_budget_tokens": 8192,
+              "reasoning_budget_message": "I have thought about this enough; I will stop deliberating and take the next concrete step now."
+            },
+            "reasoning_budget_tokens": 8192,
+            "reasoning_budget_message": "I have thought about this enough; I will stop deliberating and take the next concrete step now."
           },
           "variants": {
             "off": {
               "chat_template_kwargs": {
-                "enable_thinking": false
+                "enable_thinking": false,
+                "preserve_thinking": false
               },
               "extraBody": {
                 "chat_template_kwargs": {
-                  "enable_thinking": false
+                  "enable_thinking": false,
+                  "preserve_thinking": false
                 },
                 "stop": [
                   "</think>"
@@ -455,12 +515,14 @@
             "low": {
               "chat_template_kwargs": {
                 "enable_thinking": true,
-                "reasoning_effort": "low"
+                "reasoning_effort": "low",
+                "preserve_thinking": false
               },
               "extraBody": {
                 "chat_template_kwargs": {
                   "enable_thinking": true,
-                  "reasoning_effort": "low"
+                  "reasoning_effort": "low",
+                  "preserve_thinking": false
                 },
                 "stop": []
               }
@@ -468,12 +530,14 @@
             "medium": {
               "chat_template_kwargs": {
                 "enable_thinking": true,
-                "reasoning_effort": "medium"
+                "reasoning_effort": "medium",
+                "preserve_thinking": false
               },
               "extraBody": {
                 "chat_template_kwargs": {
                   "enable_thinking": true,
-                  "reasoning_effort": "medium"
+                  "reasoning_effort": "medium",
+                  "preserve_thinking": false
                 },
                 "stop": []
               }
@@ -481,12 +545,14 @@
             "xhigh": {
               "chat_template_kwargs": {
                 "enable_thinking": true,
-                "reasoning_effort": "xhigh"
+                "reasoning_effort": "xhigh",
+                "preserve_thinking": false
               },
               "extraBody": {
                 "chat_template_kwargs": {
                   "enable_thinking": true,
-                  "reasoning_effort": "xhigh"
+                  "reasoning_effort": "xhigh",
+                  "preserve_thinking": false
                 },
                 "stop": []
               }
@@ -510,14 +576,16 @@
             "top_p": 0.95,
             "parallel_tool_calls": true,
             "chat_template_kwargs": {
-              "enable_thinking": false
+              "enable_thinking": false,
+              "preserve_thinking": false
             },
             "extraBody": {
               "temperature": 0.6,
               "top_p": 0.95,
               "parallel_tool_calls": true,
               "chat_template_kwargs": {
-                "enable_thinking": false
+                "enable_thinking": false,
+                "preserve_thinking": false
               },
               "stop": [
                 "</think>"

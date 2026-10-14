@@ -13,8 +13,13 @@
 // visible, here: when a text or reasoning part starts recycling itself the
 // step is interrupted and the session gets one short user message telling it
 // to stop deliberating and act. That message also takes the looping
-// reasoning out of the model's view, since the chat template drops the
-// reasoning of steps before the latest user message.
+// reasoning out of the model's view: it starts a new turn, and every request
+// sends preserve_thinking false (config/opencode.json), so the template drops
+// thinking from turns before the latest user message. Without that the
+// template keeps all of it -- OpenCode sends every step's reasoning back --
+// and a stopped loop stayed in the prompt to be copied (2026-10-14).
+// config/opencode.json also caps any one think at 8,192 tokens, so a loop
+// this guard misses still ends.
 //
 // A worker is different. Interrupting it makes its lead's subagent call
 // return at once with only "Subagent cancelled", and anything the worker said

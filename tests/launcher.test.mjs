@@ -185,13 +185,35 @@ test("every thinking setting reaches the request on OpenCode 1 and 2", () => {
     for (const [level, variant] of Object.entries(model.variants)) {
       assert.deepEqual(variant.extraBody?.chat_template_kwargs, variant.chat_template_kwargs, `${id} ${level}`);
     }
-    for (const key of ["temperature", "top_p", "parallel_tool_calls"]) {
+    for (const key of ["temperature", "top_p", "parallel_tool_calls", "chat_template_kwargs",
+      "reasoning_budget_tokens", "reasoning_budget_message"]) {
       assert.deepEqual(model.options.extraBody[key], model.options[key], `${id} ${key}`);
     }
-    // Deliberately absent: a per-launch config can add a key to the
-    // installed model's extraBody but not replace one (measured on 2.0.26),
-    // so a default here would make --think a no-op on OpenCode 2.
-    assert.equal(model.options.extraBody.chat_template_kwargs, undefined, id);
+    // A per-launch config can add a key to the installed model's extraBody
+    // but not replace one (measured on 2.0.26), and nested objects are merged
+    // key by key. So the model may set preserve_thinking, which --think never
+    // touches, but never enable_thinking or reasoning_effort: a default for
+    // either would make --think a no-op on OpenCode 2.
+    assert.deepEqual(model.options.extraBody.chat_template_kwargs, { preserve_thinking: false }, id);
+  }
+});
+
+test("every request drops earlier turns' thinking, and every thinking step is capped", () => {
+  // Thinking loops (2026-10-14). The template keeps every earlier turn's
+  // thinking by default and OpenCode sends it all back, so a loop, once
+  // stopped, stayed in the prompt and was copied; and nothing bounded one
+  // think. Checked through a real 2.0.26 server: the plain launch, --think,
+  // every session variant and the overhead model all send preserve_thinking
+  // false, and the work model sends the cap with its message.
+  for (const [id, provider] of Object.entries(config.provider)) {
+    const model = provider.models["qwen3.8-27b-gsq-iq3s"];
+    assert.equal(model.options.extraBody.chat_template_kwargs.preserve_thinking, false, id);
+    assert.equal(model.options.extraBody.reasoning_budget_tokens, 8192, id);
+    assert.match(model.options.extraBody.reasoning_budget_message, /take the next concrete step/, id);
+    for (const [level, variant] of Object.entries(model.variants)) {
+      assert.equal(variant.extraBody.chat_template_kwargs.preserve_thinking, false, `${id} ${level}`);
+    }
+    assert.equal(provider.models["qwen3.8-27b-gsq-iq3s-quiet"].options.extraBody.chat_template_kwargs.preserve_thinking, false, id);
   }
 });
 
@@ -243,11 +265,11 @@ test("--think sets the model-level level on OpenCode 2, where agent variants are
   const { captured } = f.run(["0", "--think", "low"]);
   for (const id of ["tellico-0", "tellico-0-worker", "tellico-1", "tellico-1-worker"]) {
     assert.deepEqual(captured.config.provider[id], {
-      models: { "qwen3.8-27b-gsq-iq3s": { options: { extraBody: { chat_template_kwargs: { enable_thinking: true, reasoning_effort: "low" } } } } },
+      models: { "qwen3.8-27b-gsq-iq3s": { options: { extraBody: { chat_template_kwargs: { enable_thinking: true, reasoning_effort: "low", preserve_thinking: false } } } } },
     });
   }
   const off = f.run(["0", "--think", "off"]).captured;
-  assert.deepEqual(off.config.provider["tellico-1"].models["qwen3.8-27b-gsq-iq3s"].options.extraBody.chat_template_kwargs, { enable_thinking: false });
+  assert.deepEqual(off.config.provider["tellico-1"].models["qwen3.8-27b-gsq-iq3s"].options.extraBody.chat_template_kwargs, { enable_thinking: false, preserve_thinking: false });
   assert.deepEqual(off.config.provider["tellico-1"].models["qwen3.8-27b-gsq-iq3s"].options.extraBody.stop, ["</think>"]);
   assert.equal(captured.config.provider["tellico-0"].models["qwen3.8-27b-gsq-iq3s"].options.extraBody.stop, undefined);
   // The quiet model is never overridden.

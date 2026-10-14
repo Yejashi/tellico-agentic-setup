@@ -575,13 +575,13 @@ think_kwargs=
 think_stop=
 if [ -n "$think" ] && [ "${opencode_major:-1}" -ge 2 ]; then
   if [ "$think" = off ]; then
-    think_kwargs='{"enable_thinking":false}'
+    think_kwargs='{"enable_thinking":false,"preserve_thinking":false}'
     # See the "off" variant in config/opencode.json: with thinking off the
     # model sometimes closes a reasoning block it never opened and starts
     # its answer over; stopping at that tag keeps the first, whole answer.
     think_stop=',"stop":["</think>"]'
   else
-    think_kwargs="{\"enable_thinking\":true,\"reasoning_effort\":\"${think}\"}"
+    think_kwargs="{\"enable_thinking\":true,\"reasoning_effort\":\"${think}\",\"preserve_thinking\":false}"
   fi
 fi
 provider_config=

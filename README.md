@@ -465,7 +465,13 @@ behind and the agent knows to free space or stop.
 
 ### When it repeats itself
 
-Now and then the model falls into a loop -- the same paragraph of
+Two things in every request keep the model out of thinking loops. It no
+longer re-reads its own earlier turns' thinking, which it used to get back in
+full -- including any loop it had fallen into, which it then copied. And no
+single think can run past 8,192 tokens: the server ends it with a note to act
+instead.
+
+On top of that, now and then the model still falls into a loop -- the same paragraph of
 deliberation over and over -- and a looping step never ends by itself: it
 runs to the 32,768-token output cap, holding one of the cluster's four slots
 for minutes. `plugins/loop-guard` watches each reply as it streams. When the
