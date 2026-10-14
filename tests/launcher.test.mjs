@@ -61,10 +61,10 @@ cli: process.env.OPENCODE_CLI_CONFIG_CONTENT
   };
 }
 
-test("default launch opens on build-tellico, keeps medium and enables interactive background dispatch", t => {
+test("default launch opens on build-tellico, keeps medium and dispatches in the foreground", t => {
   const { captured, status } = fixture(t).run();
   assert.equal(status, 0);
-  assert.equal(captured.background, "true");
+  assert.equal(captured.background, "false");
   assert.equal(captured.config.default_agent, "build-tellico-1");
   assert.equal(config.agent[captured.config.default_agent].variant, "medium");
   assert.equal(captured.config.websearch.provider, "tavily");
@@ -77,6 +77,14 @@ test("orchestrate opens on the delegating lead", t => {
     assert.equal(launch.captured.config.default_agent, "orchestrate-tellico-0");
   }
   assert.equal(f.run(["0", "--solo"]).captured.config.default_agent, "build-tellico-0");
+});
+
+test("background dispatch is opt-in for an interactive session", t => {
+  const f = fixture(t);
+  for (const value of ["1", "true", "on"]) {
+    assert.equal(f.run(["0", "--orchestrate"], { TELLICO_BACKGROUND_SUBAGENTS: value }).captured.background, "true");
+  }
+  assert.equal(f.run(["serve"], { TELLICO_BACKGROUND_SUBAGENTS: "1" }).captured.background, "true");
 });
 
 test("disabled mode overrides an inherited upstream enable flag", t => {
@@ -95,13 +103,13 @@ test("one-shot run is foreground despite both inherited background flags", t => 
     "tellico-0/qwen3.8-27b-gsq-iq3s", "Review this repository"]);
 });
 
-test("serve starts a private API server with the session config and interactive background dispatch", t => {
+test("serve starts a private API server with the session config and the TUI's foreground dispatch", t => {
   const { captured, status } = fixture(t).run(["0", "--orchestrate", "--think", "low", "serve",
-    "--hostname", "127.0.0.1", "--port", "4123"], { OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS: "false" });
+    "--hostname", "127.0.0.1", "--port", "4123"], { OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS: "true" });
   assert.equal(status, 0);
   // No --standalone: plain serve is already private, only --service is shared.
   assert.deepEqual(captured.args, ["serve", "--hostname", "127.0.0.1", "--port", "4123"]);
-  assert.equal(captured.background, "true");
+  assert.equal(captured.background, "false");
   assert.equal(captured.config.default_agent, "orchestrate-tellico-0");
   assert.equal(captured.config.agent["tellico-worker-1"].variant, "low");
   assert.equal(captured.config.websearch.provider, "tavily");

@@ -102,12 +102,12 @@ environment:
                    Force the lead node to 0 or 1 instead of deriving it from
                    this device.
   TELLICO_BACKGROUND_SUBAGENTS
-                   Set to 0 to dispatch workers in the foreground, the way
-                   this setup worked before background subagents. On by
-                   default for an interactive session, where the lead is
-                   notified as each worker finishes instead of waiting for
-                   the whole batch. Never on for "run", which has no later
-                   turn for a result to arrive in.
+                   Set to 1 to dispatch workers in the background in an
+                   interactive session: the lead keeps working and is
+                   notified as each worker finishes. Off by default, so a
+                   dispatch blocks the lead until every worker in the batch
+                   has reported. Never on for "run", which has no later turn
+                   for a result to arrive in.
   TELLICO_OPENCODE_STANDALONE
                    Force OpenCode's --standalone flag on (1) or off (0).
                    Unset, the flag is used when this OpenCode supports it,
@@ -407,10 +407,18 @@ fi
 # tool only grows its "background" parameter when this is set, which is why it
 # travels with the session rather than living in the config.
 #
-# It is experimental, and TELLICO_BACKGROUND_SUBAGENTS=0 turns it off without
-# an edit. That is the first thing to try if a worker's report ever goes
-# missing: upstream issue 48826 reports a subagent with pending background
-# work being marked complete early and its result never collected.
+# It is off by default since 2026-10-14, and TELLICO_BACKGROUND_SUBAGENTS=1
+# turns it on. In practice the model handled the asynchrony badly: a lead
+# with workers in flight has to track which reports are still owed, take
+# completion notifications mid-turn, and keep the shared status file in step
+# with commits landing underneath it, and the leads on this cluster lost
+# track -- stale status files, and a lead arguing with itself over whether to
+# dispatch the next slice or record the last one until it looped. Blocking
+# on the batch gives up overlap but leaves one simple order: dispatch, wait,
+# read both reports, decide. It also frees the lead's slot for other users
+# while the workers run, which matters on four shared slots. And upstream
+# issue 48826 reports a subagent with pending background work being marked
+# complete early and its result never collected.
 #
 # "opencode run" never gets it, whatever the variable says. A one-shot run
 # ends its turn as soon as the model stops speaking, and a background result
@@ -419,12 +427,12 @@ fi
 # that reports both lines in the foreground ends with "Waiting for their
 # reports" and loses both when run in the background. An interactive session
 # has further turns and is the only place the notification can be delivered.
-case ${TELLICO_BACKGROUND_SUBAGENTS:-1} in
-  0|false|no|off)
-    background_env=OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS=false
+case ${TELLICO_BACKGROUND_SUBAGENTS:-0} in
+  1|true|yes|on)
+    background_env=OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS=true
     ;;
   *)
-    background_env=OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS=true
+    background_env=OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS=false
     ;;
 esac
 
@@ -617,9 +625,10 @@ fi
 # same agents, plugins and runtime config as the TUI, with no TUI. A plain
 # "opencode serve" is already a private server (only "--service" registers the
 # shared one), so it needs no --standalone, and it reads OPENCODE_CONFIG like a
-# standalone TUI does. Background subagents keep the interactive default: a
-# client UI stays connected and has later turns for the notification to land
-# in, which is exactly what "run" lacks.
+# standalone TUI does. It follows the same dispatch default as the TUI, and
+# TELLICO_BACKGROUND_SUBAGENTS=1 can turn background on here too: a client UI
+# stays connected and has later turns for the notification to land in, which
+# is exactly what "run" lacks.
 # shellcheck disable=SC2086
 if [ "${1:-}" = serve ]; then
   shift

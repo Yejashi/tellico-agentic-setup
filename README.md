@@ -336,14 +336,15 @@ OpenCode's external-directory permission behavior. Repository instructions
 still apply: a project that restricts the lead to read-only Git or requires a
 separate commit worker retains that workflow until its own rules are revised.
 
-Foreground dispatch is mandatory for `opencode run`. Interactive sessions offer
-background dispatch by default; `TELLICO_BACKGROUND_SUBAGENTS=0` disables it,
-including an inherited upstream enable flag. The dispatch plugin tells the
-agent which mode is active. Background acknowledgements do not count as
-completed tasks; collect completion notifications and reports before claiming
-success. Interactive notification delivery still needs a live end-to-end check
-on the installed OpenCode version; foreground is the fallback for missing
-reports.
+Dispatch is foreground by default: the lead sends its workers off together and
+waits until every one has reported before it continues. That gives up some
+overlap, and in exchange the lead never has to track reports that are still
+owed or take notifications mid-turn -- bookkeeping the model handled badly in
+practice -- and its slot is free for other users while the workers run.
+`TELLICO_BACKGROUND_SUBAGENTS=1` turns background dispatch on for interactive
+sessions, where the lead keeps working and is notified as each worker
+finishes; `opencode run` is always foreground. The dispatch plugin tells the
+agent which mode is active.
 
 For consecutive slices in the same subsystem, the prompt allows resuming the
 worker session if the tool provides that facility (`task_id` on OpenCode 1).

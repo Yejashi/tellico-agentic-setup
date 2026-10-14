@@ -206,16 +206,19 @@ gateway defaults; a model swap touches all of them.
   itself; delegate substantial independent units only when it helps finish
   correctly. Keep exact write scopes and one shared build/Git owner. Idle
   workers are acceptable. Optimize verified completion time, not occupied slots.
-- Foreground tool-call batches wait for every result. Interactive background
-  dispatch permits useful overlap, but a tool return there is only an
-  acknowledgement; track completion notifications and reports separately. The
-  launcher explicitly sets the upstream flag true/false, including false for
-  `opencode run`, so inherited environment cannot override a disabled mode.
-  The plugin adds mode-specific instructions. Live notification delivery was
-  verified end to end on 2.0.26 on 2026-10-13 over `opencode-tellico serve`:
-  the worker's completion arrived as a synthetic inbox item and the lead
-  resumed by itself. Recheck after an OpenCode upgrade, and fall back with
-  `TELLICO_BACKGROUND_SUBAGENTS=0` if reports go missing.
+- Dispatch is foreground by default (since 2026-10-14): a tool-call batch
+  blocks the lead until every worker in it has reported. Background dispatch
+  (`TELLICO_BACKGROUND_SUBAGENTS=1`, interactive only) permits overlap, but
+  in practice the leads mishandled it -- reports still owed, notifications
+  arriving mid-turn, the shared status file racing commits -- and that
+  bookkeeping is what a lead was dithering over when it looped. Foreground
+  also frees the lead's slot while workers run. Do not turn background back
+  on by default without evidence the model now copes. The launcher explicitly
+  sets the upstream flag true/false, including false for `opencode run`, so
+  inherited environment cannot override the chosen mode. The plugin adds
+  mode-specific instructions. Background notification delivery itself works:
+  verified on 2.0.26 on 2026-10-13 over `opencode-tellico serve`, the
+  worker's completion arrived as a synthetic inbox item and the lead resumed.
 - The lead and same-numbered worker share a node. Prefer the far worker while
   the lead is generating, but other users may occupy either server. Current
   measurements show aggregate gains for two requests on the 2026-10-11 engine;
@@ -307,9 +310,8 @@ gateway defaults; a model swap touches all of them.
   `tellico-vscode` extension, which spawns it per window with a random
   `OPENCODE_PASSWORD` and port. Plain `opencode serve` is already private
   (only `--service` registers the shared one), so it gets no `--standalone`,
-  which `serve` rejects. Background subagents keep the interactive default:
-  verified on 2.0.26 on 2026-10-13 that a background worker's completion
-  reaches the lead over `serve` and the lead resumes. Keep Tellico logic in
+  which `serve` rejects. It follows the launcher's dispatch default
+  (foreground), and background can be turned on there as in the TUI. Keep Tellico logic in
   the launcher, not in the extension, so the two cannot drift.
 - `lib/checks.sh` holds shared validation used by both `install.sh` and
   `doctor.sh`. Add checks there, not in one caller. `tellico_base_url` and
