@@ -367,9 +367,13 @@ gateway defaults; a model swap touches all of them.
   of real steps is ~10k chars, the rest were loops). Field names are from the
   server source; `reasoning_budget` is silently ignored. Verified through a
   real 2.0.26 server for the plain launch, `--think`, session variants and
-  the quiet model, and through the gateway. The same could be set
-  server-wide with `--chat-template-kwargs` and `--reasoning-budget` in
-  qwen38-cluster's `serve-node`, which would also cover raw-API users.
+  the quiet model, and through the gateway. The server sets the same
+  defaults (qwen38-cluster `d55b563`, live from job 16171): `serve-node`
+  passes `--chat-template-kwargs '{"preserve_thinking": false}'`,
+  `--reasoning-budget 8192` and the message, so pi, Crush and raw-API users
+  are covered too; request kwargs merge over the server's key by key. Its
+  startup warning that reasoning is preserved checks the `preserve_reasoning`
+  key and is wrong here -- verify with `/apply-template`, not the log.
 - `plugins/disk-guard` blocks a write-type tool call when the target's
   filesystem has less than 64 MiB (or twice the content) free, and says
   the disk is full. On a full disk OpenCode's write creates the file and then
