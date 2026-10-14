@@ -38,6 +38,9 @@ background: process.env.OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS,
 lead: process.env.TELLICO_LEAD_NODE,
 connection: process.env.TELLICO_CONNECTION,
 gatewayUrl: process.env.TELLICO_CONNECTION_GATEWAY_URL,
+remoteControl: process.env.TELLICO_REMOTE_CONTROL,
+relayUrl: process.env.TELLICO_RELAY_URL,
+relayKeyFile: process.env.TELLICO_RELAY_KEY_FILE,
 exa: process.env.OPENCODE_ENABLE_EXA,
 cli: process.env.OPENCODE_CLI_CONFIG_CONTENT
 }));`);
@@ -376,4 +379,65 @@ test("the magic-context template points its historian at worker providers withou
   assert.equal(mc.prompt_surface.default, "light");
   assert.equal(mc.auto_update, false);
   assert.equal(mc.dreamer, undefined);
+});
+
+// --- remote control ----------------------------------------------------------
+
+function clientEnv(f, fields) {
+  writeFileSync(join(f.installed, "client.env"),
+    Object.entries(fields).map(([key, value]) => `${key}='${value}'\n`).join(""));
+}
+
+test("remote control is off unless asked for, and a device without a gateway key still launches", t => {
+  const f = fixture(t);
+  assert.equal(f.run(["0"]).captured.remoteControl, "0");
+  // Asked for, but this device has no gateway key: it launches anyway, off.
+  const launch = f.run(["0", "--remote-control"]);
+  assert.equal(launch.status, 0);
+  assert.equal(launch.captured.remoteControl, "0");
+  assert.match(launch.stderr, /remote control needs a gateway key/);
+});
+
+test("on a gateway install it signs in with the installed key and derives the relay from the gateway", t => {
+  const f = fixture(t);
+  clientEnv(f, { TELLICO_MODE: "gateway", TELLICO_GATEWAY_URL: "https://gw.example/v1" });
+  writeFileSync(join(f.installed, "api-key"), "sk-tellico-user\n");
+  const { captured } = f.run(["0", "--remote-control"]);
+  assert.equal(captured.remoteControl, "1");
+  assert.equal(captured.relayUrl, "https://gw.example/tellico");
+  assert.equal(captured.relayKeyFile, join(f.installed, "api-key"));
+});
+
+test("on a tunnel install it uses the gateway key, never the cluster key", t => {
+  const f = fixture(t);
+  clientEnv(f, { TELLICO_MODE: "tunnel", TELLICO_GATEWAY_URL: "https://gw.example/v1" });
+  writeFileSync(join(f.installed, "api-key"), "cluster-key\n");
+  assert.equal(f.run(["0", "--remote-control"]).captured.remoteControl, "0");
+  writeFileSync(join(f.installed, "api-key.gateway"), "sk-tellico-user\n");
+  const { captured } = f.run(["0", "--remote-control"]);
+  assert.equal(captured.remoteControl, "1");
+  assert.equal(captured.relayKeyFile, join(f.installed, "api-key.gateway"));
+});
+
+test("the device's recorded choice applies, and the flag or environment overrides it for one launch", t => {
+  const f = fixture(t);
+  clientEnv(f, { TELLICO_MODE: "gateway", TELLICO_GATEWAY_URL: "https://gw.example/v1", TELLICO_REMOTE_CONTROL: "1" });
+  writeFileSync(join(f.installed, "api-key"), "sk-tellico-user\n");
+  assert.equal(f.run(["0"]).captured.remoteControl, "1");
+  assert.equal(f.run(["0", "--no-remote-control"]).captured.remoteControl, "0");
+  assert.equal(f.run(["0"], { TELLICO_REMOTE_CONTROL: "0" }).captured.remoteControl, "0");
+  // serve, which the VS Code extension runs, follows the same choice.
+  assert.equal(f.run(["serve", "--port", "4123"]).captured.remoteControl, "1");
+});
+
+test("TELLICO_RELAY_URL points remote control at another relay", t => {
+  const f = fixture(t);
+  clientEnv(f, { TELLICO_MODE: "gateway", TELLICO_GATEWAY_URL: "https://gw.example/v1" });
+  writeFileSync(join(f.installed, "api-key"), "sk-tellico-user\n");
+  const { captured } = f.run(["0", "--remote-control"], { TELLICO_RELAY_URL: "https://relay.example/tellico" });
+  assert.equal(captured.relayUrl, "https://relay.example/tellico");
+});
+
+test("every install registers the remote-control plugin, which is inert until the launcher turns it on", () => {
+  assert.ok(config.plugin.includes("__TELLICO_PLUGIN_DIR__/remote-control"));
 });

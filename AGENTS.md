@@ -31,6 +31,10 @@ run the servers.
 - `tellico-remote status` / `doctor` / `logs` — check the live remote server.
   Both `status` and `doctor` probe the published URL and say so loudly if it
   answers without a password.
+- `relay/install-relay.sh` — install the phone relay beside the gateway; safe
+  while sessions are live (no gateway, tunnel or proxy restart).
+  `tellico-relay status` / `logs` check it. `./install.sh --no-start
+  --remote-control` turns publishing on for a device.
 - `tellico-remote caddy` — the reverse-proxy snippet for this host, with its
   bcrypt hash filled in. Never commit a real hash.
 
@@ -165,6 +169,23 @@ gateway defaults; a model swap touches all of them.
   server that started the session: that is why `remote/` runs on the always-on
   host rather than mirroring a laptop's sessions, and why the VS Code
   extension's per-window private server is invisible to the phone.
+- The phone relay (`relay/`, `plugins/remote-control`) is how sessions on
+  *any* machine reach a phone, because a plugin runs inside the process that
+  owns them. In 2.0.26 the v2 plugin context gives `event.subscribe({ signal })`
+  -- an async iterable, not a callback -- plus `session.get`,
+  `session.context` (the full history), `session.prompt({sessionID, text})`
+  and `session.interrupt({sessionID})`. Every location's subscription carries
+  every location's events, so de-duplicate by event id, and some events
+  (`session.execution.succeeded`) carry no location. A headless server
+  auto-rejects permission asks, so the phone cannot answer them; Tellico's
+  agents allow every tool anyway. All event-name knowledge lives in
+  `plugins/remote-control/protocol.js`; recheck it after an OpenCode upgrade
+  against `tests/fixtures/opencode2-events.jsonl`. The relay and the phone
+  share an op vocabulary and are both tested against
+  `tests/fixtures/relay-ops.json`, so keep them in step.
+- The relay can ask a plugin for exactly a prompt or an interrupt, for a
+  session that plugin itself runs. Do not widen that: the gateway key becomes
+  a way to drive the user's agents once remote control is on.
 - `remote/` adds no client code. The web app, its v2 API and its pairing
   (`POST /api/pair` mints a single-use code for five minutes;
   `/auth/connect/:code` returns a 30-day HttpOnly cookie) are OpenCode's own.

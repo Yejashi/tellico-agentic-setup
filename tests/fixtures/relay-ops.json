@@ -1,0 +1,2531 @@
+{
+ "ops": [
+  {
+   "op": "snapshot",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "parentID": null,
+    "title": "word0 word1 word2 word3 word4 word5",
+    "directory": "/home/user/project",
+    "agent": "orchestrate-local",
+    "model": "stub/stub",
+    "tokens": {
+     "input": 50,
+     "output": 35,
+     "reasoning": 0,
+     "cache": {
+      "read": 0,
+      "write": 0
+     }
+    },
+    "cost": 0,
+    "created": 1791944192071,
+    "updated": 1791944318665,
+    "status": "idle"
+   },
+   "messages": [
+    {
+     "id": "msg_138327059001WhQA8pym49arDo",
+     "role": "user",
+     "time": 1791944192099,
+     "text": "TOOL fresh"
+    },
+    {
+     "id": "msg_13832706d001ToqIroSBESowiG",
+     "role": "assistant",
+     "time": 1791944192117,
+     "agent": "orchestrate-local",
+     "model": "stub/stub",
+     "parts": [
+      {
+       "key": "tool:call_6e53090b",
+       "kind": "tool",
+       "tool": "shell",
+       "status": "error",
+       "summary": "echo stub-tool-ran",
+       "input": "{\"command\":\"echo stub-tool-ran\",\"description\":\"echo\"}",
+       "error": "Permission denied: shell"
+      }
+     ],
+     "finish": "tool-calls"
+    },
+    {
+     "id": "msg_13832708c001ZT6dVh2DJ1u5nL",
+     "role": "assistant",
+     "time": 1791944192148,
+     "agent": "orchestrate-local",
+     "model": "stub/stub",
+     "parts": [
+      {
+       "key": "reasoning:0",
+       "kind": "reasoning",
+       "text": "thinking briefly. ",
+       "done": true
+      },
+      {
+       "key": "text:0",
+       "kind": "text",
+       "text": "word0 word1 word2 word3 word4 word5 ",
+       "done": true
+      }
+     ],
+     "finish": "stop"
+    },
+    {
+     "id": "msg_13832af620013OjaIkG8nPL9Ik",
+     "role": "user",
+     "time": 1791944208234,
+     "text": "LONG answer please"
+    },
+    {
+     "id": "msg_13832af6e001atRhXfRzZ16sDP",
+     "role": "assistant",
+     "time": 1791944208249,
+     "agent": "orchestrate-local",
+     "model": "stub/stub",
+     "parts": [
+      {
+       "key": "reasoning:0",
+       "kind": "reasoning",
+       "text": "thinking briefly. ",
+       "done": true
+      },
+      {
+       "key": "text:0",
+       "kind": "text",
+       "text": "word0 word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12 word13 word14 word15 word16 ",
+       "done": true
+      }
+     ],
+     "finish": "error",
+     "error": "Step interrupted"
+    },
+    {
+     "id": "msg_138345aee001BKWzKxql1gnWTG",
+     "role": "user",
+     "time": 1791944317686,
+     "text": "GLOB the files"
+    },
+    {
+     "id": "msg_138345afb001TEyhW6QTkXuz7p",
+     "role": "assistant",
+     "time": 1791944317700,
+     "agent": "orchestrate-local",
+     "model": "stub/stub",
+     "parts": [
+      {
+       "key": "tool:call_8d734497",
+       "kind": "tool",
+       "tool": "glob",
+       "status": "done",
+       "summary": "*",
+       "input": "{\"pattern\":\"*\"}",
+       "output": "/home/user/project/b.txt\n/home/user/project/a.txt"
+      }
+     ],
+     "finish": "tool-calls"
+    },
+    {
+     "id": "msg_138345b34001a7NPAbJs75536P",
+     "role": "assistant",
+     "time": 1791944317757,
+     "agent": "orchestrate-local",
+     "model": "stub/stub",
+     "parts": [
+      {
+       "key": "reasoning:0",
+       "kind": "reasoning",
+       "text": "thinking briefly. ",
+       "done": true
+      },
+      {
+       "key": "text:0",
+       "kind": "text",
+       "text": "word0 word1 word2 word3 word4 word5 ",
+       "done": true
+      }
+     ],
+     "finish": "stop"
+    }
+   ]
+  },
+  {
+   "op": "message",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "message": {
+    "id": "msg_13831f404001kYyf6b8OfpIVht",
+    "role": "user",
+    "time": 1791944160261,
+    "text": "TOOL from plugin"
+   }
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "session": {
+    "updated": 1791944160261
+   }
+  },
+  {
+   "op": "status",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "status": "running"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "session": {
+    "updated": 1791944160264
+   }
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "session": {
+    "updated": 1791944160274
+   }
+  },
+  {
+   "op": "message",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "message": {
+    "id": "msg_13831f41b001b0vm8zu74bqaA5",
+    "role": "assistant",
+    "time": 1791944160294,
+    "agent": "orchestrate-local",
+    "model": "stub/stub"
+   }
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "session": {
+    "updated": 1791944160301,
+    "agent": "orchestrate-local",
+    "model": "stub/stub"
+   }
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "messageID": "msg_13831f41b001b0vm8zu74bqaA5",
+   "part": {
+    "key": "tool:call_5d05cfd9",
+    "kind": "tool",
+    "tool": "shell",
+    "status": "running"
+   }
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "session": {
+    "updated": 1791944160306
+   }
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "messageID": "msg_13831f41b001b0vm8zu74bqaA5",
+   "part": {
+    "key": "tool:call_5d05cfd9",
+    "kind": "tool",
+    "status": "running",
+    "summary": "echo stub-tool-ran",
+    "input": "{\"command\":\"echo stub-tool-ran\",\"description\":\"echo\"}"
+   }
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "session": {
+    "updated": 1791944160309
+   }
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "messageID": "msg_13831f41b001b0vm8zu74bqaA5",
+   "part": {
+    "key": "tool:call_5d05cfd9",
+    "kind": "tool",
+    "status": "error",
+    "error": "Permission denied: shell"
+   }
+  },
+  {
+   "op": "message",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "message": {
+    "id": "msg_13831f41b001b0vm8zu74bqaA5",
+    "role": "assistant",
+    "finish": "tool-calls"
+   }
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "session": {
+    "updated": 1791944160335,
+    "tokens": {
+     "input": 90,
+     "output": 63,
+     "reasoning": 0,
+     "cache": {
+      "read": 0,
+      "write": 0
+     }
+    },
+    "cost": 0
+   }
+  },
+  {
+   "op": "message",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "message": {
+    "id": "msg_13831f457001KfpCzCSFdYE2Tl",
+    "role": "assistant",
+    "time": 1791944160353,
+    "agent": "orchestrate-local",
+    "model": "stub/stub"
+   }
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "session": {
+    "updated": 1791944160358,
+    "agent": "orchestrate-local",
+    "model": "stub/stub"
+   }
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "messageID": "msg_13831f457001KfpCzCSFdYE2Tl",
+   "part": {
+    "key": "reasoning:0",
+    "kind": "reasoning",
+    "text": "",
+    "done": false
+   }
+  },
+  {
+   "op": "append",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "messageID": "msg_13831f457001KfpCzCSFdYE2Tl",
+   "key": "reasoning:0",
+   "kind": "reasoning",
+   "text": "thinking briefly. "
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "messageID": "msg_13831f457001KfpCzCSFdYE2Tl",
+   "part": {
+    "key": "text:0",
+    "kind": "text",
+    "text": "",
+    "done": false
+   }
+  },
+  {
+   "op": "append",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "messageID": "msg_13831f457001KfpCzCSFdYE2Tl",
+   "key": "text:0",
+   "kind": "text",
+   "text": "word0 word1 word2 word3 word4 word5 "
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "messageID": "msg_13831f457001KfpCzCSFdYE2Tl",
+   "part": {
+    "key": "reasoning:0",
+    "kind": "reasoning",
+    "done": true,
+    "text": "thinking briefly. "
+   }
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "messageID": "msg_13831f457001KfpCzCSFdYE2Tl",
+   "part": {
+    "key": "text:0",
+    "kind": "text",
+    "done": true,
+    "text": "word0 word1 word2 word3 word4 word5 "
+   }
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "session": {
+    "updated": 1791944161262
+   }
+  },
+  {
+   "op": "message",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "message": {
+    "id": "msg_13831f457001KfpCzCSFdYE2Tl",
+    "role": "assistant",
+    "finish": "stop"
+   }
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "session": {
+    "updated": 1791944161264,
+    "tokens": {
+     "input": 100,
+     "output": 70,
+     "reasoning": 0,
+     "cache": {
+      "read": 0,
+      "write": 0
+     }
+    },
+    "cost": 0
+   }
+  },
+  {
+   "op": "status",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "status": "idle"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "session": {
+    "updated": 1791944161265
+   }
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944192071,
+    "parentID": null,
+    "directory": "/home/user/project",
+    "model": "stub/stub",
+    "created": 1791944192071,
+    "status": "idle"
+   }
+  },
+  {
+   "op": "message",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "message": {
+    "id": "msg_138327059001WhQA8pym49arDo",
+    "role": "user",
+    "time": 1791944192090,
+    "text": "TOOL fresh"
+   }
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944192090
+   }
+  },
+  {
+   "op": "status",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "status": "running"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944192091
+   }
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944192098
+   }
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944192099
+   }
+  },
+  {
+   "op": "message",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "message": {
+    "id": "msg_13832706d001ToqIroSBESowiG",
+    "role": "assistant",
+    "time": 1791944192117,
+    "agent": "orchestrate-local",
+    "model": "stub/stub"
+   }
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944192122,
+    "agent": "orchestrate-local",
+    "model": "stub/stub"
+   }
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_13832706d001ToqIroSBESowiG",
+   "part": {
+    "key": "tool:call_6e53090b",
+    "kind": "tool",
+    "tool": "shell",
+    "status": "running"
+   }
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944192126
+   }
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_13832706d001ToqIroSBESowiG",
+   "part": {
+    "key": "tool:call_6e53090b",
+    "kind": "tool",
+    "status": "running",
+    "summary": "echo stub-tool-ran",
+    "input": "{\"command\":\"echo stub-tool-ran\",\"description\":\"echo\"}"
+   }
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944192128
+   }
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_13832706d001ToqIroSBESowiG",
+   "part": {
+    "key": "tool:call_6e53090b",
+    "kind": "tool",
+    "status": "error",
+    "error": "Permission denied: shell"
+   }
+  },
+  {
+   "op": "message",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "message": {
+    "id": "msg_13832706d001ToqIroSBESowiG",
+    "role": "assistant",
+    "finish": "tool-calls"
+   }
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944192133,
+    "tokens": {
+     "input": 10,
+     "output": 7,
+     "reasoning": 0,
+     "cache": {
+      "read": 0,
+      "write": 0
+     }
+    },
+    "cost": 0
+   }
+  },
+  {
+   "op": "message",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "message": {
+    "id": "msg_13832708c001ZT6dVh2DJ1u5nL",
+    "role": "assistant",
+    "time": 1791944192148,
+    "agent": "orchestrate-local",
+    "model": "stub/stub"
+   }
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944192152,
+    "agent": "orchestrate-local",
+    "model": "stub/stub"
+   }
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_13832708c001ZT6dVh2DJ1u5nL",
+   "part": {
+    "key": "reasoning:0",
+    "kind": "reasoning",
+    "text": "",
+    "done": false
+   }
+  },
+  {
+   "op": "append",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_13832708c001ZT6dVh2DJ1u5nL",
+   "key": "reasoning:0",
+   "kind": "reasoning",
+   "text": "thinking briefly. "
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_13832708c001ZT6dVh2DJ1u5nL",
+   "part": {
+    "key": "text:0",
+    "kind": "text",
+    "text": "",
+    "done": false
+   }
+  },
+  {
+   "op": "append",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_13832708c001ZT6dVh2DJ1u5nL",
+   "key": "text:0",
+   "kind": "text",
+   "text": "word0 word1 word2 word3 word4 word5 "
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944193025,
+    "tokens": {
+     "input": 20,
+     "output": 14,
+     "reasoning": 0,
+     "cache": {
+      "read": 0,
+      "write": 0
+     }
+    },
+    "cost": 0
+   }
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944193025,
+    "title": "word0 word1 word2 word3 word4 word5"
+   }
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_13832708c001ZT6dVh2DJ1u5nL",
+   "part": {
+    "key": "reasoning:0",
+    "kind": "reasoning",
+    "done": true,
+    "text": "thinking briefly. "
+   }
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_13832708c001ZT6dVh2DJ1u5nL",
+   "part": {
+    "key": "text:0",
+    "kind": "text",
+    "done": true,
+    "text": "word0 word1 word2 word3 word4 word5 "
+   }
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944193054
+   }
+  },
+  {
+   "op": "message",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "message": {
+    "id": "msg_13832708c001ZT6dVh2DJ1u5nL",
+    "role": "assistant",
+    "finish": "stop"
+   }
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944193056,
+    "tokens": {
+     "input": 30,
+     "output": 21,
+     "reasoning": 0,
+     "cache": {
+      "read": 0,
+      "write": 0
+     }
+    },
+    "cost": 0
+   }
+  },
+  {
+   "op": "status",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "status": "idle"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944193057
+   }
+  },
+  {
+   "op": "message",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "message": {
+    "id": "msg_13832af620013OjaIkG8nPL9Ik",
+    "role": "user",
+    "time": 1791944208227,
+    "text": "LONG answer please"
+   }
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944208227
+   }
+  },
+  {
+   "op": "status",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "status": "running"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944208228
+   }
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944208234
+   }
+  },
+  {
+   "op": "message",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "message": {
+    "id": "msg_13832af6e001atRhXfRzZ16sDP",
+    "role": "assistant",
+    "time": 1791944208249,
+    "agent": "orchestrate-local",
+    "model": "stub/stub"
+   }
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944208256,
+    "agent": "orchestrate-local",
+    "model": "stub/stub"
+   }
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_13832af6e001atRhXfRzZ16sDP",
+   "part": {
+    "key": "reasoning:0",
+    "kind": "reasoning",
+    "text": "",
+    "done": false
+   }
+  },
+  {
+   "op": "append",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_13832af6e001atRhXfRzZ16sDP",
+   "key": "reasoning:0",
+   "kind": "reasoning",
+   "text": "thinking briefly. "
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_13832af6e001atRhXfRzZ16sDP",
+   "part": {
+    "key": "text:0",
+    "kind": "text",
+    "text": "",
+    "done": false
+   }
+  },
+  {
+   "op": "append",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_13832af6e001atRhXfRzZ16sDP",
+   "key": "text:0",
+   "kind": "text",
+   "text": "word0 word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12 word13 word14 word15 word16 "
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_13832af6e001atRhXfRzZ16sDP",
+   "part": {
+    "key": "text:0",
+    "kind": "text",
+    "done": true,
+    "text": "word0 word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12 word13 word14 word15 word16 "
+   }
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_13832af6e001atRhXfRzZ16sDP",
+   "part": {
+    "key": "reasoning:0",
+    "kind": "reasoning",
+    "done": true,
+    "text": "thinking briefly. "
+   }
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944210742
+   }
+  },
+  {
+   "op": "message",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "message": {
+    "id": "msg_13832af6e001atRhXfRzZ16sDP",
+    "role": "assistant",
+    "error": "Step interrupted"
+   }
+  },
+  {
+   "op": "status",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "status": "interrupted"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944210745
+   }
+  },
+  {
+   "op": "message",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "message": {
+    "id": "msg_138345aee001BKWzKxql1gnWTG",
+    "role": "user",
+    "time": 1791944317679,
+    "text": "GLOB the files"
+   }
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944317679
+   }
+  },
+  {
+   "op": "status",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "status": "running"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944317680
+   }
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944317686
+   }
+  },
+  {
+   "op": "message",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "message": {
+    "id": "msg_138345afb001TEyhW6QTkXuz7p",
+    "role": "assistant",
+    "time": 1791944317700,
+    "agent": "orchestrate-local",
+    "model": "stub/stub"
+   }
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944317723,
+    "agent": "orchestrate-local",
+    "model": "stub/stub"
+   }
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_138345afb001TEyhW6QTkXuz7p",
+   "part": {
+    "key": "tool:call_8d734497",
+    "kind": "tool",
+    "tool": "glob",
+    "status": "running"
+   }
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944317727
+   }
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_138345afb001TEyhW6QTkXuz7p",
+   "part": {
+    "key": "tool:call_8d734497",
+    "kind": "tool",
+    "status": "running",
+    "summary": "*",
+    "input": "{\"pattern\":\"*\"}"
+   }
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944317729
+   }
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_138345afb001TEyhW6QTkXuz7p",
+   "part": {
+    "key": "tool:call_8d734497",
+    "kind": "tool",
+    "status": "done",
+    "output": "/home/user/project/b.txt\n/home/user/project/a.txt"
+   }
+  },
+  {
+   "op": "message",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "message": {
+    "id": "msg_138345afb001TEyhW6QTkXuz7p",
+    "role": "assistant",
+    "finish": "tool-calls"
+   }
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944317741,
+    "tokens": {
+     "input": 40,
+     "output": 28,
+     "reasoning": 0,
+     "cache": {
+      "read": 0,
+      "write": 0
+     }
+    },
+    "cost": 0
+   }
+  },
+  {
+   "op": "message",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "message": {
+    "id": "msg_138345b34001a7NPAbJs75536P",
+    "role": "assistant",
+    "time": 1791944317757,
+    "agent": "orchestrate-local",
+    "model": "stub/stub"
+   }
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944317760,
+    "agent": "orchestrate-local",
+    "model": "stub/stub"
+   }
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_138345b34001a7NPAbJs75536P",
+   "part": {
+    "key": "reasoning:0",
+    "kind": "reasoning",
+    "text": "",
+    "done": false
+   }
+  },
+  {
+   "op": "append",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_138345b34001a7NPAbJs75536P",
+   "key": "reasoning:0",
+   "kind": "reasoning",
+   "text": "thinking briefly. "
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_138345b34001a7NPAbJs75536P",
+   "part": {
+    "key": "text:0",
+    "kind": "text",
+    "text": "",
+    "done": false
+   }
+  },
+  {
+   "op": "append",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_138345b34001a7NPAbJs75536P",
+   "key": "text:0",
+   "kind": "text",
+   "text": "word0 word1 word2 word3 word4 word5 "
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_138345b34001a7NPAbJs75536P",
+   "part": {
+    "key": "reasoning:0",
+    "kind": "reasoning",
+    "done": true,
+    "text": "thinking briefly. "
+   }
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_138345b34001a7NPAbJs75536P",
+   "part": {
+    "key": "text:0",
+    "kind": "text",
+    "done": true,
+    "text": "word0 word1 word2 word3 word4 word5 "
+   }
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944318664
+   }
+  },
+  {
+   "op": "message",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "message": {
+    "id": "msg_138345b34001a7NPAbJs75536P",
+    "role": "assistant",
+    "finish": "stop"
+   }
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944318667,
+    "tokens": {
+     "input": 50,
+     "output": 35,
+     "reasoning": 0,
+     "cache": {
+      "read": 0,
+      "write": 0
+     }
+    },
+    "cost": 0
+   }
+  },
+  {
+   "op": "status",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "status": "idle"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944318667
+   }
+  }
+ ],
+ "normalized": [
+  {
+   "op": "snapshot",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "parentID": null,
+    "title": "word0 word1 word2 word3 word4 word5",
+    "directory": "/home/user/project",
+    "agent": "orchestrate-local",
+    "model": "stub/stub",
+    "status": "idle",
+    "created": 1791944192071,
+    "updated": 1791944318665,
+    "tokens": {
+     "input": 50,
+     "output": 35,
+     "reasoning": 0,
+     "cache": {
+      "read": 0,
+      "write": 0
+     }
+    },
+    "cost": 0
+   },
+   "messages": [
+    {
+     "id": "msg_138327059001WhQA8pym49arDo",
+     "role": "user",
+     "time": 1791944192099,
+     "text": "TOOL fresh",
+     "parts": []
+    },
+    {
+     "id": "msg_13832706d001ToqIroSBESowiG",
+     "role": "assistant",
+     "time": 1791944192117,
+     "agent": "orchestrate-local",
+     "model": "stub/stub",
+     "finish": "tool-calls",
+     "parts": [
+      {
+       "key": "tool:call_6e53090b",
+       "kind": "tool",
+       "tool": "shell",
+       "status": "error",
+       "summary": "echo stub-tool-ran",
+       "input": "{\"command\":\"echo stub-tool-ran\",\"description\":\"echo\"}",
+       "error": "Permission denied: shell"
+      }
+     ]
+    },
+    {
+     "id": "msg_13832708c001ZT6dVh2DJ1u5nL",
+     "role": "assistant",
+     "time": 1791944192148,
+     "agent": "orchestrate-local",
+     "model": "stub/stub",
+     "finish": "stop",
+     "parts": [
+      {
+       "key": "reasoning:0",
+       "kind": "reasoning",
+       "text": "thinking briefly. ",
+       "done": true
+      },
+      {
+       "key": "text:0",
+       "kind": "text",
+       "text": "word0 word1 word2 word3 word4 word5 ",
+       "done": true
+      }
+     ]
+    },
+    {
+     "id": "msg_13832af620013OjaIkG8nPL9Ik",
+     "role": "user",
+     "time": 1791944208234,
+     "text": "LONG answer please",
+     "parts": []
+    },
+    {
+     "id": "msg_13832af6e001atRhXfRzZ16sDP",
+     "role": "assistant",
+     "time": 1791944208249,
+     "agent": "orchestrate-local",
+     "model": "stub/stub",
+     "finish": "error",
+     "error": "Step interrupted",
+     "parts": [
+      {
+       "key": "reasoning:0",
+       "kind": "reasoning",
+       "text": "thinking briefly. ",
+       "done": true
+      },
+      {
+       "key": "text:0",
+       "kind": "text",
+       "text": "word0 word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12 word13 word14 word15 word16 ",
+       "done": true
+      }
+     ]
+    },
+    {
+     "id": "msg_138345aee001BKWzKxql1gnWTG",
+     "role": "user",
+     "time": 1791944317686,
+     "text": "GLOB the files",
+     "parts": []
+    },
+    {
+     "id": "msg_138345afb001TEyhW6QTkXuz7p",
+     "role": "assistant",
+     "time": 1791944317700,
+     "agent": "orchestrate-local",
+     "model": "stub/stub",
+     "finish": "tool-calls",
+     "parts": [
+      {
+       "key": "tool:call_8d734497",
+       "kind": "tool",
+       "tool": "glob",
+       "status": "done",
+       "summary": "*",
+       "input": "{\"pattern\":\"*\"}",
+       "output": "/home/user/project/b.txt\n/home/user/project/a.txt"
+      }
+     ]
+    },
+    {
+     "id": "msg_138345b34001a7NPAbJs75536P",
+     "role": "assistant",
+     "time": 1791944317757,
+     "agent": "orchestrate-local",
+     "model": "stub/stub",
+     "finish": "stop",
+     "parts": [
+      {
+       "key": "reasoning:0",
+       "kind": "reasoning",
+       "text": "thinking briefly. ",
+       "done": true
+      },
+      {
+       "key": "text:0",
+       "kind": "text",
+       "text": "word0 word1 word2 word3 word4 word5 ",
+       "done": true
+      }
+     ]
+    }
+   ],
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "message",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "message": {
+    "role": "user",
+    "time": 1791944160261,
+    "text": "TOOL from plugin",
+    "id": "msg_13831f404001kYyf6b8OfpIVht"
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "session": {
+    "updated": 1791944160261
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "status",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "status": "running",
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "session": {
+    "updated": 1791944160264
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "session": {
+    "updated": 1791944160274
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "message",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "message": {
+    "role": "assistant",
+    "time": 1791944160294,
+    "agent": "orchestrate-local",
+    "model": "stub/stub",
+    "id": "msg_13831f41b001b0vm8zu74bqaA5"
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "session": {
+    "agent": "orchestrate-local",
+    "model": "stub/stub",
+    "updated": 1791944160301
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "messageID": "msg_13831f41b001b0vm8zu74bqaA5",
+   "part": {
+    "key": "tool:call_5d05cfd9",
+    "kind": "tool",
+    "tool": "shell",
+    "status": "running"
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "session": {
+    "updated": 1791944160306
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "messageID": "msg_13831f41b001b0vm8zu74bqaA5",
+   "part": {
+    "key": "tool:call_5d05cfd9",
+    "kind": "tool",
+    "tool": "shell",
+    "status": "running",
+    "summary": "echo stub-tool-ran",
+    "input": "{\"command\":\"echo stub-tool-ran\",\"description\":\"echo\"}"
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "session": {
+    "updated": 1791944160309
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "messageID": "msg_13831f41b001b0vm8zu74bqaA5",
+   "part": {
+    "key": "tool:call_5d05cfd9",
+    "kind": "tool",
+    "tool": "shell",
+    "status": "error",
+    "summary": "echo stub-tool-ran",
+    "input": "{\"command\":\"echo stub-tool-ran\",\"description\":\"echo\"}",
+    "error": "Permission denied: shell"
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "message",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "message": {
+    "role": "assistant",
+    "finish": "tool-calls",
+    "id": "msg_13831f41b001b0vm8zu74bqaA5"
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "session": {
+    "updated": 1791944160335,
+    "tokens": {
+     "input": 90,
+     "output": 63,
+     "reasoning": 0,
+     "cache": {
+      "read": 0,
+      "write": 0
+     }
+    },
+    "cost": 0
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "message",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "message": {
+    "role": "assistant",
+    "time": 1791944160353,
+    "agent": "orchestrate-local",
+    "model": "stub/stub",
+    "id": "msg_13831f457001KfpCzCSFdYE2Tl"
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "session": {
+    "agent": "orchestrate-local",
+    "model": "stub/stub",
+    "updated": 1791944160358
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "messageID": "msg_13831f457001KfpCzCSFdYE2Tl",
+   "part": {
+    "key": "reasoning:0",
+    "kind": "reasoning",
+    "text": "",
+    "done": false
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "append",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "messageID": "msg_13831f457001KfpCzCSFdYE2Tl",
+   "key": "reasoning:0",
+   "kind": "reasoning",
+   "text": "thinking briefly. ",
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "messageID": "msg_13831f457001KfpCzCSFdYE2Tl",
+   "part": {
+    "key": "text:0",
+    "kind": "text",
+    "text": "",
+    "done": false
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "append",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "messageID": "msg_13831f457001KfpCzCSFdYE2Tl",
+   "key": "text:0",
+   "kind": "text",
+   "text": "word0 word1 word2 word3 word4 word5 ",
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "messageID": "msg_13831f457001KfpCzCSFdYE2Tl",
+   "part": {
+    "key": "reasoning:0",
+    "kind": "reasoning",
+    "text": "thinking briefly. ",
+    "done": true
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "messageID": "msg_13831f457001KfpCzCSFdYE2Tl",
+   "part": {
+    "key": "text:0",
+    "kind": "text",
+    "text": "word0 word1 word2 word3 word4 word5 ",
+    "done": true
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "session": {
+    "updated": 1791944161262
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "message",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "message": {
+    "role": "assistant",
+    "finish": "stop",
+    "id": "msg_13831f457001KfpCzCSFdYE2Tl"
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "session": {
+    "updated": 1791944161264,
+    "tokens": {
+     "input": 100,
+     "output": 70,
+     "reasoning": 0,
+     "cache": {
+      "read": 0,
+      "write": 0
+     }
+    },
+    "cost": 0
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "status",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "status": "idle",
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7d1b294ffe3NEVt6Y0AqNk6I",
+   "session": {
+    "updated": 1791944161265
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "parentID": null,
+    "directory": "/home/user/project",
+    "model": "stub/stub",
+    "status": "idle",
+    "created": 1791944192071,
+    "updated": 1791944192071
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "message",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "message": {
+    "role": "user",
+    "time": 1791944192090,
+    "text": "TOOL fresh",
+    "id": "msg_138327059001WhQA8pym49arDo"
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944192090
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "status",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "status": "running",
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944192091
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944192098
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944192099
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "message",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "message": {
+    "role": "assistant",
+    "time": 1791944192117,
+    "agent": "orchestrate-local",
+    "model": "stub/stub",
+    "id": "msg_13832706d001ToqIroSBESowiG"
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "agent": "orchestrate-local",
+    "model": "stub/stub",
+    "updated": 1791944192122
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_13832706d001ToqIroSBESowiG",
+   "part": {
+    "key": "tool:call_6e53090b",
+    "kind": "tool",
+    "tool": "shell",
+    "status": "running",
+    "summary": "echo stub-tool-ran",
+    "input": "{\"command\":\"echo stub-tool-ran\",\"description\":\"echo\"}",
+    "error": "Permission denied: shell"
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944192126
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_13832706d001ToqIroSBESowiG",
+   "part": {
+    "key": "tool:call_6e53090b",
+    "kind": "tool",
+    "tool": "shell",
+    "status": "running",
+    "summary": "echo stub-tool-ran",
+    "input": "{\"command\":\"echo stub-tool-ran\",\"description\":\"echo\"}",
+    "error": "Permission denied: shell"
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944192128
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_13832706d001ToqIroSBESowiG",
+   "part": {
+    "key": "tool:call_6e53090b",
+    "kind": "tool",
+    "tool": "shell",
+    "status": "error",
+    "summary": "echo stub-tool-ran",
+    "input": "{\"command\":\"echo stub-tool-ran\",\"description\":\"echo\"}",
+    "error": "Permission denied: shell"
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "message",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "message": {
+    "role": "assistant",
+    "finish": "tool-calls",
+    "id": "msg_13832706d001ToqIroSBESowiG"
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944192133,
+    "tokens": {
+     "input": 10,
+     "output": 7,
+     "reasoning": 0,
+     "cache": {
+      "read": 0,
+      "write": 0
+     }
+    },
+    "cost": 0
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "message",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "message": {
+    "role": "assistant",
+    "time": 1791944192148,
+    "agent": "orchestrate-local",
+    "model": "stub/stub",
+    "id": "msg_13832708c001ZT6dVh2DJ1u5nL"
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "agent": "orchestrate-local",
+    "model": "stub/stub",
+    "updated": 1791944192152
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_13832708c001ZT6dVh2DJ1u5nL",
+   "part": {
+    "key": "reasoning:0",
+    "kind": "reasoning",
+    "text": "",
+    "done": false
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "append",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_13832708c001ZT6dVh2DJ1u5nL",
+   "key": "reasoning:0",
+   "kind": "reasoning",
+   "text": "thinking briefly. ",
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_13832708c001ZT6dVh2DJ1u5nL",
+   "part": {
+    "key": "text:0",
+    "kind": "text",
+    "text": "",
+    "done": false
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "append",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_13832708c001ZT6dVh2DJ1u5nL",
+   "key": "text:0",
+   "kind": "text",
+   "text": "word0 word1 word2 word3 word4 word5 ",
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944193025,
+    "tokens": {
+     "input": 20,
+     "output": 14,
+     "reasoning": 0,
+     "cache": {
+      "read": 0,
+      "write": 0
+     }
+    },
+    "cost": 0
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "title": "word0 word1 word2 word3 word4 word5",
+    "updated": 1791944193025
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_13832708c001ZT6dVh2DJ1u5nL",
+   "part": {
+    "key": "reasoning:0",
+    "kind": "reasoning",
+    "text": "thinking briefly. ",
+    "done": true
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_13832708c001ZT6dVh2DJ1u5nL",
+   "part": {
+    "key": "text:0",
+    "kind": "text",
+    "text": "word0 word1 word2 word3 word4 word5 ",
+    "done": true
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944193054
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "message",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "message": {
+    "role": "assistant",
+    "finish": "stop",
+    "id": "msg_13832708c001ZT6dVh2DJ1u5nL"
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944193056,
+    "tokens": {
+     "input": 30,
+     "output": 21,
+     "reasoning": 0,
+     "cache": {
+      "read": 0,
+      "write": 0
+     }
+    },
+    "cost": 0
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "status",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "status": "idle",
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944193057
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "message",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "message": {
+    "role": "user",
+    "time": 1791944208227,
+    "text": "LONG answer please",
+    "id": "msg_13832af620013OjaIkG8nPL9Ik"
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944208227
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "status",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "status": "running",
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944208228
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944208234
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "message",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "message": {
+    "role": "assistant",
+    "time": 1791944208249,
+    "agent": "orchestrate-local",
+    "model": "stub/stub",
+    "id": "msg_13832af6e001atRhXfRzZ16sDP"
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "agent": "orchestrate-local",
+    "model": "stub/stub",
+    "updated": 1791944208256
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_13832af6e001atRhXfRzZ16sDP",
+   "part": {
+    "key": "reasoning:0",
+    "kind": "reasoning",
+    "text": "",
+    "done": false
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "append",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_13832af6e001atRhXfRzZ16sDP",
+   "key": "reasoning:0",
+   "kind": "reasoning",
+   "text": "thinking briefly. ",
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_13832af6e001atRhXfRzZ16sDP",
+   "part": {
+    "key": "text:0",
+    "kind": "text",
+    "text": "",
+    "done": false
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "append",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_13832af6e001atRhXfRzZ16sDP",
+   "key": "text:0",
+   "kind": "text",
+   "text": "word0 word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12 word13 word14 word15 word16 ",
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_13832af6e001atRhXfRzZ16sDP",
+   "part": {
+    "key": "text:0",
+    "kind": "text",
+    "text": "word0 word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12 word13 word14 word15 word16 ",
+    "done": true
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_13832af6e001atRhXfRzZ16sDP",
+   "part": {
+    "key": "reasoning:0",
+    "kind": "reasoning",
+    "text": "thinking briefly. ",
+    "done": true
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944210742
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "message",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "message": {
+    "role": "assistant",
+    "error": "Step interrupted",
+    "id": "msg_13832af6e001atRhXfRzZ16sDP"
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "status",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "status": "interrupted",
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944210745
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "message",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "message": {
+    "role": "user",
+    "time": 1791944317679,
+    "text": "GLOB the files",
+    "id": "msg_138345aee001BKWzKxql1gnWTG"
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944317679
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "status",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "status": "running",
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944317680
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944317686
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "message",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "message": {
+    "role": "assistant",
+    "time": 1791944317700,
+    "agent": "orchestrate-local",
+    "model": "stub/stub",
+    "id": "msg_138345afb001TEyhW6QTkXuz7p"
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "agent": "orchestrate-local",
+    "model": "stub/stub",
+    "updated": 1791944317723
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_138345afb001TEyhW6QTkXuz7p",
+   "part": {
+    "key": "tool:call_8d734497",
+    "kind": "tool",
+    "tool": "glob",
+    "status": "running",
+    "summary": "*",
+    "input": "{\"pattern\":\"*\"}",
+    "output": "/home/user/project/b.txt\n/home/user/project/a.txt"
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944317727
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_138345afb001TEyhW6QTkXuz7p",
+   "part": {
+    "key": "tool:call_8d734497",
+    "kind": "tool",
+    "tool": "glob",
+    "status": "running",
+    "summary": "*",
+    "input": "{\"pattern\":\"*\"}",
+    "output": "/home/user/project/b.txt\n/home/user/project/a.txt"
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944317729
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_138345afb001TEyhW6QTkXuz7p",
+   "part": {
+    "key": "tool:call_8d734497",
+    "kind": "tool",
+    "tool": "glob",
+    "status": "done",
+    "summary": "*",
+    "input": "{\"pattern\":\"*\"}",
+    "output": "/home/user/project/b.txt\n/home/user/project/a.txt"
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "message",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "message": {
+    "role": "assistant",
+    "finish": "tool-calls",
+    "id": "msg_138345afb001TEyhW6QTkXuz7p"
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944317741,
+    "tokens": {
+     "input": 40,
+     "output": 28,
+     "reasoning": 0,
+     "cache": {
+      "read": 0,
+      "write": 0
+     }
+    },
+    "cost": 0
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "message",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "message": {
+    "role": "assistant",
+    "time": 1791944317757,
+    "agent": "orchestrate-local",
+    "model": "stub/stub",
+    "id": "msg_138345b34001a7NPAbJs75536P"
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "agent": "orchestrate-local",
+    "model": "stub/stub",
+    "updated": 1791944317760
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_138345b34001a7NPAbJs75536P",
+   "part": {
+    "key": "reasoning:0",
+    "kind": "reasoning",
+    "text": "",
+    "done": false
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "append",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_138345b34001a7NPAbJs75536P",
+   "key": "reasoning:0",
+   "kind": "reasoning",
+   "text": "thinking briefly. ",
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_138345b34001a7NPAbJs75536P",
+   "part": {
+    "key": "text:0",
+    "kind": "text",
+    "text": "",
+    "done": false
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "append",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_138345b34001a7NPAbJs75536P",
+   "key": "text:0",
+   "kind": "text",
+   "text": "word0 word1 word2 word3 word4 word5 ",
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_138345b34001a7NPAbJs75536P",
+   "part": {
+    "key": "reasoning:0",
+    "kind": "reasoning",
+    "text": "thinking briefly. ",
+    "done": true
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "part",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "messageID": "msg_138345b34001a7NPAbJs75536P",
+   "part": {
+    "key": "text:0",
+    "kind": "text",
+    "text": "word0 word1 word2 word3 word4 word5 ",
+    "done": true
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944318664
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "message",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "message": {
+    "role": "assistant",
+    "finish": "stop",
+    "id": "msg_138345b34001a7NPAbJs75536P"
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944318667,
+    "tokens": {
+     "input": 50,
+     "output": 35,
+     "reasoning": 0,
+     "cache": {
+      "read": 0,
+      "write": 0
+     }
+    },
+    "cost": 0
+   },
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "status",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "status": "idle",
+   "hostId": "host-aaaaaaaa"
+  },
+  {
+   "op": "session",
+   "sessionID": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+   "session": {
+    "updated": 1791944318667
+   },
+   "hostId": "host-aaaaaaaa"
+  }
+ ],
+ "expected": {
+  "ses_ec7d1b294ffe3NEVt6Y0AqNk6I": {
+   "meta": {
+    "status": "idle",
+    "agent": "orchestrate-local"
+   },
+   "messages": [
+    {
+     "id": "msg_13831f404001kYyf6b8OfpIVht",
+     "role": "user",
+     "time": 1791944160261,
+     "text": "TOOL from plugin",
+     "parts": []
+    },
+    {
+     "id": "msg_13831f41b001b0vm8zu74bqaA5",
+     "role": "assistant",
+     "time": 1791944160294,
+     "agent": "orchestrate-local",
+     "model": "stub/stub",
+     "finish": "tool-calls",
+     "parts": [
+      {
+       "key": "tool:call_5d05cfd9",
+       "kind": "tool",
+       "tool": "shell",
+       "status": "error",
+       "summary": "echo stub-tool-ran",
+       "input": "{\"command\":\"echo stub-tool-ran\",\"description\":\"echo\"}",
+       "error": "Permission denied: shell"
+      }
+     ]
+    },
+    {
+     "id": "msg_13831f457001KfpCzCSFdYE2Tl",
+     "role": "assistant",
+     "time": 1791944160353,
+     "agent": "orchestrate-local",
+     "model": "stub/stub",
+     "finish": "stop",
+     "parts": [
+      {
+       "key": "reasoning:0",
+       "kind": "reasoning",
+       "text": "thinking briefly. ",
+       "done": true
+      },
+      {
+       "key": "text:0",
+       "kind": "text",
+       "text": "word0 word1 word2 word3 word4 word5 ",
+       "done": true
+      }
+     ]
+    }
+   ]
+  },
+  "ses_ec7cd8fb9ffe6ljAtfrKx0ippm": {
+   "meta": {
+    "status": "idle",
+    "title": "word0 word1 word2 word3 word4 word5",
+    "directory": "/home/user/project",
+    "agent": "orchestrate-local",
+    "parentID": null
+   },
+   "messages": [
+    {
+     "id": "msg_138327059001WhQA8pym49arDo",
+     "role": "user",
+     "time": 1791944192090,
+     "text": "TOOL fresh",
+     "parts": []
+    },
+    {
+     "id": "msg_13832706d001ToqIroSBESowiG",
+     "role": "assistant",
+     "time": 1791944192117,
+     "agent": "orchestrate-local",
+     "model": "stub/stub",
+     "finish": "tool-calls",
+     "parts": [
+      {
+       "key": "tool:call_6e53090b",
+       "kind": "tool",
+       "tool": "shell",
+       "status": "error",
+       "summary": "echo stub-tool-ran",
+       "input": "{\"command\":\"echo stub-tool-ran\",\"description\":\"echo\"}",
+       "error": "Permission denied: shell"
+      }
+     ]
+    },
+    {
+     "id": "msg_13832708c001ZT6dVh2DJ1u5nL",
+     "role": "assistant",
+     "time": 1791944192148,
+     "agent": "orchestrate-local",
+     "model": "stub/stub",
+     "finish": "stop",
+     "parts": [
+      {
+       "key": "reasoning:0",
+       "kind": "reasoning",
+       "text": "thinking briefly. ",
+       "done": true
+      },
+      {
+       "key": "text:0",
+       "kind": "text",
+       "text": "word0 word1 word2 word3 word4 word5 ",
+       "done": true
+      }
+     ]
+    },
+    {
+     "id": "msg_13832af620013OjaIkG8nPL9Ik",
+     "role": "user",
+     "time": 1791944208227,
+     "text": "LONG answer please",
+     "parts": []
+    },
+    {
+     "id": "msg_13832af6e001atRhXfRzZ16sDP",
+     "role": "assistant",
+     "time": 1791944208249,
+     "agent": "orchestrate-local",
+     "model": "stub/stub",
+     "finish": "error",
+     "error": "Step interrupted",
+     "parts": [
+      {
+       "key": "reasoning:0",
+       "kind": "reasoning",
+       "text": "thinking briefly. ",
+       "done": true
+      },
+      {
+       "key": "text:0",
+       "kind": "text",
+       "text": "word0 word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12 word13 word14 word15 word16 ",
+       "done": true
+      }
+     ]
+    },
+    {
+     "id": "msg_138345aee001BKWzKxql1gnWTG",
+     "role": "user",
+     "time": 1791944317679,
+     "text": "GLOB the files",
+     "parts": []
+    },
+    {
+     "id": "msg_138345afb001TEyhW6QTkXuz7p",
+     "role": "assistant",
+     "time": 1791944317700,
+     "agent": "orchestrate-local",
+     "model": "stub/stub",
+     "finish": "tool-calls",
+     "parts": [
+      {
+       "key": "tool:call_8d734497",
+       "kind": "tool",
+       "tool": "glob",
+       "status": "done",
+       "summary": "*",
+       "input": "{\"pattern\":\"*\"}",
+       "output": "/home/user/project/b.txt\n/home/user/project/a.txt"
+      }
+     ]
+    },
+    {
+     "id": "msg_138345b34001a7NPAbJs75536P",
+     "role": "assistant",
+     "time": 1791944317757,
+     "agent": "orchestrate-local",
+     "model": "stub/stub",
+     "finish": "stop",
+     "parts": [
+      {
+       "key": "reasoning:0",
+       "kind": "reasoning",
+       "text": "thinking briefly. ",
+       "done": true
+      },
+      {
+       "key": "text:0",
+       "kind": "text",
+       "text": "word0 word1 word2 word3 word4 word5 ",
+       "done": true
+      }
+     ]
+    }
+   ]
+  }
+ }
+}

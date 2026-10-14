@@ -1,0 +1,313 @@
+{
+ "info": {
+  "id": "ses_ec7cd8fb9ffe6ljAtfrKx0ippm",
+  "projectID": "35c386d81efd52b0a56c6f3d1087e8ddf2476115",
+  "model": {
+   "id": "stub",
+   "providerID": "stub",
+   "variant": "default"
+  },
+  "cost": 0,
+  "tokens": {
+   "input": 50,
+   "output": 35,
+   "reasoning": 0,
+   "cache": {
+    "read": 0,
+    "write": 0
+   }
+  },
+  "outcome": "succeeded",
+  "time": {
+   "created": 1791944192071,
+   "updated": 1791944318665,
+   "idle": 1791944318667
+  },
+  "title": "word0 word1 word2 word3 word4 word5",
+  "location": {
+   "directory": "/home/user/project"
+  }
+ },
+ "history": [
+  {
+   "id": "msg_138327059001WhQA8pym49arDo",
+   "time": {
+    "created": 1791944192099
+   },
+   "text": "TOOL fresh",
+   "type": "user"
+  },
+  {
+   "id": "msg_13832706d001ToqIroSBESowiG",
+   "time": {
+    "created": 1791944192117,
+    "streamed": 1791944192128,
+    "completed": 1791944192132
+   },
+   "type": "assistant",
+   "agent": "orchestrate-local",
+   "model": {
+    "id": "stub",
+    "providerID": "stub",
+    "variant": "default"
+   },
+   "content": [
+    {
+     "type": "tool",
+     "id": "call_6e53090b",
+     "name": "shell",
+     "executed": false,
+     "state": {
+      "status": "error",
+      "input": {
+       "command": "echo stub-tool-ran",
+       "description": "echo"
+      },
+      "error": {
+       "type": "permission.rejected",
+       "message": "Permission denied: shell"
+      }
+     },
+     "time": {
+      "created": 1791944192124,
+      "ran": 1791944192127,
+      "completed": 1791944192131
+     }
+    }
+   ],
+   "finish": "tool-calls",
+   "rawFinish": "tool_calls",
+   "cost": 0,
+   "tokens": {
+    "input": 10,
+    "output": 7,
+    "reasoning": 0,
+    "cache": {
+     "read": 0,
+     "write": 0
+    }
+   }
+  },
+  {
+   "id": "msg_13832708c001ZT6dVh2DJ1u5nL",
+   "time": {
+    "created": 1791944192148,
+    "streamed": 1791944193054,
+    "completed": 1791944193055
+   },
+   "type": "assistant",
+   "agent": "orchestrate-local",
+   "model": {
+    "id": "stub",
+    "providerID": "stub",
+    "variant": "default"
+   },
+   "content": [
+    {
+     "type": "reasoning",
+     "text": "thinking briefly. ",
+     "state": {
+      "reasoningField": "reasoning_content"
+     },
+     "time": {
+      "created": 1791944192153,
+      "completed": 1791944193052
+     }
+    },
+    {
+     "type": "text",
+     "text": "word0 word1 word2 word3 word4 word5 "
+    }
+   ],
+   "finish": "stop",
+   "rawFinish": "stop",
+   "cost": 0,
+   "tokens": {
+    "input": 10,
+    "output": 7,
+    "reasoning": 0,
+    "cache": {
+     "read": 0,
+     "write": 0
+    }
+   }
+  },
+  {
+   "id": "msg_138327421001cI9iNJeHXhLZU3",
+   "time": {
+    "created": 1791944193057
+   },
+   "type": "idle",
+   "outcome": "succeeded"
+  },
+  {
+   "id": "msg_13832af620013OjaIkG8nPL9Ik",
+   "time": {
+    "created": 1791944208234
+   },
+   "text": "LONG answer please",
+   "type": "user"
+  },
+  {
+   "id": "msg_13832af6e001atRhXfRzZ16sDP",
+   "time": {
+    "created": 1791944208249,
+    "streamed": 1791944210742,
+    "completed": 1791944210744
+   },
+   "type": "assistant",
+   "agent": "orchestrate-local",
+   "model": {
+    "id": "stub",
+    "providerID": "stub",
+    "variant": "default"
+   },
+   "content": [
+    {
+     "type": "reasoning",
+     "text": "thinking briefly. ",
+     "state": {
+      "reasoningField": "reasoning_content"
+     },
+     "time": {
+      "created": 1791944208258,
+      "completed": 1791944210741
+     }
+    },
+    {
+     "type": "text",
+     "text": "word0 word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12 word13 word14 word15 word16 "
+    }
+   ],
+   "finish": "error",
+   "error": {
+    "type": "aborted",
+    "message": "Step interrupted"
+   }
+  },
+  {
+   "id": "msg_13832b939001hZAaoYEb0E526D",
+   "time": {
+    "created": 1791944210745
+   },
+   "type": "idle",
+   "outcome": "interrupted"
+  },
+  {
+   "id": "msg_138345aee001BKWzKxql1gnWTG",
+   "time": {
+    "created": 1791944317686
+   },
+   "text": "GLOB the files",
+   "type": "user"
+  },
+  {
+   "id": "msg_138345afb001TEyhW6QTkXuz7p",
+   "time": {
+    "created": 1791944317700,
+    "streamed": 1791944317729,
+    "completed": 1791944317739
+   },
+   "type": "assistant",
+   "agent": "orchestrate-local",
+   "model": {
+    "id": "stub",
+    "providerID": "stub",
+    "variant": "default"
+   },
+   "content": [
+    {
+     "type": "tool",
+     "id": "call_8d734497",
+     "name": "glob",
+     "executed": false,
+     "state": {
+      "status": "completed",
+      "input": {
+       "pattern": "*"
+      },
+      "content": [
+       {
+        "type": "text",
+        "text": "/home/user/project/b.txt\n/home/user/project/a.txt"
+       }
+      ],
+      "metadata": {
+       "count": 2,
+       "truncated": false
+      }
+     },
+     "time": {
+      "created": 1791944317725,
+      "ran": 1791944317728,
+      "completed": 1791944317738
+     }
+    }
+   ],
+   "finish": "tool-calls",
+   "rawFinish": "tool_calls",
+   "cost": 0,
+   "tokens": {
+    "input": 10,
+    "output": 7,
+    "reasoning": 0,
+    "cache": {
+     "read": 0,
+     "write": 0
+    }
+   }
+  },
+  {
+   "id": "msg_138345b34001a7NPAbJs75536P",
+   "time": {
+    "created": 1791944317757,
+    "streamed": 1791944318664,
+    "completed": 1791944318665
+   },
+   "type": "assistant",
+   "agent": "orchestrate-local",
+   "model": {
+    "id": "stub",
+    "providerID": "stub",
+    "variant": "default"
+   },
+   "content": [
+    {
+     "type": "reasoning",
+     "text": "thinking briefly. ",
+     "state": {
+      "reasoningField": "reasoning_content"
+     },
+     "time": {
+      "created": 1791944317762,
+      "completed": 1791944318661
+     }
+    },
+    {
+     "type": "text",
+     "text": "word0 word1 word2 word3 word4 word5 "
+    }
+   ],
+   "finish": "stop",
+   "rawFinish": "stop",
+   "cost": 0,
+   "tokens": {
+    "input": 10,
+    "output": 7,
+    "reasoning": 0,
+    "cache": {
+     "read": 0,
+     "write": 0
+    }
+   }
+  },
+  {
+   "id": "msg_138345ecb002edUnB9csHbE764",
+   "time": {
+    "created": 1791944318667
+   },
+   "type": "idle",
+   "outcome": "succeeded"
+  }
+ ]
+}

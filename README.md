@@ -7,14 +7,14 @@ The repository contains no API key or SSH private key. The installer retrieves
 the model API key through your authenticated Tellico SSH connection and stores
 it only on the client device with mode 0600.
 
-There are four ways to reach the models:
+There are four ways in:
 
 | | Who it is for | What the user needs |
 |---|---|---|
 | **Client, tunnel mode** (this README) | People with a cluster account | A Tellico account, an authorized SSH key, and this repository |
 | **Client, gateway mode** (this README) | The same agentic setup, without a cluster account | A URL, an API key, and this repository |
 | **Raw API** ([`gateway/`](gateway/README.md)) | Any OpenAI-compatible tool or script | A URL and an API key. Nothing installed |
-| **Browser** ([`remote/`](remote/README.md)) | Reading and steering your own sessions from a phone | A URL, the server password, and a browser. Nothing installed |
+| **Phone** ([`relay/`](relay/README.md)) | Following and steering your own sessions, on any machine, from a phone | Your API key and a browser, plus `--remote-control` on each computer |
 
 The two client modes give an identical session: the same two node-pinned
 workers, the same models, the same context. They differ only in how the
@@ -720,7 +720,23 @@ installed connection.
 
 ### Phone
 
-`remote/` puts the same setup behind a browser, so you can read and steer
+Sign in at `https://<gateway host>/tellico/` with your API key to see every
+session you have running — laptop, VS Code, terminal, any machine — streaming
+live, and send one a prompt or stop it. Turn it on per computer:
+
+```bash
+./install.sh --no-start --remote-control
+```
+
+Each OpenCode process then publishes its sessions to the relay through
+`plugins/remote-control`, and takes prompts and stops back. It only ever makes
+outbound requests, so no port on your machine is opened. Off by default; see
+[relay/README.md](relay/README.md) for how it works and what a phone can and
+cannot do.
+
+#### An always-on console on the gateway host
+
+Separately, `remote/` puts the same setup behind a browser, so you can read and steer
 sessions from a phone. It is one supervised `opencode-tellico serve` on the
 always-on host, published by the same reverse proxy that already fronts the
 gateway, and the client is OpenCode's own web app -- a PWA you add to the home

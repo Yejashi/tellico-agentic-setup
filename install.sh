@@ -13,6 +13,8 @@ mode=
 gateway_url=
 api_key_file=
 ssh_identity=${TELLICO_SSH_IDENTITY:-}
+# Empty means "keep what this device had", which is off on a first install.
+remote_control=
 
 config_home=${XDG_CONFIG_HOME:-"$HOME/.config"}
 config_dir="$config_home/tellico-qwen"
@@ -31,6 +33,7 @@ usage() {
 usage: ./install.sh [--gateway-url URL [--api-key-file PATH]]
                     [--ssh-host HOST] [--port0 PORT] [--port1 PORT]
                     [--remote-key-path PATH] [--fix-path] [--no-start]
+                    [--remote-control | --no-remote-control]
 
 Installs the Tellico OpenCode client for the current user, in one of two
 modes. Run with no mode flag and it asks which one you want.
@@ -68,6 +71,11 @@ Both modes give the same dual-node session with the same two workers.
   --no-start       Install the files only: skip the connectivity checks, the
                    tunnel, and validation. Useful before this device has been
                    authorized on Tellico.
+  --remote-control
+                   Let every session on this device be followed and steered
+                   from a phone: open the gateway's /tellico/ page and sign in
+                   with your gateway key. Off by default; --no-remote-control
+                   turns it off again. A rerun keeps the last choice.
   -h, --help       Show this help
 EOF
 }
@@ -126,6 +134,14 @@ while [ "$#" -gt 0 ]; do
       start_client=false
       shift
       ;;
+    --remote-control)
+      remote_control=1
+      shift
+      ;;
+    --no-remote-control)
+      remote_control=0
+      shift
+      ;;
     -h|--help)
       usage
       exit 0
@@ -143,7 +159,11 @@ done
 recorded_mode=
 if [ -r "$config_dir/client.env" ]; then
   recorded_mode=$(sed -n "s/^TELLICO_MODE='\(.*\)'$/\1/p" "$config_dir/client.env")
+  if [ -z "$remote_control" ]; then
+    remote_control=$(sed -n "s/^TELLICO_REMOTE_CONTROL='\(.*\)'$/\1/p" "$config_dir/client.env")
+  fi
 fi
+[ "$remote_control" = 1 ] || remote_control=0
 
 # Echoes a mode name. Takes one too, so that an answer and a fallback on EOF
 # cannot disagree about what the default meant.
@@ -431,6 +451,12 @@ for plugin in secret-guard dispatch-balance compaction-guard; do
   install -m 644 "$script_dir/plugins/$plugin/index.js" "$plugin_dir/$plugin/index.js"
   install -m 644 "$script_dir/plugins/$plugin/package.json" "$plugin_dir/$plugin/package.json"
 done
+# Remote control has a second module, so it is installed on its own. It is
+# inert unless opencode-tellico turns it on; see relay/README.md.
+mkdir -p "$plugin_dir/remote-control"
+for file in index.js protocol.js package.json; do
+  install -m 644 "$script_dir/plugins/remote-control/$file" "$plugin_dir/remote-control/$file"
+done
 # Single-file plugins from an older install. Nothing names them any more.
 rm -f "$plugin_dir/secret-guard.js" "$plugin_dir/dispatch-balance.js"
 # The TUI loads its plugins from tui.json, not opencode.json, and
@@ -532,6 +558,8 @@ trap 'rm -f "$env_tmp"' EXIT HUP INT TERM
   printf "TELLICO_QWEN_PORT1='%s'\n" "$port1"
   printf "TELLICO_REMOTE_KEY_PATH='%s'\n" "$remote_key_path"
   printf "TELLICO_SSH_IDENTITY='%s'\n" "$ssh_identity"
+  # Read by opencode-tellico: publish sessions to the relay for the phone.
+  printf "TELLICO_REMOTE_CONTROL='%s'\n" "$remote_control"
 } >"$env_tmp"
 mv "$env_tmp" "$config_dir/client.env"
 chmod 600 "$config_dir/client.env"
@@ -583,6 +611,19 @@ fi
 
 echo
 echo 'Tellico OpenCode client installed successfully.'
+
+if [ "$remote_control" = 1 ]; then
+  relay_gateway=${gateway_url:-${default_gateway_url%/}}
+  echo
+  echo "Remote control is on: new sessions on this device can be followed and"
+  echo "steered from ${relay_gateway%/v1}/tellico/ -- sign in with your gateway key."
+  echo 'Sessions already running keep going as they were; they appear there once'
+  echo 'they are started again.'
+  if [ "$mode" = tunnel ] && [ ! -s "$config_dir/api-key.gateway" ]; then
+    echo "It signs in with a gateway key, and this tunnel install has none yet:" >&2
+    echo "  umask 077; printf '%s\\n' sk-tellico-... > $config_dir/api-key.gateway" >&2
+  fi
+fi
 
 if ! tellico_bin_on_path; then
   profile=$(tellico_shell_profile)

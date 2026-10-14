@@ -1,9 +1,10 @@
-# Caddy in front of two Tellico services on one hostname.
+# Caddy in front of three Tellico services on one hostname.
 #
 #   /v1/*, /health  ->  tellico-gateway  (OpenAI-compatible API, per-user keys)
-#   everything else ->  tellico-remote   (OpenCode web app + v2 API, phones)
+#   /tellico/*      ->  tellico-relay    (every user's sessions on their phone)
+#   everything else ->  tellico-remote   (OpenCode web app + v2 API, operator)
 #
-# The two path spaces do not overlap, so both live behind one certificate and
+# The path spaces do not overlap, so all three live behind one certificate and
 # one DNS name -- which matters, because the web app is a PWA: its manifest
 # scope, its start URL and its session cookie are all rooted at /, so it cannot
 # be moved under a path prefix.
@@ -11,7 +12,8 @@
 #   1. Install this repository on the host and run ./install.sh, so
 #      tellico-qwen-tunnel keeps 127.0.0.1:18080/18081 forwarded to Tellico.
 #   2. Run ./gateway/install-gateway.sh there. Keep the default loopback bind.
-#   3. Run ./remote/install-remote.sh there for the phone-facing server.
+#   3. Run ./relay/install-relay.sh there for the phone app at /tellico/, and
+#      optionally ./remote/install-remote.sh for the operator's console at /.
 #   4. Point an A/AAAA record at the host, put this file at /etc/caddy/Caddyfile
 #      with your own hostname and your own password hash from
 #      "tellico-remote caddy", then: sudo systemctl reload caddy
@@ -40,6 +42,21 @@ qwen.example.com {
 				read_timeout 3700s
 				write_timeout 3700s
 				response_header_timeout 120s
+			}
+			header_up X-Forwarded-For {remote_host}
+		}
+	}
+
+	# The relay: each user signs in with their own gateway key and sees only
+	# their own sessions, so it does its own auth and needs no lock here.
+	# Its event stream and the plugins' long polls must not be buffered.
+	@relay path /tellico /tellico/*
+	handle @relay {
+		reverse_proxy 127.0.0.1:4100 {
+			flush_interval -1
+			transport http {
+				read_timeout 3700s
+				write_timeout 3700s
 			}
 			header_up X-Forwarded-For {remote_host}
 		}

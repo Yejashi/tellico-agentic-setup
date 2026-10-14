@@ -219,8 +219,12 @@ test("the shipped Caddy example keeps the API paths on the gateway and never a r
   assert.ok(text.indexOf("@gateway path /v1 /v1/* /health") < text.indexOf("handle {"));
   assert.ok(text.includes("reverse_proxy 127.0.0.1:4000"));
   assert.ok(text.includes("reverse_proxy 127.0.0.1:4096"));
-  // Streaming must not be buffered on either path.
-  assert.equal(text.match(/flush_interval -1/g).length, 2);
+  // The relay's route must also sit above the catch-all, or the operator's
+  // basic auth would swallow the phone app.
+  assert.ok(text.indexOf("@relay path /tellico /tellico/*") < text.indexOf("handle {"));
+  assert.ok(text.includes("reverse_proxy 127.0.0.1:4100"));
+  // Streaming must not be buffered on any path.
+  assert.equal(text.match(/flush_interval -1/g).length, 3);
   assert.ok(text.includes("REPLACE_WITH_YOUR_BCRYPT_HASH"));
   assert.ok(!/\$2[aby]\$\d\d\$/.test(text), "no real bcrypt hash may be committed");
 });

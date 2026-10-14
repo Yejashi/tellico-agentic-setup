@@ -14,6 +14,7 @@ solo=${TELLICO_SOLO:-1}
 steps=${TELLICO_STEPS:-}
 websearch=${TELLICO_WEBSEARCH:-tavily}
 connection=${TELLICO_CONNECTION:-}
+remote_control=${TELLICO_REMOTE_CONTROL:-}
 magic_context=${TELLICO_MAGIC_CONTEXT:-1}
 # Exact version, never @latest: OpenCode 2 may remove an unpinned package
 # mid-session when a newer one appears, and the plugin's own updater is told
@@ -27,7 +28,8 @@ magic_context_config="$config_home/cortexkit/magic-context.jsonc"
 usage() {
   cat <<'EOF'
 usage: opencode-tellico [0|1] [--orchestrate] [--think LEVEL] [--steps N] [--no-magic-context]
-                        [--connection tunnel|gateway] [OPENCODE_ARGS...]
+                        [--connection tunnel|gateway] [--[no-]remote-control]
+                        [OPENCODE_ARGS...]
 
 Starts OpenCode on build-tellico: one Tellico engineer that does the whole
 job on one server, reading and editing and running checks itself, with no
@@ -79,6 +81,12 @@ examples:
 and settings and no TUI; the tellico-vscode extension drives it. Set
 OPENCODE_PASSWORD to require HTTP basic auth (user "opencode").
 
+--remote-control lets you follow this session from a phone, and send it a
+prompt or stop it: open the relay's /tellico/ page and sign in with your
+gateway key. This process publishes its sessions there and nothing else; see
+relay/README.md. "install.sh --remote-control" turns it on for every launch
+on this device, and --no-remote-control turns it off for one.
+
 environment:
   TELLICO_THINK    Default thinking level, same values as --think, which
                    overrides it. Unset, the agents' configured level
@@ -118,6 +126,13 @@ environment:
   TELLICO_CONNECTION_GATEWAY_URL
                    Gateway base URL for --connection gateway. Unset, the URL
                    install.sh recorded is used.
+  TELLICO_REMOTE_CONTROL
+                   1 or 0, as --remote-control and --no-remote-control. Unset,
+                   what install.sh recorded for this device applies, which is
+                   off unless it was installed with --remote-control.
+  TELLICO_RELAY_URL
+                   The relay that --remote-control publishes to. Unset, it is
+                   the recorded gateway's host with /tellico in place of /v1.
   TELLICO_WEBSEARCH
                    Which service answers the agents' websearch tool: tavily
                    (the default), exa, parallel, random, or off for work whose
@@ -170,6 +185,14 @@ while [ "$#" -gt 0 ]; do
       ;;
     --no-magic-context)
       magic_context=0
+      shift
+      ;;
+    --remote-control)
+      remote_control=1
+      shift
+      ;;
+    --no-remote-control)
+      remote_control=0
       shift
       ;;
     --connection)
@@ -323,6 +346,50 @@ if [ -n "$connection" ]; then
   TELLICO_CONNECTION=$connection
   export TELLICO_CONNECTION
 fi
+
+# Remote control: plugins/remote-control publishes this process's sessions to
+# the relay and takes prompts and stops back from the user's phone. Off unless
+# asked for, by flag, by environment or by what install.sh recorded. It signs
+# in with the user's gateway key -- in tunnel mode the one in api-key.gateway,
+# never the cluster key in api-key. A device without a key or a relay URL
+# still launches; it just is not visible from the phone. The variables are
+# exported rather than passed on the command line, so a value with a space in
+# it survives, and set to 0 explicitly so an inherited 1 cannot switch it on.
+tellico_client_env() {
+  sed -n "s/^$1='\(.*\)'$/\1/p" "$config_dir/client.env" 2>/dev/null | head -n 1
+}
+if [ -z "$remote_control" ]; then
+  remote_control=$(tellico_client_env TELLICO_REMOTE_CONTROL)
+fi
+case $remote_control in
+  1|on|true|yes) remote_control=1 ;;
+  *) remote_control=0 ;;
+esac
+if [ "$remote_control" = 1 ]; then
+  relay_mode=$(tellico_client_env TELLICO_MODE)
+  relay_key=$(tellico_key_file "$config_dir" "${relay_mode:-tunnel}" gateway)
+  relay_url=${TELLICO_RELAY_URL:-}
+  if [ -z "$relay_url" ]; then
+    relay_gateway=${TELLICO_CONNECTION_GATEWAY_URL:-$(tellico_client_env TELLICO_GATEWAY_URL)}
+    relay_gateway=${relay_gateway%/}
+    [ -n "$relay_gateway" ] && relay_url="${relay_gateway%/v1}/tellico"
+  fi
+  if [ ! -s "$relay_key" ]; then
+    echo "opencode-tellico: remote control needs a gateway key in $relay_key;" >&2
+    echo '  starting without it. "install.sh --gateway" or the VS Code extension sets one.' >&2
+    remote_control=0
+  elif [ -z "$relay_url" ]; then
+    echo 'opencode-tellico: remote control has no relay URL; starting without it.' >&2
+    echo '  Set TELLICO_RELAY_URL, or rerun install.sh to record the gateway.' >&2
+    remote_control=0
+  else
+    TELLICO_RELAY_URL=$relay_url
+    TELLICO_RELAY_KEY_FILE=$relay_key
+    export TELLICO_RELAY_URL TELLICO_RELAY_KEY_FILE
+  fi
+fi
+TELLICO_REMOTE_CONTROL=$remote_control
+export TELLICO_REMOTE_CONTROL
 
 if ! "$tunnel_command" start >/dev/null; then
   "$tunnel_command" status >&2 || true

@@ -10,12 +10,16 @@ systemd_dir="$config_home/systemd/user"
 unit_name=tellico-qwen-tunnel.service
 gateway_unit=tellico-gateway.service
 remote_dir="$config_home/tellico-remote"
+relay_dir="$config_home/tellico-relay"
+relay_lib="$HOME/.local/lib/tellico-relay"
+relay_unit=tellico-relay.service
 remote_unit=tellico-remote.service
 
 if command -v systemctl >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; then
   systemctl --user disable --now "$unit_name" >/dev/null 2>&1 || true
   systemctl --user disable --now "$gateway_unit" >/dev/null 2>&1 || true
   systemctl --user disable --now "$remote_unit" >/dev/null 2>&1 || true
+  systemctl --user disable --now "$relay_unit" >/dev/null 2>&1 || true
 fi
 
 if [ -x "$bin_dir/tellico-qwen-tunnel" ]; then
@@ -59,11 +63,21 @@ rm -f \
   "$lib_dir/tellico_gateway.py" \
   "$systemd_dir/$gateway_unit" \
   "$gateway_dir/gateway.env" \
+  "$config_dir/plugins/remote-control/index.js" \
+  "$config_dir/plugins/remote-control/protocol.js" \
+  "$config_dir/plugins/remote-control/package.json" \
+  "$bin_dir/tellico-relay" \
+  "$relay_lib/tellico_relay.py" \
+  "$systemd_dir/$relay_unit" \
+  "$relay_dir/relay.env" \
   "$bin_dir/tellico-remote" \
   "$systemd_dir/$remote_unit" \
   "$remote_dir/remote.env" \
   "$remote_dir/password.bcrypt" \
   "$config_dir/magic-context.jsonc"
+
+rm -rf "$relay_lib/web"
+rmdir "$relay_lib" "$config_dir/plugins/remote-control" 2>/dev/null || true
 
 # install.sh pointed Magic Context's user-level config path at the copy above
 # with a symlink. Remove only a symlink, and only ours; a file of the user's
@@ -128,6 +142,12 @@ echo 'Tellico OpenCode client removed.'
 
 # The keys file is five people's credentials, not this repository's state, so
 # removing it is always a deliberate act.
+if [ -s "$relay_dir/tokens" ]; then
+  echo
+  echo "Kept $relay_dir/tokens: phones signed in to the relay. They stop working"
+  echo 'once the relay is gone; delete it yourself to sign them out sooner.'
+fi
+
 if [ -s "$remote_dir/password" ]; then
   echo
   echo "Kept $remote_dir/password, which a paired phone may still use."

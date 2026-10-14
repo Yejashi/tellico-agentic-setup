@@ -1,0 +1,17 @@
+[Unit]
+Description=Tellico relay (follow and steer your OpenCode sessions from a phone)
+# It authenticates with the gateway's keys file but does not need the gateway
+# running, and nothing here needs the tunnel.
+After=network-online.target tellico-gateway.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=__TELLICO_RELAY_ENV__
+ExecStart=__TELLICO_RELAY_PYTHON__ __TELLICO_RELAY_SCRIPT__
+Restart=always
+RestartSec=3
+SyslogIdentifier=tellico-relay
+
+[Install]
+WantedBy=default.target
