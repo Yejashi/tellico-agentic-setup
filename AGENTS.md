@@ -350,6 +350,15 @@ gateway defaults; a model swap touches all of them.
   config root. A plugin the config names but the install did not copy is
   silently skipped by OpenCode, which is why `tellico_check_config` fails on a
   missing one rather than warning.
+- `plugins/disk-guard` blocks a write-type tool call when the target's
+  filesystem has less than 64 MiB (or twice the content) free, and says
+  the disk is full. On a full disk OpenCode's write creates the file and then
+  fails to fill it, reports only "Unable to write", and leaves a 0-byte file;
+  on 2026-10-14 a lead read that as a broken tool, argued with itself and
+  looped. A throw in `execute.before` blocks the call before the file
+  exists (verified on 2.0.26, and `statfsSync` works in its runtime).
+  Allowlist-first: an unmeasurable path is let through.
+  `TELLICO_DISK_MIN_FREE` raises the floor, for tests only.
 - `plugins/loop-guard` stops a reply that has fallen into a repetition loop.
   Such a step never ends by itself on this model: it re-emits one paragraph
   until the 32,768-token output cap, holding a shared slot for minutes. Over

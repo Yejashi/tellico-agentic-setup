@@ -447,7 +447,7 @@ install -m 600 "$script_dir/prompts/build.md" "$config_dir/prompts/build.md"
 # and no build step. They enforce what the prompts can only ask for. Each is a
 # directory with a package.json because OpenCode 2 refuses a bare plugin file;
 # OpenCode 1 accepts either.
-for plugin in secret-guard dispatch-balance compaction-guard; do
+for plugin in secret-guard dispatch-balance compaction-guard disk-guard; do
   install -m 644 "$script_dir/plugins/$plugin/index.js" "$plugin_dir/$plugin/index.js"
   install -m 644 "$script_dir/plugins/$plugin/package.json" "$plugin_dir/$plugin/package.json"
 done

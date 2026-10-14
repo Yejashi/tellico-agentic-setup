@@ -454,6 +454,14 @@ opencode-tellico 0 run 'Review this repository and fix the highest-impact issue'
 opencode-tellico 0 --think off run 'Rename this symbol across the repository'
 ```
 
+### When the disk fills up
+
+On a full disk OpenCode's write tool creates the file, fails to fill it, and
+reports only "Unable to write" -- which an agent can mistake for a broken
+tool. `plugins/disk-guard` checks free space before every write and, when
+there is not enough, refuses with the reason instead, so no empty file is left
+behind and the agent knows to free space or stop.
+
 ### When it repeats itself
 
 Now and then the model falls into a loop -- the same paragraph of

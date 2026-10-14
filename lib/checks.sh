@@ -810,6 +810,8 @@ plugins/dispatch-balance/index.js
 plugins/dispatch-balance/package.json
 plugins/compaction-guard/index.js
 plugins/compaction-guard/package.json
+plugins/disk-guard/index.js
+plugins/disk-guard/package.json
 plugins/remote-control/index.js
 plugins/remote-control/protocol.js
 plugins/remote-control/package.json
