@@ -460,7 +460,7 @@ mkdir -p "$plugin_dir/remote-control" "$plugin_dir/loop-guard"
 for file in index.js protocol.js package.json; do
   install -m 644 "$script_dir/plugins/remote-control/$file" "$plugin_dir/remote-control/$file"
 done
-for file in index.js detector.js package.json; do
+for file in index.js detector.js stall.js package.json; do
   install -m 644 "$script_dir/plugins/loop-guard/$file" "$plugin_dir/loop-guard/$file"
 done
 # Single-file plugins from an older install. Nothing names them any more.

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { LoopDetector } from "../plugins/loop-guard/detector.js";
+import { announcedStep } from "../plugins/loop-guard/stall.js";
 import plugin from "../plugins/loop-guard/index.js";
 
 // Deterministic prose with no repeated 50-character stretch: stands in for a
@@ -193,4 +194,84 @@ test("TELLICO_LOOP_GUARD=0 turns it off entirely", async t => {
   stream(fake.emit, "ses_lead", LOOP);
   await settle();
   assert.deepEqual(fake.calls, []);
+});
+
+test("a session that makes progress between loops gets a note every time", async t => {
+  const fake = await withGuard(t, {});
+  for (let i = 0; i < 5; i++) {
+    stream(fake.emit, "ses_lead", LOOP, { message: `msg_${i}` });
+    await settle();
+    fake.emit({ id: `evt_${++eventId}`, type: "session.execution.started", data: { sessionID: "ses_lead" } });
+    fake.emit({ id: `evt_${++eventId}`, type: "session.tool.success", data: { sessionID: "ses_lead", id: `call_${i}` } });
+    await settle();
+  }
+  assert.equal(fake.calls.filter(([name]) => name === "prompt").length, 5);
+});
+
+// --- a turn that ends on an announced step -----------------------------------
+
+test("the announced-but-not-taken endings seen in stored sessions are recognised", () => {
+  for (const text of [
+    "§474§ Now let me add the N34a format conversion tests to the test file.",
+    "Let me run the git commands to inspect the repository.",
+    "Let me construct the git commands and execute them using the Bash tool.",
+    "Let me write the updated README.md:",
+    "I will generate the poem now.",
+    "The build is clean.\n\n**Next,** I'll wire the parser into the renderer.",
+  ]) assert.ok(announcedStep(text), text);
+});
+
+test("finished answers, questions and waits on other work are not stalls", () => {
+  for (const text of [
+    "N33b is complete and verified. I've updated `PROGRESS.md` and committed it.",
+    "Let me know if you'd like me to proceed with the N14 readiness spike.",
+    "Should I also update the README?",
+    "I'll confirm the commit and push once the completion report arrives.",
+    "I'll continue as soon as the N15 spike reports back.",
+    "Awaiting the background gate result. I'll proceed to the live legs and commit once it reports.",
+    "I'll pick up automatically when the integration report lands.",
+    "Let me run the tests.\n\nAll 503 tests pass and clippy is clean.",
+    "",
+  ]) assert.equal(announcedStep(text), "", text);
+  assert.equal(announcedStep(undefined), "");
+});
+
+function endTurn(emit, sessionID, text, finish = "stop") {
+  const ev = (type, data) => emit({ id: `evt_${++eventId}`, type, data: { sessionID, ...data } });
+  ev("session.step.started", { assistantMessageID: "msg_s" });
+  ev("session.text.ended", { assistantMessageID: "msg_s", ordinal: 0, text });
+  ev("session.step.ended", { assistantMessageID: "msg_s", finish });
+  if (finish === "stop") ev("session.execution.succeeded", {});
+}
+
+test("a lead that ends its turn on an announced step is told to take it, once until it makes progress", async t => {
+  const fake = await withGuard(t, {});
+  endTurn(fake.emit, "ses_lead", "Now let me add the N34a format conversion tests to the test file.");
+  await settle();
+  const prompts = fake.calls.filter(([name]) => name === "prompt");
+  assert.equal(prompts.length, 1);
+  assert.equal(prompts[0][1], "ses_lead");
+  assert.match(prompts[0][2], /Now let me add the N34a format conversion tests/);
+  assert.match(prompts[0][2], /no tool call/);
+  // It stalls again straight away: no second nudge.
+  endTurn(fake.emit, "ses_lead", "Let me add the tests now.");
+  await settle();
+  assert.equal(fake.calls.filter(([name]) => name === "prompt").length, 1);
+  // After real progress it can be nudged again.
+  fake.emit({ id: `evt_${++eventId}`, type: "session.tool.success", data: { sessionID: "ses_lead", id: "call_1" } });
+  endTurn(fake.emit, "ses_lead", "Let me add the tests now.");
+  await settle();
+  assert.equal(fake.calls.filter(([name]) => name === "prompt").length, 2);
+});
+
+test("a worker, a finished turn, a tool-call step and an interrupted turn are never nudged", async t => {
+  const fake = await withGuard(t, { ses_worker: { id: "ses_worker", parentID: "ses_lead" } });
+  endTurn(fake.emit, "ses_worker", "Let me add the tests now.");
+  endTurn(fake.emit, "ses_a", "All tests pass; the feature is committed and pushed.");
+  endTurn(fake.emit, "ses_b", "Let me add the tests now.", "tool-calls");
+  fake.emit({ id: `evt_${++eventId}`, type: "session.step.started", data: { sessionID: "ses_c" } });
+  fake.emit({ id: `evt_${++eventId}`, type: "session.text.ended", data: { sessionID: "ses_c", ordinal: 0, text: "Let me add the tests now." } });
+  fake.emit({ id: `evt_${++eventId}`, type: "session.execution.interrupted", data: { sessionID: "ses_c", reason: "user" } });
+  await settle();
+  assert.deepEqual(fake.calls.filter(([name]) => name !== "get"), []);
 });

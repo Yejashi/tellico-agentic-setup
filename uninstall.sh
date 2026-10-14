@@ -68,6 +68,7 @@ rm -f \
   "$config_dir/plugins/remote-control/package.json" \
   "$config_dir/plugins/loop-guard/index.js" \
   "$config_dir/plugins/loop-guard/detector.js" \
+  "$config_dir/plugins/loop-guard/stall.js" \
   "$config_dir/plugins/loop-guard/package.json" \
   "$config_dir/plugins/disk-guard/index.js" \
   "$config_dir/plugins/disk-guard/package.json" \

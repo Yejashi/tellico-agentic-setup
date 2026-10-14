@@ -817,6 +817,7 @@ plugins/remote-control/protocol.js
 plugins/remote-control/package.json
 plugins/loop-guard/index.js
 plugins/loop-guard/detector.js
+plugins/loop-guard/stall.js
 plugins/loop-guard/package.json
 pi/settings.json
 pi/APPEND_SYSTEM.md

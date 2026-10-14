@@ -399,7 +399,14 @@ gateway defaults; a model swap touches all of them.
   *lead* instead, because the interrupt makes the lead's subagent call fail
   with only "Subagent cancelled" and the worker's later output would reach
   no one (verified on 2.0.26 with a looping stub). At most 3 notes per
-  session per 30 minutes; `TELLICO_LOOP_GUARD=0` turns it off.
+  session per 30 minutes *without progress*: a successful tool call clears
+  the count, because a lead stopped silently on its fourth loop sat idle
+  until the user typed "continue". The same plugin nudges a lead that ends
+  its turn on an announced step ("Now let me add the tests.") with no tool
+  call, once until it next makes progress (`stall.js`: 6 of 2,432 stored
+  turn endings, all real, none waiting on a worker -- those name what they
+  wait for and are excluded; workers are never nudged, their text is their
+  report). `TELLICO_LOOP_GUARD=0` turns both off.
 - Agents: two primaries per node plus two node-pinned workers.
   `build-tellico-0|1`, the launcher's default, implements and verifies
   directly with delegation denied; `orchestrate-tellico-0|1`

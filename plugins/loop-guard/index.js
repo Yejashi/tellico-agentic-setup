@@ -28,13 +28,25 @@
 // (verified on 2.0.26: the lead's call fails with that message and the
 // lead's next turn reads the note).
 //
-// On by default; TELLICO_LOOP_GUARD=0 turns it off. A session gets at most
-// MAX_STEERS notes in STEER_WINDOW_MS; past that its loops are only stopped,
-// and it waits for the user. OpenCode 1 has no plugin context for any of
-// this, so there it is inert.
+// A session gets at most MAX_STEERS notes in STEER_WINDOW_MS without
+// progress in between; past that its loops are only stopped, and it waits for
+// the user. A tool call that succeeds is progress and clears the count: on
+// 2026-10-14 a lead that looped four times in 18 minutes, editing files
+// between loops, was stopped silently on the fourth and sat idle until the
+// user typed "continue".
+//
+// The same watch also catches a lead that ends its turn on an announcement
+// ("Now let me add the tests.") with no tool call, which leaves the session
+// idle while it reads as busy (see stall.js). It is told once to take that
+// step; it is nudged again only after it has made progress. A worker is left
+// alone: its announcement is its report, and its lead reads it.
+//
+// On by default; TELLICO_LOOP_GUARD=0 turns both off. OpenCode 1 has no
+// plugin context for any of this, so there it is inert.
 
 import { appendFileSync } from "node:fs";
 import { LoopDetector } from "./detector.js";
+import { announcedStep } from "./stall.js";
 
 const MAX_STEERS = 3;
 const STEER_WINDOW_MS = 30 * 60 * 1000;
@@ -46,6 +58,14 @@ const STEER = [
   "Take the next concrete step now with a tool call. If a choice is genuinely open, pick the",
   "most reasonable option, say which in one sentence, and proceed.",
 ].join(" ");
+
+function stallNote(step) {
+  return [
+    `(Tellico) Your last reply ended with "${step}" but made no tool call, so the turn ended and`,
+    "nothing is running. Take that step now with a tool call. If you are in fact finished, or need",
+    "the user to decide something, say that plainly instead.",
+  ].join(" ");
+}
 
 function workerNote(sessionID, agent) {
   return [
@@ -68,6 +88,9 @@ class Guard {
     this.detectors = new Map();   // sessionID|messageID|kind:ordinal -> LoopDetector
     this.stopped = new Set();     // sessions interrupted and not yet restarted
     this.steers = new Map();      // sessionID -> [timestamps]
+    this.lastText = new Map();    // sessionID -> text of the current step's last text part
+    this.lastFinish = new Map();  // sessionID -> finish reason of its last step
+    this.nudged = new Set();      // sessions nudged after a stall, with no progress since
     this.seen = new Set();
     this.seenOrder = [];
     this.trace = process.env.TELLICO_AGENT_TRACE || "";
@@ -125,13 +148,31 @@ class Guard {
       case "session.execution.started":
         this.stopped.delete(sessionID);
         return;
+      case "session.step.started":
+        this.lastText.delete(sessionID);
+        this.lastFinish.delete(sessionID);
+        return;
+      case "session.step.ended":
+        if (typeof data.finish === "string") this.lastFinish.set(sessionID, data.finish);
+        return;
+      case "session.tool.success":
+        // Progress: the loop-note budget and the stall nudge start over.
+        this.steers.delete(sessionID);
+        this.nudged.delete(sessionID);
+        return;
       case "session.execution.succeeded":
       case "session.execution.failed":
-      case "session.execution.interrupted":
+      case "session.execution.interrupted": {
         for (const key of [...this.detectors.keys()]) {
           if (key.startsWith(`${sessionID}|`)) this.detectors.delete(key);
         }
+        const text = this.lastText.get(sessionID);
+        const finish = this.lastFinish.get(sessionID);
+        this.lastText.delete(sessionID);
+        this.lastFinish.delete(sessionID);
+        if (ev.type === "session.execution.succeeded" && finish === "stop") this.checkStall(sessionID, text);
         return;
+      }
       case "session.text.delta":
       case "session.reasoning.delta": {
         if (this.stopped.has(sessionID) || typeof data.delta !== "string") return;
@@ -151,10 +192,28 @@ class Guard {
       case "session.text.ended":
       case "session.reasoning.ended": {
         const kind = ev.type === "session.text.ended" ? "text" : "reasoning";
+        if (kind === "text" && typeof data.text === "string") this.lastText.set(sessionID, data.text);
         this.detectors.delete(`${sessionID}|${data.assistantMessageID}|${kind}:${data.ordinal ?? 0}`);
         return;
       }
       default:
+    }
+  }
+
+  async checkStall(sessionID, text) {
+    const step = announcedStep(text);
+    if (!step || this.nudged.has(sessionID)) return;
+    const context = this.contextFor(sessionID);
+    if (!context) return;
+    let info = null;
+    try { info = await context.session.get({ sessionID }); } catch { return; }
+    if (!info || typeof info.parentID === "string") return;
+    this.nudged.add(sessionID);
+    this.record({ event: "stall_nudged", sessionID, step });
+    try {
+      await context.session.prompt({ sessionID, text: stallNote(step) });
+    } catch (error) {
+      this.record({ event: "stall_nudge_failed", sessionID, error: String(error?.message || error).slice(0, 200) });
     }
   }
 
