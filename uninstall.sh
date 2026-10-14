@@ -9,10 +9,13 @@ lib_dir="$HOME/.local/lib/tellico-gateway"
 systemd_dir="$config_home/systemd/user"
 unit_name=tellico-qwen-tunnel.service
 gateway_unit=tellico-gateway.service
+remote_dir="$config_home/tellico-remote"
+remote_unit=tellico-remote.service
 
 if command -v systemctl >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; then
   systemctl --user disable --now "$unit_name" >/dev/null 2>&1 || true
   systemctl --user disable --now "$gateway_unit" >/dev/null 2>&1 || true
+  systemctl --user disable --now "$remote_unit" >/dev/null 2>&1 || true
 fi
 
 if [ -x "$bin_dir/tellico-qwen-tunnel" ]; then
@@ -56,6 +59,10 @@ rm -f \
   "$lib_dir/tellico_gateway.py" \
   "$systemd_dir/$gateway_unit" \
   "$gateway_dir/gateway.env" \
+  "$bin_dir/tellico-remote" \
+  "$systemd_dir/$remote_unit" \
+  "$remote_dir/remote.env" \
+  "$remote_dir/password.bcrypt" \
   "$config_dir/magic-context.jsonc"
 
 # install.sh pointed Magic Context's user-level config path at the copy above
@@ -121,6 +128,12 @@ echo 'Tellico OpenCode client removed.'
 
 # The keys file is five people's credentials, not this repository's state, so
 # removing it is always a deliberate act.
+if [ -s "$remote_dir/password" ]; then
+  echo
+  echo "Kept $remote_dir/password, which a paired phone may still use."
+  echo 'Delete it yourself once the reverse proxy no longer points here.'
+fi
+
 if [ -s "$gateway_dir/keys" ]; then
   echo
   echo "Kept $gateway_dir/keys, which still holds the gateway's user keys."

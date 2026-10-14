@@ -1,0 +1,76 @@
+# Caddy in front of two Tellico services on one hostname.
+#
+#   /v1/*, /health  ->  tellico-gateway  (OpenAI-compatible API, per-user keys)
+#   everything else ->  tellico-remote   (OpenCode web app + v2 API, phones)
+#
+# The two path spaces do not overlap, so both live behind one certificate and
+# one DNS name -- which matters, because the web app is a PWA: its manifest
+# scope, its start URL and its session cookie are all rooted at /, so it cannot
+# be moved under a path prefix.
+#
+#   1. Install this repository on the host and run ./install.sh, so
+#      tellico-qwen-tunnel keeps 127.0.0.1:18080/18081 forwarded to Tellico.
+#   2. Run ./gateway/install-gateway.sh there. Keep the default loopback bind.
+#   3. Run ./remote/install-remote.sh there for the phone-facing server.
+#   4. Point an A/AAAA record at the host, put this file at /etc/caddy/Caddyfile
+#      with your own hostname and your own password hash from
+#      "tellico-remote caddy", then: sudo systemctl reload caddy
+#
+# Caddy gets the certificate itself; nothing else needs configuring. Auth,
+# admission control and routing for the API stay in the gateway, which is the
+# only thing that knows the users' keys.
+
+qwen.example.com {
+	encode zstd gzip
+
+	# 32 MiB covers a full 128k-token prompt with room to spare.
+	request_body {
+		max_size 32MB
+	}
+
+	# The API clients already know these paths; nothing about them changes.
+	@gateway path /v1 /v1/* /health
+	handle @gateway {
+		# Long generations: do not cut a request off mid-answer. This must be
+		# at least TELLICO_GATEWAY_REQUEST_TIMEOUT.
+		reverse_proxy 127.0.0.1:4000 {
+			# Stream tokens through instead of buffering the response.
+			flush_interval -1
+			transport http {
+				read_timeout 3700s
+				write_timeout 3700s
+				response_header_timeout 120s
+			}
+			header_up X-Forwarded-For {remote_host}
+		}
+	}
+
+	# Everything else is the OpenCode web app and its v2 API. Anything that
+	# gets past here can run commands on this host, so the edge asks for the
+	# password as well rather than leaving OpenCode's own check as the only
+	# lock. The credentials are the server's own, so a single Authorization
+	# header satisfies both this check and OpenCode behind it -- which is also
+	# why the hash below must be regenerated after a password rotation:
+	#   tellico-remote caddy
+	handle {
+		basicauth {
+			opencode REPLACE_WITH_YOUR_BCRYPT_HASH
+		}
+		reverse_proxy 127.0.0.1:4096 {
+			# Server-sent events carry the token stream; never buffer them.
+			flush_interval -1
+			transport http {
+				read_timeout 3700s
+				write_timeout 3700s
+				response_header_timeout 120s
+			}
+			header_up X-Forwarded-For {remote_host}
+		}
+	}
+
+	log {
+		output file /var/log/caddy/qwen.log
+		# The Authorization header must never reach a log file.
+		format json
+	}
+}

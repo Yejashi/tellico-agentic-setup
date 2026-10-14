@@ -7,13 +7,14 @@ The repository contains no API key or SSH private key. The installer retrieves
 the model API key through your authenticated Tellico SSH connection and stores
 it only on the client device with mode 0600.
 
-There are three ways to reach the models:
+There are four ways to reach the models:
 
 | | Who it is for | What the user needs |
 |---|---|---|
 | **Client, tunnel mode** (this README) | People with a cluster account | A Tellico account, an authorized SSH key, and this repository |
 | **Client, gateway mode** (this README) | The same agentic setup, without a cluster account | A URL, an API key, and this repository |
 | **Raw API** ([`gateway/`](gateway/README.md)) | Any OpenAI-compatible tool or script | A URL and an API key. Nothing installed |
+| **Browser** ([`remote/`](remote/README.md)) | Reading and steering your own sessions from a phone | A URL, the server password, and a browser. Nothing installed |
 
 The two client modes give an identical session: the same two node-pinned
 workers, the same models, the same context. They differ only in how the
@@ -717,6 +718,38 @@ Each connection keeps its own key: the one you installed with stays in
 connection fetches its key over SSH as usual. pi and Crush use only the
 installed connection.
 
+### Phone
+
+`remote/` puts the same setup behind a browser, so you can read and steer
+sessions from a phone. It is one supervised `opencode-tellico serve` on the
+always-on host, published by the same reverse proxy that already fronts the
+gateway, and the client is OpenCode's own web app -- a PWA you add to the home
+screen.
+
+```bash
+remote/install-remote.sh      # on the gateway host
+tellico-remote caddy          # the proxy snippet, hash filled in
+tellico-remote pair           # a one-time link; open it on the phone
+```
+
+It runs on the always-on host rather than your laptop because **sessions belong
+to the process running them**: another server reading the same storage sees the
+history, and even the answer text as it is flushed, but gets no events for it
+and reports it inactive. So a phone can only watch sessions started by the
+server it is attached to, and a laptop that sleeps takes the endpoint with it.
+Its sessions therefore live in that host's workspace, which suits asking,
+planning and reviewing rather than editing files that exist only on your
+laptop. To drive the same sessions from both, point the laptop's client at it
+with `opencode --server https://your.host.example` -- tools then run there, not
+locally.
+
+Remote sessions go through the gateway on loopback rather than straight down
+the tunnel, so they queue, cap and log like every other user's. The endpoint
+can run commands on its host, so it sits behind two locks on one secret: the
+proxy checks HTTP basic auth at the edge and OpenCode checks it again behind,
+and a single `Authorization` header satisfies both. See
+[remote/README.md](remote/README.md).
+
 ## What gets installed
 
 Client side, on each user's own device:
@@ -769,6 +802,19 @@ On a host that also runs the API gateway, `gateway/install-gateway.sh` adds:
 ~/.local/lib/tellico-gateway/tellico_monitor.py
 ~/.local/bin/tellico-gateway
 ```
+
+And `remote/install-remote.sh` adds the phone-facing server:
+
+```text
+~/.config/tellico-remote/remote.env
+~/.config/tellico-remote/password
+~/.config/tellico-remote/password.bcrypt
+~/.config/systemd/user/tellico-remote.service
+~/.local/bin/tellico-remote
+```
+
+`remote.env` and both password files are mode 600, and the password reaches the
+service by reference, never inside the unit file.
 
 `tellico-gateway monitor` on that host shows who is using the models, how much
 of the cluster is busy, and whether anything is queueing -- including sessions

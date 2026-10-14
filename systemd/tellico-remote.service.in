@@ -1,0 +1,24 @@
+[Unit]
+Description=Tellico OpenCode server for phones and other remote clients
+# Sessions reach the models over whichever connection remote.env selects. With
+# the default --connection gateway that is the gateway on loopback, which in
+# turn needs the tunnel; neither is required for the server to start, so these
+# are wants rather than requires.
+After=network-online.target tellico-qwen-tunnel.service tellico-gateway.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Sessions opened without a directory of their own land here, and the agents'
+# tools act inside it.
+WorkingDirectory=__TELLICO_REMOTE_WORKSPACE__
+# Holds OPENCODE_PASSWORD, so it is 0600 and never enters a unit file.
+EnvironmentFile=__TELLICO_REMOTE_ENV__
+Environment=PATH=__TELLICO_REMOTE_PATH__
+ExecStart=__TELLICO_REMOTE_LAUNCHER__ serve --hostname ${TELLICO_REMOTE_BIND} --port ${TELLICO_REMOTE_PORT}
+Restart=always
+RestartSec=3
+SyslogIdentifier=tellico-remote
+
+[Install]
+WantedBy=default.target

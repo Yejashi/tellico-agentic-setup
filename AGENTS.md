@@ -24,6 +24,15 @@ run the servers.
   while a session is live: it never restarts the tunnel.
 - `tellico-gateway status` / `doctor` / `logs` — check the live gateway.
 - `python3 -m py_compile gateway/tellico_gateway.py` — syntax check the gateway.
+- `remote/install-remote.sh` — install the phone-facing OpenCode server on this
+  host. Safe while a session is live: it never restarts the tunnel or the
+  gateway, and a rerun keeps the existing password so a paired phone and the
+  proxy's hash stay valid.
+- `tellico-remote status` / `doctor` / `logs` — check the live remote server.
+  Both `status` and `doctor` probe the published URL and say so loudly if it
+  answers without a password.
+- `tellico-remote caddy` — the reverse-proxy snippet for this host, with its
+  bcrypt hash filled in. Never commit a real hash.
 
 `shellcheck -s sh` is the intended linter and the scripts carry
 `# shellcheck disable=` directives, but it is not installed here. Do not claim a
@@ -149,6 +158,19 @@ gateway defaults; a model swap touches all of them.
 
 ## Architecture boundaries
 
+- A session belongs to the OpenCode process running it. Another server on the
+  same storage lists it and sees its text as it is flushed, in coarse blocks,
+  but receives no events for it and reports it inactive (measured on 2.0.26,
+  two servers, 2026-10-13). So live viewing and steering only work through the
+  server that started the session: that is why `remote/` runs on the always-on
+  host rather than mirroring a laptop's sessions, and why the VS Code
+  extension's per-window private server is invisible to the phone.
+- `remote/` adds no client code. The web app, its v2 API and its pairing
+  (`POST /api/pair` mints a single-use code for five minutes;
+  `/auth/connect/:code` returns a 30-day HttpOnly cookie) are OpenCode's own.
+  The app is a PWA rooted at `/` -- manifest scope, start URL and cookie path
+  -- so it cannot be served under a path prefix. `/v1/*` and `/health` belong
+  to the gateway and must keep their own proxy route above the catch-all.
 - `bin/tellico-qwen-tunnel` owns the SSH control socket and port forwards.
   Everything else goes through it; do not open ad-hoc tunnels.
 - Codex was evaluated and rejected, so do not reach for it again: 0.153.4
