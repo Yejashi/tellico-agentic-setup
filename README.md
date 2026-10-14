@@ -454,6 +454,18 @@ opencode-tellico 0 run 'Review this repository and fix the highest-impact issue'
 opencode-tellico 0 --think off run 'Rename this symbol across the repository'
 ```
 
+### When it repeats itself
+
+Now and then the model falls into a loop -- the same paragraph of
+deliberation over and over -- and a looping step never ends by itself: it
+runs to the 32,768-token output cap, holding one of the cluster's four slots
+for minutes. `plugins/loop-guard` watches each reply as it streams. When the
+newest text is almost entirely text the reply already wrote, it stops the
+step and tells the session to stop deliberating and take the next action. A
+looping worker is stopped and its lead is told why, so it can narrow the task
+or do it itself. It never touches ordinary output, quoted code included, and
+`TELLICO_LOOP_GUARD=0` turns it off.
+
 ### Compaction
 
 A session that fills its 128k window is compacted: OpenCode summarises the old

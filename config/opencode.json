@@ -536,7 +536,8 @@
     "__TELLICO_PLUGIN_DIR__/secret-guard",
     "__TELLICO_PLUGIN_DIR__/dispatch-balance",
     "__TELLICO_PLUGIN_DIR__/compaction-guard",
-    "__TELLICO_PLUGIN_DIR__/remote-control"
+    "__TELLICO_PLUGIN_DIR__/remote-control",
+    "__TELLICO_PLUGIN_DIR__/loop-guard"
   ],
   "tool_output": {
     "max_lines": 300,

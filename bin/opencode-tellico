@@ -130,6 +130,10 @@ environment:
                    1 or 0, as --remote-control and --no-remote-control. Unset,
                    what install.sh recorded for this device applies, which is
                    off unless it was installed with --remote-control.
+  TELLICO_LOOP_GUARD
+                   Set to 0 to let a reply that has started repeating itself
+                   run on. Unset, plugins/loop-guard stops it and tells the
+                   session -- or a worker's lead -- to act instead.
   TELLICO_RELAY_URL
                    The relay that --remote-control publishes to. Unset, it is
                    the recorded gateway's host with /tellico in place of /v1.

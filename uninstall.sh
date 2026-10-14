@@ -66,6 +66,9 @@ rm -f \
   "$config_dir/plugins/remote-control/index.js" \
   "$config_dir/plugins/remote-control/protocol.js" \
   "$config_dir/plugins/remote-control/package.json" \
+  "$config_dir/plugins/loop-guard/index.js" \
+  "$config_dir/plugins/loop-guard/detector.js" \
+  "$config_dir/plugins/loop-guard/package.json" \
   "$bin_dir/tellico-relay" \
   "$relay_lib/tellico_relay.py" \
   "$systemd_dir/$relay_unit" \
@@ -77,7 +80,7 @@ rm -f \
   "$config_dir/magic-context.jsonc"
 
 rm -rf "$relay_lib/web"
-rmdir "$relay_lib" "$config_dir/plugins/remote-control" 2>/dev/null || true
+rmdir "$relay_lib" "$config_dir/plugins/remote-control" "$config_dir/plugins/loop-guard" 2>/dev/null || true
 
 # install.sh pointed Magic Context's user-level config path at the copy above
 # with a symlink. Remove only a symlink, and only ours; a file of the user's

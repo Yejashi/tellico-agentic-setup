@@ -810,6 +810,12 @@ plugins/dispatch-balance/index.js
 plugins/dispatch-balance/package.json
 plugins/compaction-guard/index.js
 plugins/compaction-guard/package.json
+plugins/remote-control/index.js
+plugins/remote-control/protocol.js
+plugins/remote-control/package.json
+plugins/loop-guard/index.js
+plugins/loop-guard/detector.js
+plugins/loop-guard/package.json
 pi/settings.json
 pi/APPEND_SYSTEM.md
 pi/extensions/secret-guard/index.js

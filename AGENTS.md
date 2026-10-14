@@ -350,6 +350,23 @@ gateway defaults; a model swap touches all of them.
   config root. A plugin the config names but the install did not copy is
   silently skipped by OpenCode, which is why `tellico_check_config` fails on a
   missing one rather than warning.
+- `plugins/loop-guard` stops a reply that has fallen into a repetition loop.
+  Such a step never ends by itself on this model: it re-emits one paragraph
+  until the 32,768-token output cap, holding a shared slot for minutes. Over
+  90 stored sessions (2026-10-14) 16 of 2,861 long parts looped, mostly in
+  workers' reasoning, the worst a 483-character paragraph for 121,709
+  characters. The detector (`detector.js`) fires when >= 95% of the 50-char
+  shingles in the last 1,500 characters already appeared earlier in the part,
+  twice running; on that history it fired on exactly those 16 and on nothing
+  that was merely quoting. Index every earlier position: sampling them missed
+  that 483 = 7 x 69 loop. Do not replace it with a sampler: DRY and presence
+  penalties punish reproducing context, which the edit tool requires. On a
+  loop it interrupts the step (which also drops the upstream request and
+  frees the slot) and prompts the session to act; for a worker it prompts the
+  *lead* instead, because the interrupt makes the lead's subagent call fail
+  with only "Subagent cancelled" and the worker's later output would reach
+  no one (verified on 2.0.26 with a looping stub). At most 3 notes per
+  session per 30 minutes; `TELLICO_LOOP_GUARD=0` turns it off.
 - Agents: two primaries per node plus two node-pinned workers.
   `build-tellico-0|1`, the launcher's default, implements and verifies
   directly with delegation denied; `orchestrate-tellico-0|1`

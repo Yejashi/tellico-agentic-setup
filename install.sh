@@ -451,11 +451,15 @@ for plugin in secret-guard dispatch-balance compaction-guard; do
   install -m 644 "$script_dir/plugins/$plugin/index.js" "$plugin_dir/$plugin/index.js"
   install -m 644 "$script_dir/plugins/$plugin/package.json" "$plugin_dir/$plugin/package.json"
 done
-# Remote control has a second module, so it is installed on its own. It is
-# inert unless opencode-tellico turns it on; see relay/README.md.
-mkdir -p "$plugin_dir/remote-control"
+# These two have a second module each, so they are installed on their own.
+# Remote control is inert unless opencode-tellico turns it on (relay/README.md);
+# the loop guard is on unless TELLICO_LOOP_GUARD=0.
+mkdir -p "$plugin_dir/remote-control" "$plugin_dir/loop-guard"
 for file in index.js protocol.js package.json; do
   install -m 644 "$script_dir/plugins/remote-control/$file" "$plugin_dir/remote-control/$file"
+done
+for file in index.js detector.js package.json; do
+  install -m 644 "$script_dir/plugins/loop-guard/$file" "$plugin_dir/loop-guard/$file"
 done
 # Single-file plugins from an older install. Nothing names them any more.
 rm -f "$plugin_dir/secret-guard.js" "$plugin_dir/dispatch-balance.js"
