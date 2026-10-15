@@ -17,13 +17,17 @@ It never restarts the gateway, the tunnel, the relay or the proxy.
 
 ## Use
 
-It listens on loopback only and is **not** published through the reverse
-proxy: it shows every user's activity and has no sign-in of its own, so ssh
-is the lock. It refuses to start on any other address.
+The dashboard has no sign-in of its own and listens on loopback only (it
+refuses any other address). It is published under `/monitor/` on the gateway
+hostname behind Caddy `basicauth`, whose hash lives in
+`/etc/caddy/monitor-users` as `admin <bcrypt hash>`; see
+`remote/caddy/Caddyfile.example`. Change the password with
+`caddy hash-password` and rewrite that file, then `sudo caddy reload --config
+/etc/caddy/Caddyfile`.
 
 ```bash
+https://<gateway host>/monitor/                     # browser: lists the views
 ssh <gateway host> tellico-dashboard report 24h     # 1h, 6h, 24h, 7d or 30d
-ssh -L 4101:127.0.0.1:4101 <gateway host>           # then the JSON API below
 ```
 
 The report shows each node (uptime, busy slots, throughput, speed while

@@ -779,6 +779,16 @@ def make_handler(app):
 
         def static(self, name):
             if name not in app.web_files:
+                if name == "index.html":
+                    # No page installed: point at the data instead.
+                    self.send_json(200, {"views": {
+                        "live": PREFIX + "/api/live",
+                        "usage": PREFIX + "/api/usage?range=24h",
+                        "history": PREFIX + "/api/history?range=24h",
+                        "recent": PREFIX + "/api/recent",
+                        "ranges": sorted(RANGES),
+                    }})
+                    return
                 self.fail(404, "Not found.")
                 return
             with open(os.path.join(app.config.web_dir, name), "rb") as handle:

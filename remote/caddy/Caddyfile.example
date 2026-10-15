@@ -2,6 +2,7 @@
 #
 #   /v1/*, /health  ->  tellico-gateway  (OpenAI-compatible API, per-user keys)
 #   /tellico/*      ->  tellico-relay    (every user's sessions on their phone)
+#   /monitor/*      ->  tellico-dashboard (usage dashboard, password)
 #   everything else ->  tellico-remote   (OpenCode web app + v2 API, operator)
 #
 # The path spaces do not overlap, so all three live behind one certificate and
@@ -60,6 +61,17 @@ qwen.example.com {
 			}
 			header_up X-Forwarded-For {remote_host}
 		}
+	}
+
+	# The usage dashboard shows every user's activity and has no sign-in of
+	# its own, so the edge asks for a password. /etc/caddy/monitor-users
+	# holds one line, "admin <hash from caddy hash-password>".
+	@monitor path /monitor /monitor/*
+	handle @monitor {
+		basicauth {
+			import /etc/caddy/monitor-users
+		}
+		reverse_proxy 127.0.0.1:4101
 	}
 
 	# Everything else is the OpenCode web app and its v2 API. Anything that

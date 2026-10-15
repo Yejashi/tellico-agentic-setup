@@ -631,8 +631,9 @@ gateway defaults; a model swap touches all of them.
   `out=`: `tellico_monitor` and the dashboard parse the leading ones.
 - `dashboard/` keeps 30 days of node samples and gateway requests in SQLite
   on the gateway host, capped at 200 MB because that disk is ~20 GB. It has
-  no access control and refuses any bind but loopback; it is reached over
-  ssh and never published through Caddy.
+  no access control and refuses any bind but loopback; Caddy publishes it
+  at `/monitor/` behind `basicauth` (`/etc/caddy/monitor-users`), and it is
+  also reachable over ssh.
 - `TELLICO_GATEWAY_CONTEXT` is derived from `config/opencode.json` at install
   time, so it is bound by the same context coupling described above. A change
   to the cluster's per-slot context means rerunning the gateway installer too.
