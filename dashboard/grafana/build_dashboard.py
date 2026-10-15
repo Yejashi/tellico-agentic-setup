@@ -109,27 +109,30 @@ RED, ORANGE, GREEN, BLUE = "#f2495c", "#ff9830", "#73bf69", "#8ab8ff"
 NOW = "CAST(strftime('%s', 'now') AS INTEGER)"
 
 # --- right now ---------------------------------------------------------------
+# These show the present whatever range is picked: the value is the newest
+# sample and the sparkline the last hour.
+RECENT = "ts > %s - 3600" % NOW
 row("Right now", 0)
 stat("Nodes up", (0, 1, 3, 4),
      "SELECT COUNT(DISTINCT node) AS \"nodes up\" FROM samples WHERE up = 1 AND ts > %s - 60" % NOW,
      description="Nodes whose llama.cpp server answered in the last minute.", graph=False,
      thresholds=[{"color": RED, "value": None}, {"color": ORANGE, "value": 1}, {"color": GREEN, "value": 2}])
 stat("Slurm job: time left", (3, 1, 4, 4),
-     "SELECT ts AS time, \"left\" AS \"time left\" FROM job WHERE %s AND \"left\" IS NOT NULL ORDER BY ts" % RANGE,
+     "SELECT ts AS time, \"left\" AS \"time left\" FROM job WHERE %s AND \"left\" IS NOT NULL ORDER BY ts" % RECENT,
      unit="dtdurations", description="Remaining walltime of the service job. At zero the service stops.",
      thresholds=[{"color": RED, "value": None}, {"color": ORANGE, "value": 3600}, {"color": GREEN, "value": 4 * 3600}])
 stat("Busy slots", (7, 1, 4, 4),
-     "SELECT ts AS time, SUM(busy) AS \"busy of 4\" FROM samples WHERE %s GROUP BY ts ORDER BY ts" % RANGE,
+     "SELECT ts AS time, SUM(busy) AS \"busy of 4\" FROM samples WHERE %s GROUP BY ts ORDER BY ts" % RECENT,
      description="Slots generating or reading a prompt, both nodes together (4 in all).",
      thresholds=[{"color": GREEN, "value": None}, {"color": ORANGE, "value": 3}, {"color": RED, "value": 4}])
 stat("Context held", (11, 1, 5, 4),
-     "SELECT ts AS time, SUM(used) AS tokens FROM samples WHERE %s GROUP BY ts ORDER BY ts" % RANGE,
+     "SELECT ts AS time, SUM(used) AS tokens FROM samples WHERE %s GROUP BY ts ORDER BY ts" % RECENT,
      unit="short", description="Tokens held in the slots' KV caches, both nodes (each slot holds up to 131,072).")
 stat("Gateway in flight", (16, 1, 4, 4),
-     "SELECT ts AS time, inflight AS \"in flight\" FROM gateway WHERE %s ORDER BY ts" % RANGE,
+     "SELECT ts AS time, inflight AS \"in flight\" FROM gateway WHERE %s ORDER BY ts" % RECENT,
      description="Requests the gateway is running now (its cap is 3 of the 4 slots).")
 stat("Leads waiting", (20, 1, 4, 4),
-     "SELECT ts AS time, waiting AS waiting FROM gateway WHERE %s ORDER BY ts" % RANGE,
+     "SELECT ts AS time, waiting AS waiting FROM gateway WHERE %s ORDER BY ts" % RECENT,
      description="Lead requests queued at the gateway for a free slot.",
      thresholds=[{"color": GREEN, "value": None}, {"color": ORANGE, "value": 1}, {"color": RED, "value": 3}])
 

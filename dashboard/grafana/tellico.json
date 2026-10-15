@@ -133,8 +133,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT ts AS time, \"left\" AS \"time left\" FROM job WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 AND \"left\" IS NOT NULL ORDER BY ts",
-     "rawQueryText": "SELECT ts AS time, \"left\" AS \"time left\" FROM job WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 AND \"left\" IS NOT NULL ORDER BY ts",
+     "queryText": "SELECT ts AS time, \"left\" AS \"time left\" FROM job WHERE ts > CAST(strftime('%s', 'now') AS INTEGER) - 3600 AND \"left\" IS NOT NULL ORDER BY ts",
+     "rawQueryText": "SELECT ts AS time, \"left\" AS \"time left\" FROM job WHERE ts > CAST(strftime('%s', 'now') AS INTEGER) - 3600 AND \"left\" IS NOT NULL ORDER BY ts",
      "timeColumns": [
       "time"
      ]
@@ -205,8 +205,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT ts AS time, SUM(busy) AS \"busy of 4\" FROM samples WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY ts ORDER BY ts",
-     "rawQueryText": "SELECT ts AS time, SUM(busy) AS \"busy of 4\" FROM samples WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY ts ORDER BY ts",
+     "queryText": "SELECT ts AS time, SUM(busy) AS \"busy of 4\" FROM samples WHERE ts > CAST(strftime('%s', 'now') AS INTEGER) - 3600 GROUP BY ts ORDER BY ts",
+     "rawQueryText": "SELECT ts AS time, SUM(busy) AS \"busy of 4\" FROM samples WHERE ts > CAST(strftime('%s', 'now') AS INTEGER) - 3600 GROUP BY ts ORDER BY ts",
      "timeColumns": [
       "time"
      ]
@@ -276,8 +276,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT ts AS time, SUM(used) AS tokens FROM samples WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY ts ORDER BY ts",
-     "rawQueryText": "SELECT ts AS time, SUM(used) AS tokens FROM samples WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY ts ORDER BY ts",
+     "queryText": "SELECT ts AS time, SUM(used) AS tokens FROM samples WHERE ts > CAST(strftime('%s', 'now') AS INTEGER) - 3600 GROUP BY ts ORDER BY ts",
+     "rawQueryText": "SELECT ts AS time, SUM(used) AS tokens FROM samples WHERE ts > CAST(strftime('%s', 'now') AS INTEGER) - 3600 GROUP BY ts ORDER BY ts",
      "timeColumns": [
       "time"
      ]
@@ -340,8 +340,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT ts AS time, inflight AS \"in flight\" FROM gateway WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 ORDER BY ts",
-     "rawQueryText": "SELECT ts AS time, inflight AS \"in flight\" FROM gateway WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 ORDER BY ts",
+     "queryText": "SELECT ts AS time, inflight AS \"in flight\" FROM gateway WHERE ts > CAST(strftime('%s', 'now') AS INTEGER) - 3600 ORDER BY ts",
+     "rawQueryText": "SELECT ts AS time, inflight AS \"in flight\" FROM gateway WHERE ts > CAST(strftime('%s', 'now') AS INTEGER) - 3600 ORDER BY ts",
      "timeColumns": [
       "time"
      ]
@@ -403,8 +403,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT ts AS time, waiting AS waiting FROM gateway WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 ORDER BY ts",
-     "rawQueryText": "SELECT ts AS time, waiting AS waiting FROM gateway WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 ORDER BY ts",
+     "queryText": "SELECT ts AS time, waiting AS waiting FROM gateway WHERE ts > CAST(strftime('%s', 'now') AS INTEGER) - 3600 ORDER BY ts",
+     "rawQueryText": "SELECT ts AS time, waiting AS waiting FROM gateway WHERE ts > CAST(strftime('%s', 'now') AS INTEGER) - 3600 ORDER BY ts",
      "timeColumns": [
       "time"
      ]
