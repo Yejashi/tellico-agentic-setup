@@ -148,7 +148,7 @@ CREATE TABLE IF NOT EXISTS requests (
 CREATE INDEX IF NOT EXISTS requests_ts ON requests(ts);
 CREATE TABLE IF NOT EXISTS rejections (ts REAL NOT NULL, user TEXT, why TEXT);
 CREATE INDEX IF NOT EXISTS rejections_ts ON rejections(ts);
-CREATE TABLE IF NOT EXISTS job (ts REAL NOT NULL, id TEXT, state TEXT, left INTEGER, lim INTEGER);
+CREATE TABLE IF NOT EXISTS job (ts REAL NOT NULL, id TEXT, state TEXT, left INTEGER, lim INTEGER, nodes TEXT);
 CREATE INDEX IF NOT EXISTS job_ts ON job(ts);
 CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT);
 """
@@ -159,6 +159,10 @@ def connect(path):
     db.execute("PRAGMA journal_mode=WAL")
     db.execute("PRAGMA synchronous=NORMAL")
     db.executescript(SCHEMA)
+    # One row per running job since the service went rolling (one job per
+    # node); older databases lack the column that says which node.
+    if "nodes" not in [row[1] for row in db.execute("PRAGMA table_info(job)")]:
+        db.execute("ALTER TABLE job ADD COLUMN nodes TEXT")
     return db
 
 
@@ -510,6 +514,7 @@ class Collector:
             return
         self.job_at = time.time()
         job = None
+        jobs = []
         try:
             result = subprocess.run(
                 ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", self.config.ssh_host,
@@ -518,10 +523,16 @@ class Collector:
             for line in result.stdout.splitlines():
                 fields = line.strip().split("|")
                 if len(fields) == 6 and fields[0].isdigit():
-                    job = {"id": fields[0], "state": fields[1], "left": parse_left(fields[2]),
-                           "limit": parse_left(fields[3]), "start": fields[4], "nodes": fields[5],
-                           "checked": time.time()}
-                    break
+                    jobs.append({"id": fields[0], "state": fields[1], "left": parse_left(fields[2]),
+                                 "limit": parse_left(fields[3]), "start": fields[4], "nodes": fields[5],
+                                 "checked": time.time()})
+            # The rolling service runs a job per node and queues successors;
+            # "job" is the running one that ends soonest, the next handover.
+            running = [j for j in jobs if j["state"] == "RUNNING" and j["left"] is not None]
+            if running:
+                job = dict(min(running, key=lambda j: j["left"]), jobs=jobs)
+            elif jobs:
+                job = dict(jobs[0], jobs=jobs)
             if job is None and result.returncode == 0:
                 job = {"state": "NONE", "checked": time.time()}
         except (OSError, subprocess.SubprocessError):
@@ -529,8 +540,10 @@ class Collector:
         self.job = job
         if job:
             with self.db_lock:
-                self.db.execute("INSERT INTO job VALUES (?,?,?,?,?)", (
-                    job["checked"], job.get("id"), job.get("state"), job.get("left"), job.get("limit")))
+                for row in [j for j in jobs if j["state"] == "RUNNING"] or [job]:
+                    self.db.execute("INSERT INTO job VALUES (?,?,?,?,?,?)", (
+                        row["checked"], row.get("id"), row.get("state"), row.get("left"),
+                        row.get("limit"), row.get("nodes")))
                 self.db.commit()
 
     def run(self, stop):

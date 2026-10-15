@@ -218,9 +218,29 @@ is one request at a time, which keeps any single caller from occupying the
 whole gateway budget.
 
 A caller that cannot get a slot within `TELLICO_GATEWAY_QUEUE_TIMEOUT`
-(120s) gets `429` with `Retry-After`. When no node is reachable at all —
-normally because the Slurm allocation ended — it gets `503` immediately,
-naming the allocation, rather than waiting out the queue.
+(120s) gets `429` with `Retry-After`. When no node is reachable at all, it
+waits up to `TELLICO_GATEWAY_OUTAGE_WAIT` (90s) for one to come back, then
+gets `503` naming the allocation.
+
+## Walltime handovers
+
+The cluster runs one Slurm job per node, started half a walltime apart, and
+each job queues its own successor (qwen38-cluster, `QWEN38_ROLLING`). A
+24-hour limit therefore takes down one node at a time, for the 30-60 s Slurm
+needs to start the next job, and the gateway hides that:
+
+- **Draining.** Every minute the gateway asks Slurm, over ssh to
+  `TELLICO_GATEWAY_SLURM_SSH`, how long each node's job has left. In a node's
+  last `TELLICO_GATEWAY_DRAIN_SECONDS` (10 min) it gets no new request while
+  the other node is up, so requests already running finish before the cut.
+- **Pins fall back.** A request pinned to a node (`-node1` model, `/v1/node1`
+  URL) goes to the other node while its own is down or draining, instead of
+  failing. The pin is only for prompt-cache affinity.
+- **Short outages are waited out**, as above.
+
+A request still running at the walltime is cut; the client sees an error and
+its retry lands on the other node. Tunnel users who talk to a node's port
+directly get none of this.
 
 ## Models
 
@@ -299,6 +319,12 @@ scripted caller does not.
 | `TELLICO_GATEWAY_MODEL` | `qwen3.8-27b-gsq-iq3s` | Base model id |
 | `TELLICO_GATEWAY_MODEL_ALIASES` | `qwen3.6-35b-a3b qwen3.8-27b` | Old ids that still route to it, space-separated |
 | `TELLICO_GATEWAY_CONTEXT` | from `opencode.json` | Context advertised on `/v1/models` |
+| `TELLICO_GATEWAY_PIN_FALLBACK` | `1` | Pinned requests use the other node while theirs is down or draining; `0` is strict |
+| `TELLICO_GATEWAY_OUTAGE_WAIT` | `90` | Seconds a request waits for any node to come back before `503` |
+| `TELLICO_GATEWAY_SLURM_SSH` | the tunnel's ssh host | Where to run `squeue` for draining; empty turns draining off |
+| `TELLICO_GATEWAY_SLURM_USER` / `_JOB` | `bbogale` / `qwen38-api` | Whose service jobs to read |
+| `TELLICO_GATEWAY_NODE_HOSTS` | `node0=tellico-compute0 node1=tellico-compute1` | Gateway labels to Slurm node names |
+| `TELLICO_GATEWAY_DRAIN_SECONDS` | `600` | A node this close to its walltime takes no new requests |
 
 `TELLICO_GATEWAY_CONTEXT` is read from `config/opencode.json` at install time,
 so it follows the per-slot context coupling described in `AGENTS.md`. When the

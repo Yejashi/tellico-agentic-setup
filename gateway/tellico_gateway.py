@@ -18,6 +18,7 @@ import json
 import os
 import re
 import socket
+import subprocess
 import sys
 import threading
 import time
@@ -64,6 +65,26 @@ HEALTH_INTERVAL = _env_int("TELLICO_GATEWAY_HEALTH_INTERVAL", 10)
 # speculative decoding emits, do not reach a reader as stop-and-go text. 0
 # passes chunks straight through. See SmoothStream.
 SMOOTH_MS = _env_int("TELLICO_GATEWAY_SMOOTH_MS", 1000)
+
+# A node whose server is down, or about to go, is no reason to fail a request
+# another node can serve. Pinning (node0/node1 in the model name or the URL)
+# is for prompt-cache affinity, so a pinned request goes to the other node
+# rather than nowhere. 0 makes pins strict again.
+PIN_FALLBACK = _env_int("TELLICO_GATEWAY_PIN_FALLBACK", 1)
+# With no node up at all, hold a request this long for one to come back
+# before answering 503: a Slurm handover or a supervised restart takes well
+# under a minute.
+OUTAGE_WAIT = _env_int("TELLICO_GATEWAY_OUTAGE_WAIT", 90)
+# Walltime draining. Every DRAIN_EVERY seconds the gateway asks Slurm, over
+# ssh, how long each node's service job has left; in its last DRAIN_SECONDS a
+# node takes no new request while another can, so requests already running
+# finish instead of being cut off at the walltime. Empty SLURM_SSH turns it
+# off. NODE_HOSTS maps the labels above to Slurm node names.
+SLURM_SSH = _env("TELLICO_GATEWAY_SLURM_SSH", "")
+SLURM_USER = _env("TELLICO_GATEWAY_SLURM_USER", "bbogale")
+SLURM_JOB = _env("TELLICO_GATEWAY_SLURM_JOB", "qwen38-api")
+DRAIN_SECONDS = _env_int("TELLICO_GATEWAY_DRAIN_SECONDS", 600)
+DRAIN_EVERY = _env_int("TELLICO_GATEWAY_DRAIN_EVERY", 60)
 
 MODEL = _env("TELLICO_GATEWAY_MODEL", "qwen3.8-27b-gsq-iq3s")
 # Earlier model ids that still route to MODEL, so a client configured before a
@@ -211,6 +232,22 @@ class Pool:
         self._per_node = {label: 0 for label, _, _ in nodes}
         self._healthy = {label: False for label, _, _ in nodes}
         self._upstream_model = {label: None for label, _, _ in nodes}
+        # Wall-clock end of each node's Slurm job, when known (slurm_loop).
+        self._ends = {label: None for label, _, _ in nodes}
+
+    def set_ends(self, ends):
+        """{label: epoch seconds or None}. Labels left out become unknown."""
+        with self._cond:
+            for label in self._ends:
+                before = self._draining(label)
+                self._ends[label] = ends.get(label)
+                if before != self._draining(label):
+                    log("node %s is %s" % (label, "draining" if not before else "no longer draining"))
+            self._cond.notify_all()
+
+    def _draining(self, label):
+        end = self._ends.get(label)
+        return end is not None and end - time.time() < DRAIN_SECONDS
 
     def set_health(self, label, healthy, upstream_model=None):
         with self._cond:
@@ -243,6 +280,8 @@ class Pool:
                     label: {
                         "status": "up" if self._healthy[label] else "down",
                         "inflight": self._per_node[label],
+                        "ends": self._ends[label],
+                        "draining": self._draining(label),
                     }
                     for label in self._healthy
                 },
@@ -258,24 +297,40 @@ class Pool:
             return False
         return True
 
-    def acquire(self, user, user_limit, want, timeout, role="lead"):
+    def _options(self, want, fallback):
+        """The nodes a request may use now, best first, or [] if none is up.
+
+        A node that is up and not draining in want, else one in fallback,
+        else a draining one -- a node in its last minutes still beats a 503.
+        """
+        up = [l for l in want if self._healthy[l]]
+        spare = [l for l in fallback if self._healthy[l] and l not in want]
+        for tier in (up, spare):
+            fresh = [l for l in tier if not self._draining(l)]
+            if fresh:
+                return fresh
+        return up or spare
+
+    def acquire(self, user, user_limit, want, timeout, role="lead", fallback=()):
         """Wait for a slot and return (label, queued_seconds), or (None, reason).
 
         want is a list of acceptable node labels; the least busy healthy one
-        wins. Returns a reason string of "timeout" or "unavailable" instead of
-        a label when it cannot be satisfied. role is "lead" or "worker"; see
-        __init__ for how they are ordered.
+        wins. fallback lists nodes to use only when none in want is up or all
+        of those are draining. Returns a reason string of "timeout" or
+        "unavailable" instead of a label when it cannot be satisfied. role is
+        "lead" or "worker"; see __init__ for how they are ordered.
         """
         worker = role == "worker"
         deadline = time.monotonic() + timeout
         started = time.monotonic()
+        outage_deadline = None
         with self._cond:
             if not worker:
                 self._leads_waiting += 1
             try:
                 while True:
                     mine = self._per_user.get(user, 0)
-                    options = [l for l in want if self._healthy[l]]
+                    options = self._options(want, fallback)
                     if (options and self._inflight < self.max_inflight and mine < user_limit
                             and (not worker or self._worker_may_start())):
                         label = min(options, key=lambda l: self._per_node[l])
@@ -286,12 +341,19 @@ class Pool:
                             self._workers_inflight += 1
                         return label, time.monotonic() - started
                     if not options:
-                        # Nothing to queue behind: the allocation is gone rather
-                        # than busy, so fail now instead of waiting it out.
-                        return None, "unavailable"
+                        # Nothing to queue behind. A node coming back from a
+                        # handover or a restart is worth a short wait; an
+                        # allocation that is gone is not, so this is bounded
+                        # by OUTAGE_WAIT rather than the queue timeout.
+                        if outage_deadline is None:
+                            outage_deadline = time.monotonic() + OUTAGE_WAIT
+                        if time.monotonic() >= outage_deadline:
+                            return None, "unavailable"
+                    else:
+                        outage_deadline = None
                     remaining = deadline - time.monotonic()
                     if remaining <= 0:
-                        return None, "timeout"
+                        return None, ("timeout" if options else "unavailable")
                     self._cond.wait(min(remaining, 1.0))
             finally:
                 if not worker:
@@ -373,7 +435,86 @@ def health_loop(pool, nodes, stop):
                     if conn is not None:
                         conn.close()
             pool.set_health(label, healthy, model_id)
-        stop.wait(HEALTH_INTERVAL)
+        # Poll faster while a node is down, so it is used again soon after a
+        # handover instead of up to HEALTH_INTERVAL later.
+        stop.wait(2 if len(pool.healthy_labels()) < len(nodes) else HEALTH_INTERVAL)
+
+
+def expand_nodelist(spec):
+    """"tellico-compute[0-1,3]" -> ["tellico-compute0", "tellico-compute1", ...]."""
+    names = []
+    for prefix, ranges, plain in re.findall(r"([^,\[]+)\[([^\]]*)\]|([^,\[\]]+)", spec):
+        if plain:
+            names.append(plain.strip())
+            continue
+        for part in ranges.split(","):
+            low, _, high = part.partition("-")
+            if high:
+                width = len(low)
+                names.extend("%s%0*d" % (prefix, width, n) for n in range(int(low), int(high) + 1))
+            elif low:
+                names.append(prefix + low)
+    return [n for n in names if n]
+
+
+def parse_left(text):
+    """Slurm's %L ("1-02:03:04", "02:03:04", "03:04") as seconds, or None."""
+    text = text.strip()
+    days = 0
+    if "-" in text:
+        head, text = text.split("-", 1)
+        if not head.isdigit():
+            return None
+        days = int(head)
+    parts = text.split(":")
+    if not all(p.isdigit() for p in parts) or not 1 <= len(parts) <= 3:
+        return None
+    seconds = 0
+    for part in parts:
+        seconds = seconds * 60 + int(part)
+    if len(parts) == 1:
+        seconds *= 60
+    return days * 86400 + seconds
+
+
+def job_ends(text, host_labels, now=None):
+    """squeue "%N|%L" lines -> {label: end epoch}, the soonest end per node."""
+    now = now or time.time()
+    ends = {}
+    for line in text.splitlines():
+        nodelist, _, left = line.strip().partition("|")
+        seconds = parse_left(left)
+        if seconds is None:
+            continue
+        for host in expand_nodelist(nodelist):
+            label = host_labels.get(host)
+            if label and (label not in ends or now + seconds < ends[label]):
+                ends[label] = now + seconds
+    return ends
+
+
+def slurm_loop(pool, stop):
+    """Learn each node's walltime end, so a node can drain before it goes."""
+    host_labels = {}
+    for item in _env(
+        "TELLICO_GATEWAY_NODE_HOSTS", "node0=tellico-compute0 node1=tellico-compute1"
+    ).split():
+        label, _, host = item.partition("=")
+        host_labels[host] = label
+    command = "squeue -h -t RUNNING -u %s -n %s -o '%%N|%%L'" % (SLURM_USER, SLURM_JOB)
+    while not stop.is_set():
+        try:
+            result = subprocess.run(
+                ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", SLURM_SSH, command],
+                capture_output=True, text=True, timeout=30, check=False,
+                stdin=subprocess.DEVNULL,
+            )
+            if result.returncode == 0:
+                pool.set_ends(job_ends(result.stdout, host_labels))
+        except (OSError, subprocess.SubprocessError) as error:
+            # Unknown ends mean no draining, which is how it was before.
+            log("slurm: squeue failed: %s" % error.__class__.__name__)
+        stop.wait(DRAIN_EVERY)
 
 
 KEYS = Keys(KEYS_FILE)
@@ -816,9 +957,14 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         remaining = list(labels)
+        # A pinned request may run on another node when its own is down or
+        # draining (PIN_FALLBACK); the pin still decides while it is up.
+        fallback = [l for l in ALL_LABELS if l not in labels] if PIN_FALLBACK else []
         queued = 0.0
-        while remaining:
-            label, outcome = POOL.acquire(user, user_limit, remaining, QUEUE_TIMEOUT, role)
+        while remaining or fallback:
+            label, outcome = POOL.acquire(
+                user, user_limit, remaining, QUEUE_TIMEOUT, role, fallback
+            )
             if label is None:
                 self.report_unavailable(user, requested, outcome, queued)
                 return
@@ -840,7 +986,8 @@ class Handler(BaseHTTPRequestHandler):
                 POOL.release(user, label, role)
                 POOL.set_health(label, False)
                 remaining = [l for l in remaining if l != label]
-                if remaining:
+                fallback = [l for l in fallback if l != label]
+                if remaining or fallback:
                     log(
                         "user=%s model=%s node=%s unreachable (%s), retrying"
                         % (user, requested, label, error.__class__.__name__)
@@ -1018,6 +1165,11 @@ def main():
     )
     publisher.start()
 
+    if SLURM_SSH:
+        threading.Thread(
+            target=slurm_loop, args=(POOL, stop), name="slurm", daemon=True
+        ).start()
+
     ThreadingHTTPServer.allow_reuse_address = True
     ThreadingHTTPServer.daemon_threads = True
     try:
@@ -1028,8 +1180,9 @@ def main():
     socket.setdefaulttimeout(None)
 
     log(
-        "listening on %s:%d  model=%s  nodes=%s  max_inflight=%d"
-        % (BIND, PORT, MODEL, ",".join(ALL_LABELS), MAX_INFLIGHT)
+        "listening on %s:%d  model=%s  nodes=%s  max_inflight=%d  drain=%s"
+        % (BIND, PORT, MODEL, ",".join(ALL_LABELS), MAX_INFLIGHT,
+           ("%ds via %s" % (DRAIN_SECONDS, SLURM_SSH)) if SLURM_SSH else "off")
     )
     try:
         server.serve_forever(poll_interval=0.5)

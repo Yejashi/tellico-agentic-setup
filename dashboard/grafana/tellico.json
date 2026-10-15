@@ -113,8 +113,8 @@
   {
    "id": 3,
    "type": "stat",
-   "title": "Slurm job: time left",
-   "description": "Remaining walltime of the service job. At zero the service stops.",
+   "title": "Next handover in",
+   "description": "Walltime left on the service job that ends soonest. Each node runs its own job and queues its successor, so at zero that node restarts (under a minute) while the other serves; the gateway stops sending it new requests 10 minutes before.",
    "gridPos": {
     "x": 3,
     "y": 1,
@@ -133,8 +133,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT ts AS time, \"left\" AS \"time left\" FROM job WHERE ts > CAST(strftime('%s', 'now') AS INTEGER) - 3600 AND \"left\" IS NOT NULL ORDER BY ts",
-     "rawQueryText": "SELECT ts AS time, \"left\" AS \"time left\" FROM job WHERE ts > CAST(strftime('%s', 'now') AS INTEGER) - 3600 AND \"left\" IS NOT NULL ORDER BY ts",
+     "queryText": "SELECT ts AS time, MIN(\"left\") AS \"next handover\" FROM job WHERE ts > CAST(strftime('%s', 'now') AS INTEGER) - 3600 AND state = 'RUNNING' AND \"left\" IS NOT NULL GROUP BY ts ORDER BY ts",
+     "rawQueryText": "SELECT ts AS time, MIN(\"left\") AS \"next handover\" FROM job WHERE ts > CAST(strftime('%s', 'now') AS INTEGER) - 3600 AND state = 'RUNNING' AND \"left\" IS NOT NULL GROUP BY ts ORDER BY ts",
      "timeColumns": [
       "time"
      ]
@@ -162,16 +162,8 @@
       "mode": "absolute",
       "steps": [
        {
-        "color": "#f2495c",
-        "value": null
-       },
-       {
-        "color": "#ff9830",
-        "value": 3600
-       },
-       {
         "color": "#73bf69",
-        "value": 14400
+        "value": null
        }
       ]
      },

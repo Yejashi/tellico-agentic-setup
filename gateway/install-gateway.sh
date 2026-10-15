@@ -146,6 +146,20 @@ TELLICO_GATEWAY_REQUEST_TIMEOUT="${TELLICO_GATEWAY_REQUEST_TIMEOUT:-3600}"
 # and bursts do not reach readers as stop-and-go text. 0 turns it off.
 TELLICO_GATEWAY_SMOOTH_MS="${TELLICO_GATEWAY_SMOOTH_MS:-1000}"
 
+# Rolling service. A node's job ending, or its server restarting, should cost
+# nobody a request: pinned requests use the other node while theirs is down
+# (PIN_FALLBACK), and with no node up a request waits OUTAGE_WAIT seconds for
+# one. The gateway asks Slurm over ssh (SLURM_SSH) how long each node's job has
+# left and sends it no new request in its last DRAIN_SECONDS. An empty
+# SLURM_SSH turns draining off.
+TELLICO_GATEWAY_PIN_FALLBACK="${TELLICO_GATEWAY_PIN_FALLBACK:-1}"
+TELLICO_GATEWAY_OUTAGE_WAIT="${TELLICO_GATEWAY_OUTAGE_WAIT:-90}"
+TELLICO_GATEWAY_SLURM_SSH="${TELLICO_GATEWAY_SLURM_SSH-${TELLICO_SSH_HOST:-tellico}}"
+TELLICO_GATEWAY_SLURM_USER="${TELLICO_GATEWAY_SLURM_USER:-${TELLICO_SERVICE_USER:-bbogale}}"
+TELLICO_GATEWAY_SLURM_JOB="${TELLICO_GATEWAY_SLURM_JOB:-${TELLICO_JOB_NAME:-qwen38-api}}"
+TELLICO_GATEWAY_NODE_HOSTS="${TELLICO_GATEWAY_NODE_HOSTS:-node0=tellico-compute0 node1=tellico-compute1}"
+TELLICO_GATEWAY_DRAIN_SECONDS="${TELLICO_GATEWAY_DRAIN_SECONDS:-600}"
+
 TELLICO_GATEWAY_MODEL="$model"
 # Old model ids that still route to the current one, so clients configured
 # before a model swap keep working.

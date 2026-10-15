@@ -117,10 +117,14 @@ stat("Nodes up", (0, 1, 3, 4),
      "SELECT COUNT(DISTINCT node) AS \"nodes up\" FROM samples WHERE up = 1 AND ts > %s - 60" % NOW,
      description="Nodes whose llama.cpp server answered in the last minute.", graph=False,
      thresholds=[{"color": RED, "value": None}, {"color": ORANGE, "value": 1}, {"color": GREEN, "value": 2}])
-stat("Slurm job: time left", (3, 1, 4, 4),
-     "SELECT ts AS time, \"left\" AS \"time left\" FROM job WHERE %s AND \"left\" IS NOT NULL ORDER BY ts" % RECENT,
-     unit="dtdurations", description="Remaining walltime of the service job. At zero the service stops.",
-     thresholds=[{"color": RED, "value": None}, {"color": ORANGE, "value": 3600}, {"color": GREEN, "value": 4 * 3600}])
+stat("Next handover in", (3, 1, 4, 4),
+     "SELECT ts AS time, MIN(\"left\") AS \"next handover\" FROM job WHERE %s AND state = 'RUNNING' "
+     "AND \"left\" IS NOT NULL GROUP BY ts ORDER BY ts" % RECENT,
+     unit="dtdurations",
+     description="Walltime left on the service job that ends soonest. Each node runs its own job and "
+                 "queues its successor, so at zero that node restarts (under a minute) while the "
+                 "other serves; the gateway stops sending it new requests 10 minutes before.",
+     thresholds=[{"color": GREEN, "value": None}])
 stat("Busy slots", (7, 1, 4, 4),
      "SELECT ts AS time, SUM(busy) AS \"busy of 4\" FROM samples WHERE %s GROUP BY ts ORDER BY ts" % RECENT,
      description="Slots generating or reading a prompt, both nodes together (4 in all).",

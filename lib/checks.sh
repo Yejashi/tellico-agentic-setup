@@ -477,11 +477,13 @@ tellico_check_allocation() {
   # squeue and an authenticated /v1/models probe are both available to any
   # account on the cluster, unlike the service owner's qwen38-* helpers, which
   # live in a home directory no other user can traverse.
+  # The rolling service has a job per node and queued successors; the state
+  # sorts last alphabetically, so RUNNING wins over PENDING.
   tellico_alloc=$(ssh -o BatchMode=yes \
     -o ConnectTimeout="$TELLICO_CONNECT_TIMEOUT" "$ssh_host" "
       printf 'user %s\n' \"\$(id -un)\"
       printf 'state %s\n' \"\$(squeue -h -u '$TELLICO_SERVICE_USER' \
-        -n '$TELLICO_JOB_NAME' -o '%T' 2>/dev/null | head -n 1)\"
+        -n '$TELLICO_JOB_NAME' -o '%T' 2>/dev/null | sort | tail -n 1)\"
       for tellico_node in $TELLICO_COMPUTE_NODES; do
         if curl -fsS --max-time 5 \
           -H \"Authorization: Bearer \$(cat '$TELLICO_REMOTE_KEY_PATH')\" \

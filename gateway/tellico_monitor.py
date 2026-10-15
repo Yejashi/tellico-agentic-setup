@@ -213,7 +213,9 @@ def read_allocation(config, every=60.0):
                 [
                     "ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8",
                     config.ssh_host,
-                    "squeue -h -u %s -n %s -o '%%i %%L %%T'"
+                    # Rolling service: a job per node plus queued
+                    # successors; show the running one that ends soonest.
+                    "squeue -h -t RUNNING --sort=L -u %s -n %s -o '%%i %%L %%T'"
                     % (config.service_user, config.job_name),
                 ],
                 capture_output=True, text=True, timeout=20, check=False,
