@@ -19,15 +19,19 @@ unit_name=tellico-dashboard.service
 
 start=1
 want_port=''
+want_db=''
 
 usage() {
-  echo 'usage: dashboard/install-dashboard.sh [--port PORT] [--no-start]' >&2
+  echo 'usage: dashboard/install-dashboard.sh [--port PORT] [--db PATH] [--no-start]' >&2
+  echo '  --db PATH  keep the database outside the private config directory, group' >&2
+  echo '             read-write, e.g. for Grafana (dashboard/grafana/README.md)' >&2
   exit 2
 }
 
 while [ $# -gt 0 ]; do
   case $1 in
     --port) want_port=${2:?--port needs a value}; shift 2 ;;
+    --db) want_db=${2:?--db needs a path}; shift 2 ;;
     --no-start) start=0; shift ;;
     -h|--help) usage ;;
     *) echo "install-dashboard.sh: unknown option $1" >&2; usage ;;
@@ -47,6 +51,10 @@ if [ -r "$env_file" ]; then
   . "$env_file"
 fi
 port=${want_port:-${TELLICO_DASHBOARD_PORT:-4101}}
+db=${want_db:-${TELLICO_DASHBOARD_DB:-"$config_dir/dashboard.db"}}
+# Anywhere but the private default is shared (group read-write).
+shared=0
+[ "$db" = "$config_dir/dashboard.db" ] || shared=1
 case $port in ''|*[!0-9]*) fail "--port must be a number, got '$port'" ;; esac
 
 umask 022
@@ -69,6 +77,8 @@ cat >"$env_file" <<EOF
 TELLICO_DASHBOARD_BIND="127.0.0.1"
 TELLICO_DASHBOARD_PORT="$port"
 TELLICO_DASHBOARD_STATE_DIR="$config_dir"
+TELLICO_DASHBOARD_DB="$db"
+TELLICO_DASHBOARD_SHARED="$shared"
 TELLICO_DASHBOARD_WEB="$lib_dir/web"
 TELLICO_DASHBOARD_SCRIPT="$lib_dir/tellico_dashboard.py"
 EOF

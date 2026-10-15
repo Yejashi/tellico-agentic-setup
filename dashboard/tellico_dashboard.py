@@ -914,8 +914,13 @@ def main():
         return
     config = Config()
     os.makedirs(config.state_dir, mode=0o700, exist_ok=True)
+    # A shared database (TELLICO_DASHBOARD_SHARED=1, for Grafana) is group
+    # read-write: SQLite readers of a WAL database must write its -shm file.
+    # Its directory's group and setgid bit decide who that group is.
+    shared = os.environ.get("TELLICO_DASHBOARD_SHARED") == "1"
+    os.umask(0o007 if shared else 0o077)
     db = connect(config.db_path)
-    os.chmod(config.db_path, 0o600)
+    os.chmod(config.db_path, 0o660 if shared else 0o600)
     collector = Collector(config, db)
     app = Dashboard(config, collector)
     if config.bind not in ("127.0.0.1", "::1", "localhost"):
