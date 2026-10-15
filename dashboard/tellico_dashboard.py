@@ -148,6 +148,8 @@ CREATE TABLE IF NOT EXISTS requests (
 CREATE INDEX IF NOT EXISTS requests_ts ON requests(ts);
 CREATE TABLE IF NOT EXISTS rejections (ts REAL NOT NULL, user TEXT, why TEXT);
 CREATE INDEX IF NOT EXISTS rejections_ts ON rejections(ts);
+CREATE TABLE IF NOT EXISTS job (ts REAL NOT NULL, id TEXT, state TEXT, left INTEGER, lim INTEGER);
+CREATE INDEX IF NOT EXISTS job_ts ON job(ts);
 CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT);
 """
 
@@ -237,7 +239,7 @@ def prune(db, path, now=None):
     """Drop history past RETENTION_DAYS, then the oldest days until under the cap."""
     now = now or time.time()
     cutoff = now - RETENTION_DAYS * 86400
-    for table in ("samples", "gateway", "requests", "rejections"):
+    for table in ("samples", "gateway", "requests", "rejections", "job"):
         db.execute("DELETE FROM %s WHERE ts < ?" % table, (cutoff,))
     db.commit()
     try:
@@ -246,7 +248,7 @@ def prune(db, path, now=None):
         return
     while size > MAX_DB_BYTES and cutoff < now - 86400:
         cutoff += 86400
-        for table in ("samples", "gateway", "requests", "rejections"):
+        for table in ("samples", "gateway", "requests", "rejections", "job"):
             db.execute("DELETE FROM %s WHERE ts < ?" % table, (cutoff,))
         db.commit()
         db.execute("VACUUM")
@@ -525,6 +527,11 @@ class Collector:
         except (OSError, subprocess.SubprocessError):
             job = None
         self.job = job
+        if job:
+            with self.db_lock:
+                self.db.execute("INSERT INTO job VALUES (?,?,?,?,?)", (
+                    job["checked"], job.get("id"), job.get("state"), job.get("left"), job.get("limit")))
+                self.db.commit()
 
     def run(self, stop):
         last_sample = last_journal = last_prune = 0.0
@@ -642,7 +649,7 @@ def usage(db, name, now=None):
             "user": user, "requests": 0, "errors": 0, "rejected": 0, "leads": 0, "workers": 0,
             "prompt": 0, "completion": 0, "cache": 0, "gms": 0, "pms": 0, "read": 0,
             "draft": 0, "acc": 0, "gone": 0, "durs": [], "queues": [], "ttfts": [], "nodes": {},
-            "metered": 0})
+            "metered": 0, "timedOut": 0, "cachedPrompt": 0})
         u["requests"] += 1
         u["errors"] += 1 if status >= 400 else 0
         u["leads"] += 1 if role == "lead" else 0
@@ -658,7 +665,12 @@ def usage(db, name, now=None):
             u["cache"] += cache or 0
             u["read"] += max(0, prompt - (cache or 0))
         if gms:
+            # Older lines carry token counts but no timings; a speed
+            # counts only requests that have both.
             u["gms"] += gms
+            u["timedOut"] += completion or 0
+        if cache is not None and prompt is not None:
+            u["cachedPrompt"] += prompt
         if pms is not None:
             u["pms"] += pms
             if stream:
@@ -677,9 +689,9 @@ def usage(db, name, now=None):
             durP50=percentile(durs, 0.5), durP95=percentile(durs, 0.95),
             queueAvg=(sum(queues) / len(queues)) if queues else None, queueMax=max(queues) if queues else None,
             ttftP50=percentile(ttfts, 0.5), ttftP95=percentile(ttfts, 0.95),
-            genSpeed=_ratio(u.get("completion"), (u.get("gms") or 0) / 1000.0) if u.get("gms") else None,
+            genSpeed=_ratio(u.get("timedOut"), (u.get("gms") or 0) / 1000.0) if u.get("gms") else None,
             promptSpeed=_ratio(u.get("read"), (u.get("pms") or 0) / 1000.0) if u.get("pms") else None,
-            cacheHit=_ratio(u.get("cache"), u.get("prompt")),
+            cacheHit=_ratio(u.get("cache"), u.get("cachedPrompt")),
             accept=_ratio(u.get("acc"), u.get("draft")),
         )
         users.append(u)

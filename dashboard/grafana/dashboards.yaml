@@ -1,0 +1,10 @@
+# Grafana provisioning: load tellico.json, and keep it as the file says.
+apiVersion: 1
+providers:
+  - name: tellico
+    folder: Tellico
+    type: file
+    allowUiUpdates: false
+    updateIntervalSeconds: 60
+    options:
+      path: /var/lib/grafana/dashboards/tellico

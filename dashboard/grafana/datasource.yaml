@@ -1,0 +1,10 @@
+# Grafana provisioning: the dashboard's SQLite history as a data source.
+apiVersion: 1
+datasources:
+  - name: Tellico history
+    uid: tellico-sqlite
+    type: frser-sqlite-datasource
+    isDefault: true
+    editable: false
+    jsonData:
+      path: /var/lib/tellico-dashboard/dashboard.db

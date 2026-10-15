@@ -1,0 +1,2693 @@
+{
+ "uid": "tellico",
+ "title": "Tellico",
+ "description": "State and use of the Tellico models: nodes, slots, gateway, users and requests.",
+ "tags": [
+  "tellico",
+  "llm"
+ ],
+ "timezone": "browser",
+ "editable": true,
+ "graphTooltip": 1,
+ "refresh": "30s",
+ "time": {
+  "from": "now-24h",
+  "to": "now"
+ },
+ "timepicker": {
+  "refresh_intervals": [
+   "10s",
+   "30s",
+   "1m",
+   "5m",
+   "15m"
+  ]
+ },
+ "schemaVersion": 39,
+ "version": 1,
+ "panels": [
+  {
+   "id": 1,
+   "type": "row",
+   "title": "Right now",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 0,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "id": 2,
+   "type": "stat",
+   "title": "Nodes up",
+   "description": "Nodes whose llama.cpp server answered in the last minute.",
+   "gridPos": {
+    "x": 0,
+    "y": 1,
+    "w": 3,
+    "h": 4
+   },
+   "datasource": {
+    "type": "frser-sqlite-datasource",
+    "uid": "tellico-sqlite"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "frser-sqlite-datasource",
+      "uid": "tellico-sqlite"
+     },
+     "queryType": "table",
+     "queryText": "SELECT COUNT(DISTINCT node) AS \"nodes up\" FROM samples WHERE up = 1 AND ts > CAST(strftime('%s', 'now') AS INTEGER) - 60",
+     "rawQueryText": "SELECT COUNT(DISTINCT node) AS \"nodes up\" FROM samples WHERE up = 1 AND ts > CAST(strftime('%s', 'now') AS INTEGER) - 60",
+     "timeColumns": [
+      "time"
+     ]
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "justifyMode": "center",
+    "textMode": "value_and_name",
+    "wideLayout": true
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {},
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#f2495c",
+        "value": null
+       },
+       {
+        "color": "#ff9830",
+        "value": 1
+       },
+       {
+        "color": "#73bf69",
+        "value": 2
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 3,
+   "type": "stat",
+   "title": "Slurm job: time left",
+   "description": "Remaining walltime of the service job. At zero the service stops.",
+   "gridPos": {
+    "x": 3,
+    "y": 1,
+    "w": 4,
+    "h": 4
+   },
+   "datasource": {
+    "type": "frser-sqlite-datasource",
+    "uid": "tellico-sqlite"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "frser-sqlite-datasource",
+      "uid": "tellico-sqlite"
+     },
+     "queryType": "table",
+     "queryText": "SELECT ts AS time, \"left\" AS \"time left\" FROM job WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() AND \"left\" IS NOT NULL ORDER BY ts",
+     "rawQueryText": "SELECT ts AS time, \"left\" AS \"time left\" FROM job WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() AND \"left\" IS NOT NULL ORDER BY ts",
+     "timeColumns": [
+      "time"
+     ]
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "area",
+    "justifyMode": "center",
+    "textMode": "value_and_name",
+    "wideLayout": true
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {},
+     "unit": "dtdurations",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#f2495c",
+        "value": null
+       },
+       {
+        "color": "#ff9830",
+        "value": 3600
+       },
+       {
+        "color": "#73bf69",
+        "value": 14400
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 4,
+   "type": "stat",
+   "title": "Busy slots",
+   "description": "Slots generating or reading a prompt, both nodes together (4 in all).",
+   "gridPos": {
+    "x": 7,
+    "y": 1,
+    "w": 4,
+    "h": 4
+   },
+   "datasource": {
+    "type": "frser-sqlite-datasource",
+    "uid": "tellico-sqlite"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "frser-sqlite-datasource",
+      "uid": "tellico-sqlite"
+     },
+     "queryType": "table",
+     "queryText": "SELECT ts AS time, SUM(busy) AS \"busy of 4\" FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY ts ORDER BY ts",
+     "rawQueryText": "SELECT ts AS time, SUM(busy) AS \"busy of 4\" FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY ts ORDER BY ts",
+     "timeColumns": [
+      "time"
+     ]
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "area",
+    "justifyMode": "center",
+    "textMode": "value_and_name",
+    "wideLayout": true
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {},
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#73bf69",
+        "value": null
+       },
+       {
+        "color": "#ff9830",
+        "value": 3
+       },
+       {
+        "color": "#f2495c",
+        "value": 4
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 5,
+   "type": "stat",
+   "title": "Context held",
+   "description": "Tokens held in the slots' KV caches, both nodes (each slot holds up to 131,072).",
+   "gridPos": {
+    "x": 11,
+    "y": 1,
+    "w": 5,
+    "h": 4
+   },
+   "datasource": {
+    "type": "frser-sqlite-datasource",
+    "uid": "tellico-sqlite"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "frser-sqlite-datasource",
+      "uid": "tellico-sqlite"
+     },
+     "queryType": "table",
+     "queryText": "SELECT ts AS time, SUM(used) AS tokens FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY ts ORDER BY ts",
+     "rawQueryText": "SELECT ts AS time, SUM(used) AS tokens FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY ts ORDER BY ts",
+     "timeColumns": [
+      "time"
+     ]
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "area",
+    "justifyMode": "center",
+    "textMode": "value_and_name",
+    "wideLayout": true
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {},
+     "unit": "short",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#8ab8ff",
+        "value": null
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 6,
+   "type": "stat",
+   "title": "Gateway in flight",
+   "description": "Requests the gateway is running now (its cap is 3 of the 4 slots).",
+   "gridPos": {
+    "x": 16,
+    "y": 1,
+    "w": 4,
+    "h": 4
+   },
+   "datasource": {
+    "type": "frser-sqlite-datasource",
+    "uid": "tellico-sqlite"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "frser-sqlite-datasource",
+      "uid": "tellico-sqlite"
+     },
+     "queryType": "table",
+     "queryText": "SELECT ts AS time, inflight AS \"in flight\" FROM gateway WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() ORDER BY ts",
+     "rawQueryText": "SELECT ts AS time, inflight AS \"in flight\" FROM gateway WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() ORDER BY ts",
+     "timeColumns": [
+      "time"
+     ]
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "area",
+    "justifyMode": "center",
+    "textMode": "value_and_name",
+    "wideLayout": true
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {},
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#8ab8ff",
+        "value": null
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 7,
+   "type": "stat",
+   "title": "Leads waiting",
+   "description": "Lead requests queued at the gateway for a free slot.",
+   "gridPos": {
+    "x": 20,
+    "y": 1,
+    "w": 4,
+    "h": 4
+   },
+   "datasource": {
+    "type": "frser-sqlite-datasource",
+    "uid": "tellico-sqlite"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "frser-sqlite-datasource",
+      "uid": "tellico-sqlite"
+     },
+     "queryType": "table",
+     "queryText": "SELECT ts AS time, waiting AS waiting FROM gateway WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() ORDER BY ts",
+     "rawQueryText": "SELECT ts AS time, waiting AS waiting FROM gateway WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() ORDER BY ts",
+     "timeColumns": [
+      "time"
+     ]
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "area",
+    "justifyMode": "center",
+    "textMode": "value_and_name",
+    "wideLayout": true
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {},
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#73bf69",
+        "value": null
+       },
+       {
+        "color": "#ff9830",
+        "value": 1
+       },
+       {
+        "color": "#f2495c",
+        "value": 3
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 8,
+   "type": "row",
+   "title": "Selected range",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 5,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "id": 9,
+   "type": "stat",
+   "title": "Requests",
+   "description": "Over the time range picked at the top right. Token counts cover gateway requests logged since metering began (2026-10-15).",
+   "gridPos": {
+    "x": 0,
+    "y": 6,
+    "w": 3,
+    "h": 4
+   },
+   "datasource": {
+    "type": "frser-sqlite-datasource",
+    "uid": "tellico-sqlite"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "frser-sqlite-datasource",
+      "uid": "tellico-sqlite"
+     },
+     "queryType": "table",
+     "queryText": "SELECT COUNT(*) AS requests FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo()",
+     "rawQueryText": "SELECT COUNT(*) AS requests FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo()",
+     "timeColumns": [
+      "time"
+     ]
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "justifyMode": "center",
+    "textMode": "value_and_name",
+    "wideLayout": true
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {},
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#8ab8ff",
+        "value": null
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 10,
+   "type": "stat",
+   "title": "Users",
+   "description": "Over the time range picked at the top right. Token counts cover gateway requests logged since metering began (2026-10-15).",
+   "gridPos": {
+    "x": 3,
+    "y": 6,
+    "w": 3,
+    "h": 4
+   },
+   "datasource": {
+    "type": "frser-sqlite-datasource",
+    "uid": "tellico-sqlite"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "frser-sqlite-datasource",
+      "uid": "tellico-sqlite"
+     },
+     "queryType": "table",
+     "queryText": "SELECT COUNT(DISTINCT user) AS users FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo()",
+     "rawQueryText": "SELECT COUNT(DISTINCT user) AS users FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo()",
+     "timeColumns": [
+      "time"
+     ]
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "justifyMode": "center",
+    "textMode": "value_and_name",
+    "wideLayout": true
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {},
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#8ab8ff",
+        "value": null
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 11,
+   "type": "stat",
+   "title": "Tokens generated",
+   "description": "Over the time range picked at the top right. Token counts cover gateway requests logged since metering began (2026-10-15).",
+   "gridPos": {
+    "x": 6,
+    "y": 6,
+    "w": 3,
+    "h": 4
+   },
+   "datasource": {
+    "type": "frser-sqlite-datasource",
+    "uid": "tellico-sqlite"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "frser-sqlite-datasource",
+      "uid": "tellico-sqlite"
+     },
+     "queryType": "table",
+     "queryText": "SELECT SUM(completion) AS tokens FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo()",
+     "rawQueryText": "SELECT SUM(completion) AS tokens FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo()",
+     "timeColumns": [
+      "time"
+     ]
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "justifyMode": "center",
+    "textMode": "value_and_name",
+    "wideLayout": true
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {},
+     "unit": "short",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#8ab8ff",
+        "value": null
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 12,
+   "type": "stat",
+   "title": "Prompt tokens",
+   "description": "Over the time range picked at the top right. Token counts cover gateway requests logged since metering began (2026-10-15).",
+   "gridPos": {
+    "x": 9,
+    "y": 6,
+    "w": 3,
+    "h": 4
+   },
+   "datasource": {
+    "type": "frser-sqlite-datasource",
+    "uid": "tellico-sqlite"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "frser-sqlite-datasource",
+      "uid": "tellico-sqlite"
+     },
+     "queryType": "table",
+     "queryText": "SELECT SUM(prompt) AS tokens FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo()",
+     "rawQueryText": "SELECT SUM(prompt) AS tokens FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo()",
+     "timeColumns": [
+      "time"
+     ]
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "justifyMode": "center",
+    "textMode": "value_and_name",
+    "wideLayout": true
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {},
+     "unit": "short",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#8ab8ff",
+        "value": null
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 13,
+   "type": "stat",
+   "title": "Prompt cache hit",
+   "description": "Over the time range picked at the top right. Token counts cover gateway requests logged since metering began (2026-10-15).",
+   "gridPos": {
+    "x": 12,
+    "y": 6,
+    "w": 3,
+    "h": 4
+   },
+   "datasource": {
+    "type": "frser-sqlite-datasource",
+    "uid": "tellico-sqlite"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "frser-sqlite-datasource",
+      "uid": "tellico-sqlite"
+     },
+     "queryType": "table",
+     "queryText": "SELECT SUM(cache) * 1.0 / NULLIF(SUM(CASE WHEN cache IS NOT NULL THEN prompt END), 0) AS hit FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo()",
+     "rawQueryText": "SELECT SUM(cache) * 1.0 / NULLIF(SUM(CASE WHEN cache IS NOT NULL THEN prompt END), 0) AS hit FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo()",
+     "timeColumns": [
+      "time"
+     ]
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "justifyMode": "center",
+    "textMode": "value_and_name",
+    "wideLayout": true
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {},
+     "unit": "percentunit",
+     "decimals": 0,
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#8ab8ff",
+        "value": null
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 14,
+   "type": "stat",
+   "title": "Generation speed",
+   "description": "Over the time range picked at the top right. Token counts cover gateway requests logged since metering began (2026-10-15).",
+   "gridPos": {
+    "x": 15,
+    "y": 6,
+    "w": 3,
+    "h": 4
+   },
+   "datasource": {
+    "type": "frser-sqlite-datasource",
+    "uid": "tellico-sqlite"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "frser-sqlite-datasource",
+      "uid": "tellico-sqlite"
+     },
+     "queryType": "table",
+     "queryText": "SELECT SUM(CASE WHEN gms > 0 THEN completion END) * 1000.0 / NULLIF(SUM(CASE WHEN gms > 0 THEN gms END), 0) AS \"tok/s\" FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo()",
+     "rawQueryText": "SELECT SUM(CASE WHEN gms > 0 THEN completion END) * 1000.0 / NULLIF(SUM(CASE WHEN gms > 0 THEN gms END), 0) AS \"tok/s\" FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo()",
+     "timeColumns": [
+      "time"
+     ]
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "justifyMode": "center",
+    "textMode": "value_and_name",
+    "wideLayout": true
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {},
+     "unit": "short",
+     "decimals": 1,
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#8ab8ff",
+        "value": null
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 15,
+   "type": "stat",
+   "title": "Avg time to first token",
+   "description": "Over the time range picked at the top right. Token counts cover gateway requests logged since metering began (2026-10-15).",
+   "gridPos": {
+    "x": 18,
+    "y": 6,
+    "w": 3,
+    "h": 4
+   },
+   "datasource": {
+    "type": "frser-sqlite-datasource",
+    "uid": "tellico-sqlite"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "frser-sqlite-datasource",
+      "uid": "tellico-sqlite"
+     },
+     "queryType": "table",
+     "queryText": "SELECT AVG(queued + pms / 1000.0) AS ttft FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() AND stream = 1 AND pms IS NOT NULL",
+     "rawQueryText": "SELECT AVG(queued + pms / 1000.0) AS ttft FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() AND stream = 1 AND pms IS NOT NULL",
+     "timeColumns": [
+      "time"
+     ]
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "justifyMode": "center",
+    "textMode": "value_and_name",
+    "wideLayout": true
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {},
+     "unit": "s",
+     "decimals": 1,
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#8ab8ff",
+        "value": null
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 16,
+   "type": "stat",
+   "title": "Errors + rejections",
+   "description": "Over the time range picked at the top right. Token counts cover gateway requests logged since metering began (2026-10-15).",
+   "gridPos": {
+    "x": 21,
+    "y": 6,
+    "w": 3,
+    "h": 4
+   },
+   "datasource": {
+    "type": "frser-sqlite-datasource",
+    "uid": "tellico-sqlite"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "frser-sqlite-datasource",
+      "uid": "tellico-sqlite"
+     },
+     "queryType": "table",
+     "queryText": "SELECT (SELECT COUNT(*) FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() AND status >= 400) + (SELECT COUNT(*) FROM rejections WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo()) AS failed",
+     "rawQueryText": "SELECT (SELECT COUNT(*) FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() AND status >= 400) + (SELECT COUNT(*) FROM rejections WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo()) AS failed",
+     "timeColumns": [
+      "time"
+     ]
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "justifyMode": "center",
+    "textMode": "value_and_name",
+    "wideLayout": true
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {},
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#73bf69",
+        "value": null
+       },
+       {
+        "color": "#f2495c",
+        "value": 1
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 17,
+   "type": "row",
+   "title": "Throughput",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 10,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "id": 18,
+   "type": "timeseries",
+   "title": "Generation throughput (tokens/s, all slots)",
+   "description": "Tokens each node generated per second of wall time: what it delivered, all slots together.",
+   "gridPos": {
+    "x": 0,
+    "y": 11,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "frser-sqlite-datasource",
+    "uid": "tellico-sqlite"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "frser-sqlite-datasource",
+      "uid": "tellico-sqlite"
+     },
+     "queryType": "table",
+     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(CASE WHEN node = 'node0' THEN d_gen END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node0' THEN secs END), 0) AS node0, SUM(CASE WHEN node = 'node1' THEN d_gen END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node1' THEN secs END), 0) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(CASE WHEN node = 'node0' THEN d_gen END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node0' THEN secs END), 0) AS node0, SUM(CASE WHEN node = 'node1' THEN d_gen END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node1' THEN secs END), 0) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "timeColumns": [
+      "time"
+     ]
+    }
+   ],
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 18,
+      "gradientMode": "opacity",
+      "showPoints": "never",
+      "spanNulls": 60000,
+      "lineInterpolation": "smooth",
+      "axisSoftMin": 0
+     },
+     "unit": "short",
+     "color": {
+      "mode": "palette-classic"
+     }
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 19,
+   "type": "timeseries",
+   "title": "Prompt processing (tokens/s)",
+   "description": "Prompt tokens each node actually read per second of wall time (cache hits excluded).",
+   "gridPos": {
+    "x": 12,
+    "y": 11,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "frser-sqlite-datasource",
+    "uid": "tellico-sqlite"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "frser-sqlite-datasource",
+      "uid": "tellico-sqlite"
+     },
+     "queryType": "table",
+     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(CASE WHEN node = 'node0' THEN d_prompt END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node0' THEN secs END), 0) AS node0, SUM(CASE WHEN node = 'node1' THEN d_prompt END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node1' THEN secs END), 0) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(CASE WHEN node = 'node0' THEN d_prompt END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node0' THEN secs END), 0) AS node0, SUM(CASE WHEN node = 'node1' THEN d_prompt END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node1' THEN secs END), 0) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "timeColumns": [
+      "time"
+     ]
+    }
+   ],
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 18,
+      "gradientMode": "opacity",
+      "showPoints": "never",
+      "spanNulls": 60000,
+      "lineInterpolation": "smooth",
+      "axisSoftMin": 0
+     },
+     "unit": "short",
+     "color": {
+      "mode": "palette-classic"
+     }
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 20,
+   "type": "timeseries",
+   "title": "Generation speed while working (tokens/s)",
+   "description": "Generated tokens per second of generation time: the speed one reader sees.",
+   "gridPos": {
+    "x": 0,
+    "y": 19,
+    "w": 8,
+    "h": 8
+   },
+   "datasource": {
+    "type": "frser-sqlite-datasource",
+    "uid": "tellico-sqlite"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "frser-sqlite-datasource",
+      "uid": "tellico-sqlite"
+     },
+     "queryType": "table",
+     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(CASE WHEN node = 'node0' THEN d_gen END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node0' THEN d_gen_s END), 0) AS node0, SUM(CASE WHEN node = 'node1' THEN d_gen END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node1' THEN d_gen_s END), 0) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(CASE WHEN node = 'node0' THEN d_gen END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node0' THEN d_gen_s END), 0) AS node0, SUM(CASE WHEN node = 'node1' THEN d_gen END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node1' THEN d_gen_s END), 0) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "timeColumns": [
+      "time"
+     ]
+    }
+   ],
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 18,
+      "gradientMode": "opacity",
+      "showPoints": "never",
+      "spanNulls": 60000,
+      "lineInterpolation": "smooth",
+      "axisSoftMin": 0
+     },
+     "unit": "short",
+     "color": {
+      "mode": "palette-classic"
+     }
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 21,
+   "type": "timeseries",
+   "title": "Prompt read speed while working (tokens/s)",
+   "description": "Prompt tokens per second of prompt-processing time.",
+   "gridPos": {
+    "x": 8,
+    "y": 19,
+    "w": 8,
+    "h": 8
+   },
+   "datasource": {
+    "type": "frser-sqlite-datasource",
+    "uid": "tellico-sqlite"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "frser-sqlite-datasource",
+      "uid": "tellico-sqlite"
+     },
+     "queryType": "table",
+     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(CASE WHEN node = 'node0' THEN d_prompt END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node0' THEN d_prompt_s END), 0) AS node0, SUM(CASE WHEN node = 'node1' THEN d_prompt END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node1' THEN d_prompt_s END), 0) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(CASE WHEN node = 'node0' THEN d_prompt END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node0' THEN d_prompt_s END), 0) AS node0, SUM(CASE WHEN node = 'node1' THEN d_prompt END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node1' THEN d_prompt_s END), 0) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "timeColumns": [
+      "time"
+     ]
+    }
+   ],
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 18,
+      "gradientMode": "opacity",
+      "showPoints": "never",
+      "spanNulls": 60000,
+      "lineInterpolation": "smooth",
+      "axisSoftMin": 0
+     },
+     "unit": "short",
+     "color": {
+      "mode": "palette-classic"
+     }
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 22,
+   "type": "timeseries",
+   "title": "Speculative draft acceptance",
+   "description": "Share of DFlash draft tokens the model accepted. Higher means faster generation.",
+   "gridPos": {
+    "x": 16,
+    "y": 19,
+    "w": 8,
+    "h": 8
+   },
+   "datasource": {
+    "type": "frser-sqlite-datasource",
+    "uid": "tellico-sqlite"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "frser-sqlite-datasource",
+      "uid": "tellico-sqlite"
+     },
+     "queryType": "table",
+     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(CASE WHEN node = 'node0' THEN d_acc END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node0' THEN d_draft END), 0) AS node0, SUM(CASE WHEN node = 'node1' THEN d_acc END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node1' THEN d_draft END), 0) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(CASE WHEN node = 'node0' THEN d_acc END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node0' THEN d_draft END), 0) AS node0, SUM(CASE WHEN node = 'node1' THEN d_acc END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node1' THEN d_draft END), 0) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "timeColumns": [
+      "time"
+     ]
+    }
+   ],
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 18,
+      "gradientMode": "opacity",
+      "showPoints": "never",
+      "spanNulls": 60000,
+      "lineInterpolation": "smooth",
+      "axisSoftMin": 0
+     },
+     "unit": "percentunit",
+     "min": 0,
+     "max": 1,
+     "color": {
+      "mode": "palette-classic"
+     }
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 23,
+   "type": "row",
+   "title": "Capacity",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 27,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "id": 24,
+   "type": "timeseries",
+   "title": "Busy slots",
+   "description": "Average busy slots per node (2 per node).",
+   "gridPos": {
+    "x": 0,
+    "y": 28,
+    "w": 8,
+    "h": 8
+   },
+   "datasource": {
+    "type": "frser-sqlite-datasource",
+    "uid": "tellico-sqlite"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "frser-sqlite-datasource",
+      "uid": "tellico-sqlite"
+     },
+     "queryType": "table",
+     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, AVG(CASE WHEN node = 'node0' THEN busy END) AS node0, AVG(CASE WHEN node = 'node1' THEN busy END) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, AVG(CASE WHEN node = 'node0' THEN busy END) AS node0, AVG(CASE WHEN node = 'node1' THEN busy END) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "timeColumns": [
+      "time"
+     ]
+    }
+   ],
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 18,
+      "gradientMode": "opacity",
+      "showPoints": "never",
+      "spanNulls": 60000,
+      "lineInterpolation": "smooth",
+      "axisSoftMin": 0
+     },
+     "unit": "short",
+     "min": 0,
+     "max": 2,
+     "color": {
+      "mode": "palette-classic"
+     }
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 25,
+   "type": "timeseries",
+   "title": "Context held in KV cache (tokens)",
+   "description": "Tokens in each node's slots. A slot holds up to 131,072.",
+   "gridPos": {
+    "x": 8,
+    "y": 28,
+    "w": 8,
+    "h": 8
+   },
+   "datasource": {
+    "type": "frser-sqlite-datasource",
+    "uid": "tellico-sqlite"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "frser-sqlite-datasource",
+      "uid": "tellico-sqlite"
+     },
+     "queryType": "table",
+     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, AVG(CASE WHEN node = 'node0' THEN used END) AS node0, AVG(CASE WHEN node = 'node1' THEN used END) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, AVG(CASE WHEN node = 'node0' THEN used END) AS node0, AVG(CASE WHEN node = 'node1' THEN used END) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "timeColumns": [
+      "time"
+     ]
+    }
+   ],
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 18,
+      "gradientMode": "opacity",
+      "showPoints": "never",
+      "spanNulls": 60000,
+      "lineInterpolation": "smooth",
+      "axisSoftMin": 0
+     },
+     "unit": "short",
+     "color": {
+      "mode": "palette-classic"
+     }
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 26,
+   "type": "timeseries",
+   "title": "Prompt cache hit rate",
+   "description": "Share of prompt tokens reused from a slot's cache instead of being read again.",
+   "gridPos": {
+    "x": 16,
+    "y": 28,
+    "w": 8,
+    "h": 8
+   },
+   "datasource": {
+    "type": "frser-sqlite-datasource",
+    "uid": "tellico-sqlite"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "frser-sqlite-datasource",
+      "uid": "tellico-sqlite"
+     },
+     "queryType": "table",
+     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(CASE WHEN node = 'node0' THEN d_cached END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node0' THEN (d_cached + d_prompt) END), 0) AS node0, SUM(CASE WHEN node = 'node1' THEN d_cached END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node1' THEN (d_cached + d_prompt) END), 0) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(CASE WHEN node = 'node0' THEN d_cached END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node0' THEN (d_cached + d_prompt) END), 0) AS node0, SUM(CASE WHEN node = 'node1' THEN d_cached END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node1' THEN (d_cached + d_prompt) END), 0) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "timeColumns": [
+      "time"
+     ]
+    }
+   ],
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 18,
+      "gradientMode": "opacity",
+      "showPoints": "never",
+      "spanNulls": 60000,
+      "lineInterpolation": "smooth",
+      "axisSoftMin": 0
+     },
+     "unit": "percentunit",
+     "min": 0,
+     "max": 1,
+     "color": {
+      "mode": "palette-classic"
+     }
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 27,
+   "type": "timeseries",
+   "title": "Gateway concurrency",
+   "description": "Requests the gateway is running, how many are workers, and leads queued for a slot.",
+   "gridPos": {
+    "x": 0,
+    "y": 36,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "frser-sqlite-datasource",
+    "uid": "tellico-sqlite"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "frser-sqlite-datasource",
+      "uid": "tellico-sqlite"
+     },
+     "queryType": "table",
+     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, AVG(inflight) AS \"in flight\", AVG(workers) AS workers, MAX(waiting) AS \"leads waiting\", MAX(max) AS cap FROM gateway WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, AVG(inflight) AS \"in flight\", AVG(workers) AS workers, MAX(waiting) AS \"leads waiting\", MAX(max) AS cap FROM gateway WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "timeColumns": [
+      "time"
+     ]
+    }
+   ],
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 18,
+      "gradientMode": "opacity",
+      "showPoints": "never",
+      "spanNulls": 60000,
+      "lineInterpolation": "smooth",
+      "axisSoftMin": 0
+     },
+     "unit": "short",
+     "color": {
+      "mode": "palette-classic"
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "cap"
+      },
+      "properties": [
+       {
+        "id": "custom.lineStyle",
+        "value": {
+         "fill": "dash",
+         "dash": [
+          8,
+          6
+         ]
+        }
+       },
+       {
+        "id": "custom.fillOpacity",
+        "value": 0
+       },
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#808080"
+        }
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": 28,
+   "type": "timeseries",
+   "title": "Node availability",
+   "description": "Share of samples in which each node's server answered.",
+   "gridPos": {
+    "x": 12,
+    "y": 36,
+    "w": 6,
+    "h": 8
+   },
+   "datasource": {
+    "type": "frser-sqlite-datasource",
+    "uid": "tellico-sqlite"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "frser-sqlite-datasource",
+      "uid": "tellico-sqlite"
+     },
+     "queryType": "table",
+     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, AVG(CASE WHEN node = 'node0' THEN up END) AS node0, AVG(CASE WHEN node = 'node1' THEN up END) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, AVG(CASE WHEN node = 'node0' THEN up END) AS node0, AVG(CASE WHEN node = 'node1' THEN up END) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "timeColumns": [
+      "time"
+     ]
+    }
+   ],
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 18,
+      "gradientMode": "opacity",
+      "showPoints": "never",
+      "spanNulls": 60000,
+      "lineInterpolation": "smooth",
+      "axisSoftMin": 0
+     },
+     "unit": "percentunit",
+     "min": 0,
+     "max": 1,
+     "color": {
+      "mode": "palette-classic"
+     }
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 29,
+   "type": "timeseries",
+   "title": "Requests waiting at the server",
+   "description": "Requests llama.cpp deferred because every slot was busy (tunnel users included).",
+   "gridPos": {
+    "x": 18,
+    "y": 36,
+    "w": 6,
+    "h": 8
+   },
+   "datasource": {
+    "type": "frser-sqlite-datasource",
+    "uid": "tellico-sqlite"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "frser-sqlite-datasource",
+      "uid": "tellico-sqlite"
+     },
+     "queryType": "table",
+     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, MAX(CASE WHEN node = 'node0' THEN deferred END) AS node0, MAX(CASE WHEN node = 'node1' THEN deferred END) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, MAX(CASE WHEN node = 'node0' THEN deferred END) AS node0, MAX(CASE WHEN node = 'node1' THEN deferred END) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "timeColumns": [
+      "time"
+     ]
+    }
+   ],
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 18,
+      "gradientMode": "opacity",
+      "showPoints": "never",
+      "spanNulls": 60000,
+      "lineInterpolation": "smooth",
+      "axisSoftMin": 0
+     },
+     "unit": "short",
+     "color": {
+      "mode": "palette-classic"
+     }
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 30,
+   "type": "row",
+   "title": "Users",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 44,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "id": 31,
+   "type": "timeseries",
+   "title": "Tokens generated, by user",
+   "description": "Output tokens per interval, stacked by gateway user.",
+   "gridPos": {
+    "x": 0,
+    "y": 45,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "frser-sqlite-datasource",
+    "uid": "tellico-sqlite"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "frser-sqlite-datasource",
+      "uid": "tellico-sqlite"
+     },
+     "queryType": "table",
+     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, user, SUM(completion) AS tokens FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() AND completion IS NOT NULL GROUP BY 1, 2 ORDER BY 1",
+     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, user, SUM(completion) AS tokens FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() AND completion IS NOT NULL GROUP BY 1, 2 ORDER BY 1",
+     "timeColumns": [
+      "time"
+     ]
+    }
+   ],
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "drawStyle": "bars",
+      "lineWidth": 2,
+      "fillOpacity": 70,
+      "gradientMode": "opacity",
+      "showPoints": "never",
+      "spanNulls": 60000,
+      "lineInterpolation": "smooth",
+      "axisSoftMin": 0,
+      "stacking": {
+       "mode": "normal",
+       "group": "A"
+      }
+     },
+     "unit": "short",
+     "color": {
+      "mode": "palette-classic"
+     }
+    },
+    "overrides": []
+   },
+   "transformations": [
+    {
+     "id": "partitionByValues",
+     "options": {
+      "fields": [
+       "user"
+      ],
+      "keepFields": false
+     }
+    }
+   ]
+  },
+  {
+   "id": 32,
+   "type": "timeseries",
+   "title": "Requests, by user",
+   "description": "Model requests per interval (each agent step is one), stacked by gateway user.",
+   "gridPos": {
+    "x": 12,
+    "y": 45,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "frser-sqlite-datasource",
+    "uid": "tellico-sqlite"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "frser-sqlite-datasource",
+      "uid": "tellico-sqlite"
+     },
+     "queryType": "table",
+     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, user, COUNT(*) AS requests FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1, 2 ORDER BY 1",
+     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, user, COUNT(*) AS requests FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1, 2 ORDER BY 1",
+     "timeColumns": [
+      "time"
+     ]
+    }
+   ],
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "drawStyle": "bars",
+      "lineWidth": 2,
+      "fillOpacity": 70,
+      "gradientMode": "opacity",
+      "showPoints": "never",
+      "spanNulls": 60000,
+      "lineInterpolation": "smooth",
+      "axisSoftMin": 0,
+      "stacking": {
+       "mode": "normal",
+       "group": "A"
+      }
+     },
+     "unit": "short",
+     "color": {
+      "mode": "palette-classic"
+     }
+    },
+    "overrides": []
+   },
+   "transformations": [
+    {
+     "id": "partitionByValues",
+     "options": {
+      "fields": [
+       "user"
+      ],
+      "keepFields": false
+     }
+    }
+   ]
+  },
+  {
+   "id": 33,
+   "type": "table",
+   "title": "Usage by user",
+   "description": "Everything each gateway user did in the range. Token columns count only requests logged since metering began; requests before that count in Requests alone.",
+   "gridPos": {
+    "x": 0,
+    "y": 53,
+    "w": 24,
+    "h": 9
+   },
+   "datasource": {
+    "type": "frser-sqlite-datasource",
+    "uid": "tellico-sqlite"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "frser-sqlite-datasource",
+      "uid": "tellico-sqlite"
+     },
+     "queryType": "table",
+     "queryText": "\nSELECT user AS \"User\",\n  COUNT(*) AS \"Requests\",\n  SUM(role = 'lead') AS \"Lead\",\n  SUM(role = 'worker') AS \"Worker\",\n  SUM(status >= 400) AS \"Errors\",\n  SUM(prompt) AS \"Tokens in\",\n  SUM(cache) AS \"Cached\",\n  SUM(completion) AS \"Tokens out\",\n  SUM(cache) * 1.0 / NULLIF(SUM(CASE WHEN cache IS NOT NULL THEN prompt END), 0) AS \"Cache hit\",\n  SUM(CASE WHEN gms > 0 THEN completion END) * 1000.0 / NULLIF(SUM(CASE WHEN gms > 0 THEN gms END), 0) AS \"Gen tok/s\",\n  AVG(CASE WHEN stream = 1 AND pms IS NOT NULL THEN queued + pms / 1000.0 END) AS \"Avg first token\",\n  AVG(dur) AS \"Avg duration\",\n  MAX(dur) AS \"Longest\",\n  AVG(queued) AS \"Avg queue\",\n  SUM(gone) AS \"Abandoned\"\nFROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY user ORDER BY \"Tokens out\" DESC, \"Requests\" DESC\n",
+     "rawQueryText": "\nSELECT user AS \"User\",\n  COUNT(*) AS \"Requests\",\n  SUM(role = 'lead') AS \"Lead\",\n  SUM(role = 'worker') AS \"Worker\",\n  SUM(status >= 400) AS \"Errors\",\n  SUM(prompt) AS \"Tokens in\",\n  SUM(cache) AS \"Cached\",\n  SUM(completion) AS \"Tokens out\",\n  SUM(cache) * 1.0 / NULLIF(SUM(CASE WHEN cache IS NOT NULL THEN prompt END), 0) AS \"Cache hit\",\n  SUM(CASE WHEN gms > 0 THEN completion END) * 1000.0 / NULLIF(SUM(CASE WHEN gms > 0 THEN gms END), 0) AS \"Gen tok/s\",\n  AVG(CASE WHEN stream = 1 AND pms IS NOT NULL THEN queued + pms / 1000.0 END) AS \"Avg first token\",\n  AVG(dur) AS \"Avg duration\",\n  MAX(dur) AS \"Longest\",\n  AVG(queued) AS \"Avg queue\",\n  SUM(gone) AS \"Abandoned\"\nFROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY user ORDER BY \"Tokens out\" DESC, \"Requests\" DESC\n",
+     "timeColumns": [
+      "time"
+     ]
+    }
+   ],
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm",
+    "sortBy": [
+     {
+      "displayName": "Tokens out",
+      "desc": true
+     }
+    ]
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "align": "auto",
+      "cellOptions": {
+       "type": "auto"
+      }
+     },
+     "color": {
+      "mode": "palette-classic"
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "Tokens in"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "short"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "Cached"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "short"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "Tokens out"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "short"
+       },
+       {
+        "id": "custom.cellOptions",
+        "value": {
+         "type": "gauge",
+         "mode": "lcd"
+        }
+       },
+       {
+        "id": "color",
+        "value": {
+         "mode": "continuous-BlPu"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "Cache hit"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "percentunit"
+       },
+       {
+        "id": "decimals",
+        "value": 0
+       },
+       {
+        "id": "min",
+        "value": 0
+       },
+       {
+        "id": "max",
+        "value": 1
+       },
+       {
+        "id": "custom.cellOptions",
+        "value": {
+         "type": "gauge",
+         "mode": "lcd"
+        }
+       },
+       {
+        "id": "color",
+        "value": {
+         "mode": "continuous-RdYlGr"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "Gen tok/s"
+      },
+      "properties": [
+       {
+        "id": "decimals",
+        "value": 1
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "Avg first token"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "s"
+       },
+       {
+        "id": "decimals",
+        "value": 1
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "Avg duration"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "s"
+       },
+       {
+        "id": "decimals",
+        "value": 1
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "Longest"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "s"
+       },
+       {
+        "id": "decimals",
+        "value": 0
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "Avg queue"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "s"
+       },
+       {
+        "id": "decimals",
+        "value": 1
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "Errors"
+      },
+      "properties": [
+       {
+        "id": "custom.cellOptions",
+        "value": {
+         "type": "color-text"
+        }
+       },
+       {
+        "id": "thresholds",
+        "value": {
+         "mode": "absolute",
+         "steps": [
+          {
+           "color": "#73bf69",
+           "value": null
+          },
+          {
+           "color": "#f2495c",
+           "value": 1
+          }
+         ]
+        }
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": 34,
+   "type": "timeseries",
+   "title": "Tokens per day, by user",
+   "description": "Prompt and output tokens per UTC day.",
+   "gridPos": {
+    "x": 0,
+    "y": 62,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "frser-sqlite-datasource",
+    "uid": "tellico-sqlite"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "frser-sqlite-datasource",
+      "uid": "tellico-sqlite"
+     },
+     "queryType": "table",
+     "queryText": "SELECT CAST(ts / 86400 AS INTEGER) * 86400 AS time, user, SUM(prompt) AS \"in\", SUM(completion) AS \"out\" FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() AND prompt IS NOT NULL GROUP BY 1, 2 ORDER BY 1",
+     "rawQueryText": "SELECT CAST(ts / 86400 AS INTEGER) * 86400 AS time, user, SUM(prompt) AS \"in\", SUM(completion) AS \"out\" FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() AND prompt IS NOT NULL GROUP BY 1, 2 ORDER BY 1",
+     "timeColumns": [
+      "time"
+     ]
+    }
+   ],
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "drawStyle": "bars",
+      "lineWidth": 2,
+      "fillOpacity": 70,
+      "gradientMode": "opacity",
+      "showPoints": "never",
+      "spanNulls": 60000,
+      "lineInterpolation": "smooth",
+      "axisSoftMin": 0,
+      "stacking": {
+       "mode": "normal",
+       "group": "A"
+      }
+     },
+     "unit": "short",
+     "color": {
+      "mode": "palette-classic"
+     }
+    },
+    "overrides": []
+   },
+   "transformations": [
+    {
+     "id": "partitionByValues",
+     "options": {
+      "fields": [
+       "user"
+      ],
+      "keepFields": false
+     }
+    }
+   ]
+  },
+  {
+   "id": 35,
+   "type": "timeseries",
+   "title": "Latency",
+   "description": "How long requests took end to end, waited for a slot, and took to start streaming.",
+   "gridPos": {
+    "x": 12,
+    "y": 62,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "frser-sqlite-datasource",
+    "uid": "tellico-sqlite"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "frser-sqlite-datasource",
+      "uid": "tellico-sqlite"
+     },
+     "queryType": "table",
+     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, AVG(dur) AS \"avg duration\", MAX(dur) AS \"longest\", AVG(CASE WHEN stream = 1 AND pms IS NOT NULL THEN queued + pms / 1000.0 END) AS \"avg first token\", AVG(queued) AS \"avg queue\" FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, AVG(dur) AS \"avg duration\", MAX(dur) AS \"longest\", AVG(CASE WHEN stream = 1 AND pms IS NOT NULL THEN queued + pms / 1000.0 END) AS \"avg first token\", AVG(queued) AS \"avg queue\" FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "timeColumns": [
+      "time"
+     ]
+    }
+   ],
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 8,
+      "gradientMode": "opacity",
+      "showPoints": "never",
+      "spanNulls": 60000,
+      "lineInterpolation": "smooth",
+      "axisSoftMin": 0
+     },
+     "unit": "s",
+     "color": {
+      "mode": "palette-classic"
+     }
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 36,
+   "type": "row",
+   "title": "Requests",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 70,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "id": 37,
+   "type": "piechart",
+   "title": "How replies ended",
+   "description": "stop: finished. tool_calls: handed a step to a tool. length: hit the output cap.",
+   "gridPos": {
+    "x": 0,
+    "y": 71,
+    "w": 6,
+    "h": 8
+   },
+   "datasource": {
+    "type": "frser-sqlite-datasource",
+    "uid": "tellico-sqlite"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "frser-sqlite-datasource",
+      "uid": "tellico-sqlite"
+     },
+     "queryType": "table",
+     "queryText": "SELECT COALESCE(finish, 'not recorded') AS finish, COUNT(*) AS requests FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 2 DESC",
+     "rawQueryText": "SELECT COALESCE(finish, 'not recorded') AS finish, COUNT(*) AS requests FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 2 DESC",
+     "timeColumns": [
+      "time"
+     ]
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": true
+    },
+    "pieType": "donut",
+    "displayLabels": [
+     "percent"
+    ],
+    "legend": {
+     "displayMode": "table",
+     "placement": "right",
+     "showLegend": true,
+     "values": [
+      "value"
+     ]
+    },
+    "tooltip": {
+     "mode": "single"
+    }
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {},
+     "color": {
+      "mode": "palette-classic"
+     }
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 38,
+   "type": "piechart",
+   "title": "Requests by node",
+   "description": "Where the gateway sent requests.",
+   "gridPos": {
+    "x": 6,
+    "y": 71,
+    "w": 6,
+    "h": 8
+   },
+   "datasource": {
+    "type": "frser-sqlite-datasource",
+    "uid": "tellico-sqlite"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "frser-sqlite-datasource",
+      "uid": "tellico-sqlite"
+     },
+     "queryType": "table",
+     "queryText": "SELECT node, COUNT(*) AS requests FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "rawQueryText": "SELECT node, COUNT(*) AS requests FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "timeColumns": [
+      "time"
+     ]
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": true
+    },
+    "pieType": "donut",
+    "displayLabels": [
+     "percent"
+    ],
+    "legend": {
+     "displayMode": "table",
+     "placement": "right",
+     "showLegend": true,
+     "values": [
+      "value"
+     ]
+    },
+    "tooltip": {
+     "mode": "single"
+    }
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {},
+     "color": {
+      "mode": "palette-classic"
+     }
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 39,
+   "type": "barchart",
+   "title": "Busiest hours (VM local time)",
+   "description": "Requests by hour of day over the range.",
+   "gridPos": {
+    "x": 12,
+    "y": 71,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "frser-sqlite-datasource",
+    "uid": "tellico-sqlite"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "frser-sqlite-datasource",
+      "uid": "tellico-sqlite"
+     },
+     "queryType": "table",
+     "queryText": "SELECT strftime('%H', ts, 'unixepoch', 'localtime') AS hour, COUNT(*) AS requests FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "rawQueryText": "SELECT strftime('%H', ts, 'unixepoch', 'localtime') AS hour, COUNT(*) AS requests FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "timeColumns": [
+      "time"
+     ]
+    }
+   ],
+   "options": {
+    "xField": "hour",
+    "orientation": "vertical",
+    "showValue": "never",
+    "barWidth": 0.8,
+    "legend": {
+     "showLegend": false
+    },
+    "tooltip": {
+     "mode": "single"
+    }
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "fillOpacity": 80,
+      "gradientMode": "hue",
+      "lineWidth": 0
+     },
+     "unit": "short",
+     "color": {
+      "mode": "continuous-BlPu"
+     }
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 40,
+   "type": "timeseries",
+   "title": "Errors and rejections",
+   "description": "Failed requests, and requests the gateway turned away (no node up, or no slot in time).",
+   "gridPos": {
+    "x": 0,
+    "y": 79,
+    "w": 8,
+    "h": 8
+   },
+   "datasource": {
+    "type": "frser-sqlite-datasource",
+    "uid": "tellico-sqlite"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "frser-sqlite-datasource",
+      "uid": "tellico-sqlite"
+     },
+     "queryType": "table",
+     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(status >= 400) AS errors FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(status >= 400) AS errors FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "timeColumns": [
+      "time"
+     ]
+    },
+    {
+     "refId": "B",
+     "datasource": {
+      "type": "frser-sqlite-datasource",
+      "uid": "tellico-sqlite"
+     },
+     "queryType": "table",
+     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, COUNT(*) AS rejected FROM rejections WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, COUNT(*) AS rejected FROM rejections WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "timeColumns": [
+      "time"
+     ]
+    }
+   ],
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "drawStyle": "bars",
+      "lineWidth": 2,
+      "fillOpacity": 70,
+      "gradientMode": "opacity",
+      "showPoints": "never",
+      "spanNulls": 60000,
+      "lineInterpolation": "smooth",
+      "axisSoftMin": 0,
+      "stacking": {
+       "mode": "normal",
+       "group": "A"
+      }
+     },
+     "unit": "short",
+     "color": {
+      "mode": "palette-classic"
+     }
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 41,
+   "type": "table",
+   "title": "Recent requests",
+   "description": "The latest requests in the range, newest first.",
+   "gridPos": {
+    "x": 8,
+    "y": 79,
+    "w": 16,
+    "h": 8
+   },
+   "datasource": {
+    "type": "frser-sqlite-datasource",
+    "uid": "tellico-sqlite"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "frser-sqlite-datasource",
+      "uid": "tellico-sqlite"
+     },
+     "queryType": "table",
+     "queryText": "SELECT ts AS time, user, node, role, status, queued AS queue, dur AS duration, prompt AS \"in\", cache AS cached, completion AS \"out\", finish, gone AS abandoned FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() ORDER BY ts DESC LIMIT 300",
+     "rawQueryText": "SELECT ts AS time, user, node, role, status, queued AS queue, dur AS duration, prompt AS \"in\", cache AS cached, completion AS \"out\", finish, gone AS abandoned FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() ORDER BY ts DESC LIMIT 300",
+     "timeColumns": [
+      "time"
+     ]
+    }
+   ],
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "align": "auto",
+      "cellOptions": {
+       "type": "auto"
+      }
+     },
+     "color": {
+      "mode": "palette-classic"
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "queue"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "s"
+       },
+       {
+        "id": "decimals",
+        "value": 1
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "duration"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "s"
+       },
+       {
+        "id": "decimals",
+        "value": 1
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "in"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "short"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "cached"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "short"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "out"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "short"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "status"
+      },
+      "properties": [
+       {
+        "id": "custom.cellOptions",
+        "value": {
+         "type": "color-text"
+        }
+       },
+       {
+        "id": "thresholds",
+        "value": {
+         "mode": "absolute",
+         "steps": [
+          {
+           "color": "#73bf69",
+           "value": null
+          },
+          {
+           "color": "#f2495c",
+           "value": 400
+          }
+         ]
+        }
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}
