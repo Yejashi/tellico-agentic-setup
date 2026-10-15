@@ -1,0 +1,15 @@
+[Unit]
+Description=Tellico dashboard (model state and usage history, loopback only)
+After=network-online.target tellico-gateway.service tellico-qwen-tunnel.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=__TELLICO_DASHBOARD_ENV__
+ExecStart=__TELLICO_DASHBOARD_PYTHON__ __TELLICO_DASHBOARD_SCRIPT__
+Restart=always
+RestartSec=5
+SyslogIdentifier=tellico-dashboard
+
+[Install]
+WantedBy=default.target

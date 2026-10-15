@@ -16,6 +16,7 @@ import hmac
 import http.client
 import json
 import os
+import re
 import socket
 import sys
 import threading
@@ -557,6 +558,70 @@ class SmoothStream:
             raise self._error
 
 
+# The tail of a streamed response kept for its closing chunk, which is where
+# llama.cpp reports what the request cost.
+USAGE_TAIL = 16384
+
+
+def usage_from_body(body):
+    """What one request cost, from llama.cpp's own report.
+
+    A streamed answer ends with a chunk carrying "timings" (and "usage" only if
+    the client asked for it); a plain answer carries both. The timings are the
+    server's: cache_n prompt tokens reused from the slot's cache, prompt_n
+    tokens actually read, predicted_n generated, and how long each took. Best
+    effort -- anything unparseable leaves the fields out.
+    """
+    found = {}
+    finish = None
+    for line in reversed(body.split(b"\n")):
+        line = line.strip()
+        if line.startswith(b"data:"):
+            line = line[5:].strip()
+        if not line.startswith(b"{"):
+            continue
+        try:
+            item = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(item, dict):
+            continue
+        choices = item.get("choices")
+        if finish is None and isinstance(choices, list) and choices and isinstance(choices[0], dict):
+            finish = choices[0].get("finish_reason")
+        if "timings" in found or "usage" in found:
+            if finish is not None:
+                break
+            continue
+        for name in ("timings", "usage"):
+            if isinstance(item.get(name), dict):
+                found[name] = item[name]
+    usage = {}
+    timings = found.get("timings") or {}
+    reported = found.get("usage") or {}
+    try:
+        if timings:
+            cached = int(timings.get("cache_n") or 0)
+            read = int(timings.get("prompt_n") or 0)
+            usage.update(
+                prompt_tokens=cached + read,
+                completion_tokens=int(timings.get("predicted_n") or 0),
+                cache=cached,
+                prompt_ms=int(round(float(timings.get("prompt_ms") or 0))),
+                gen_ms=int(round(float(timings.get("predicted_ms") or 0))),
+                draft=int(timings.get("draft_n") or 0),
+                accepted=int(timings.get("draft_n_accepted") or 0),
+            )
+        for name in ("prompt_tokens", "completion_tokens"):
+            if name in reported:
+                usage[name] = int(reported[name])
+    except (TypeError, ValueError):
+        pass
+    if isinstance(finish, str) and re.match(r"^[a-z_]{1,32}$", finish):
+        usage["finish"] = finish
+    return usage
+
+
 def split_node_prefix(path):
     """"/v1/node0/chat/completions" -> (["node0"], "/v1/chat/completions").
 
@@ -791,9 +856,13 @@ class Handler(BaseHTTPRequestHandler):
                 return
             else:
                 POOL.release(user, label, role)
+                # The first fields are what tellico_monitor and the dashboard
+                # have always parsed; the rest were added later, so readers
+                # must treat every one of them as optional.
                 log(
                     "user=%s model=%s node=%s status=%s queued=%.1fs dur=%.1fs "
-                    "stream=%d in=%s out=%s"
+                    "stream=%d in=%s out=%s role=%s cache=%s pms=%s gms=%s "
+                    "draft=%s acc=%s finish=%s gone=%d"
                     % (
                         user,
                         requested,
@@ -804,6 +873,14 @@ class Handler(BaseHTTPRequestHandler):
                         1 if stream else 0,
                         usage.get("prompt_tokens", "-"),
                         usage.get("completion_tokens", "-"),
+                        role,
+                        usage.get("cache", "-"),
+                        usage.get("prompt_ms", "-"),
+                        usage.get("gen_ms", "-"),
+                        usage.get("draft", "-"),
+                        usage.get("accepted", "-"),
+                        usage.get("finish", "-"),
+                        1 if usage.get("gone") else 0,
                     )
                 )
                 return
@@ -861,12 +938,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_header("Content-Length", str(len(payload)))
                 self.end_headers()
                 self.wfile.write(payload)
-                usage = {}
-                try:
-                    usage = (json.loads(payload) or {}).get("usage") or {}
-                except (ValueError, AttributeError):
-                    pass
-                return response.status, usage
+                return response.status, usage_from_body(payload)
 
             # Streaming: re-frame as chunked, since the body length is unknown
             # and the client must see each token as it arrives.
@@ -888,10 +960,22 @@ class Handler(BaseHTTPRequestHandler):
             # read1, not read: read(n) on a chunked response blocks until n
             # bytes arrive, which batches dozens of token events into one
             # jarring block. read1 returns as soon as any data is available.
+            # Every read is also kept in a short tail, for the usage report
+            # in the closing chunk.
+            tail = bytearray()
+
+            def read1(size=8192):
+                data = response.read1(size)
+                tail.extend(data)
+                if len(tail) > USAGE_TAIL:
+                    del tail[: len(tail) - USAGE_TAIL]
+                return data
+
             if smooth:
-                chunks = SmoothStream(response.read1, SMOOTH_MS / 1000.0).events()
+                chunks = SmoothStream(read1, SMOOTH_MS / 1000.0).events()
             else:
-                chunks = iter(lambda: response.read1(8192), b"")
+                chunks = iter(lambda: read1(8192), b"")
+            gone = False
             try:
                 for chunk in chunks:
                     self.wfile.write(b"%x\r\n" % len(chunk) + chunk + b"\r\n")
@@ -901,7 +985,11 @@ class Handler(BaseHTTPRequestHandler):
             except (BrokenPipeError, ConnectionResetError):
                 # Client hung up mid-generation; stop pulling from upstream.
                 self.close_connection = True
-            return response.status, {}
+                gone = True
+            usage = usage_from_body(bytes(tail))
+            if gone:
+                usage["gone"] = True
+            return response.status, usage
         finally:
             conn.close()
 

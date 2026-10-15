@@ -1,0 +1,114 @@
+#!/bin/sh
+# Control for the Tellico dashboard (dashboard/README.md).
+#
+# It owns the dashboard's systemd user unit and nothing else: a restart here
+# never touches the gateway, the tunnel or the relay.
+set -eu
+
+config_home=${XDG_CONFIG_HOME:-"$HOME/.config"}
+config_dir="$config_home/tellico-dashboard"
+env_file="$config_dir/dashboard.env"
+unit_name=tellico-dashboard.service
+
+if [ -r "$env_file" ]; then
+  # shellcheck disable=SC1090
+  . "$env_file"
+fi
+
+port=${TELLICO_DASHBOARD_PORT:-4101}
+script=${TELLICO_DASHBOARD_SCRIPT:-"$HOME/.local/lib/tellico-dashboard/tellico_dashboard.py"}
+base="http://127.0.0.1:$port/monitor"
+
+have_user_unit() {
+  command -v systemctl >/dev/null 2>&1 &&
+    systemctl --user cat "$unit_name" >/dev/null 2>&1
+}
+
+health() {
+  curl -fsS -m 5 "$base/healthz" 2>/dev/null || true
+}
+
+with_env() {
+  [ -r "$env_file" ] || { echo 'tellico-dashboard: run dashboard/install-dashboard.sh first.' >&2; exit 1; }
+  set -a
+  # shellcheck disable=SC1090
+  . "$env_file"
+  set +a
+}
+
+start_dashboard() {
+  have_user_unit || { echo 'tellico-dashboard: no service unit; use: tellico-dashboard run' >&2; exit 1; }
+  systemctl --user start "$unit_name"
+  i=0
+  while [ "$i" -lt 20 ]; do
+    if [ -n "$(health)" ]; then
+      echo "tellico-dashboard: up on $base/"
+      return 0
+    fi
+    i=$((i + 1))
+    sleep 0.5
+  done
+  echo 'tellico-dashboard: did not answer within 10s.' >&2
+  echo '  journalctl --user -u tellico-dashboard -n 50' >&2
+  return 1
+}
+
+stop_dashboard() {
+  if have_user_unit; then
+    systemctl --user stop "$unit_name" 2>/dev/null || true
+  fi
+  echo 'tellico-dashboard: stopped'
+}
+
+status_dashboard() {
+  if have_user_unit; then
+    printf '%-20s %s\n' service "$(systemctl --user is-active "$unit_name" 2>/dev/null || true)"
+  fi
+  if [ -z "$(health)" ]; then
+    printf '%-20s %s\n' endpoint unreachable
+    return 1
+  fi
+  printf '%-20s %s\n' endpoint "$base/ (loopback only)"
+  db=${TELLICO_DASHBOARD_DB:-"$config_dir/dashboard.db"}
+  if [ -f "$db" ]; then
+    printf '%-20s %s\n' history "$(du -h "$db" | cut -f1) in $db"
+  fi
+}
+
+usage() {
+  cat >&2 <<'USAGE'
+usage: tellico-dashboard <command>
+
+  status                   service, endpoint, history size
+  report [1h|6h|24h|7d|30d]
+                           usage and node history as text (default 24h)
+  start | stop | restart   the systemd user service
+  run                      foreground, for a host without systemd
+  logs [journalctl args]   the dashboard's own log
+USAGE
+  exit 2
+}
+
+case ${1:-} in
+  start) start_dashboard ;;
+  stop) stop_dashboard ;;
+  restart)
+    stop_dashboard
+    start_dashboard
+    ;;
+  status) status_dashboard ;;
+  run)
+    with_env
+    exec python3 "$script"
+    ;;
+  report)
+    with_env
+    exec python3 "$script" report "${2:-24h}"
+    ;;
+  logs)
+    shift
+    have_user_unit || { echo 'tellico-dashboard: no service unit, so no journal.' >&2; exit 1; }
+    exec journalctl --user -u "$unit_name" "$@"
+    ;;
+  *) usage ;;
+esac

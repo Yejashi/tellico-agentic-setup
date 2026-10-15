@@ -35,6 +35,9 @@ run the servers.
   while sessions are live (no gateway, tunnel or proxy restart).
   `tellico-relay status` / `logs` check it. `./install.sh --no-start
   --remote-control` turns publishing on for a device.
+- `dashboard/install-dashboard.sh` — install the usage dashboard beside the
+  gateway; safe while sessions are live. `tellico-dashboard status` /
+  `report [1h|6h|24h|7d|30d]` / `logs`.
 - `tellico-remote caddy` — the reverse-proxy snippet for this host, with its
   bcrypt hash filled in. Never commit a real hash.
 
@@ -621,6 +624,15 @@ gateway defaults; a model swap touches all of them.
   `TELLICO_GATEWAY_SMOOTH_MS` buffer (1 s), because a prompt chunk on the
   same node stalls every other stream there; workers, `X-Tellico-Smooth: 0`
   and anything after the first tool-call delta pass straight through.
+- The gateway logs each request with llama.cpp's own closing `timings`
+  (tokens read, reused from cache and generated, prompt and generation ms,
+  draft acceptance, finish reason, client gone), read from a 16 KiB tail of
+  the stream, so streamed requests are metered too. New fields go *after*
+  `out=`: `tellico_monitor` and the dashboard parse the leading ones.
+- `dashboard/` keeps 30 days of node samples and gateway requests in SQLite
+  on the gateway host, capped at 200 MB because that disk is ~20 GB. It has
+  no access control and refuses any bind but loopback; it is reached over
+  ssh and never published through Caddy.
 - `TELLICO_GATEWAY_CONTEXT` is derived from `config/opencode.json` at install
   time, so it is bound by the same context coupling described above. A change
   to the cluster's per-slot context means rerunning the gateway installer too.

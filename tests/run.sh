@@ -5,10 +5,11 @@ cd "$test_root"
 for script in bin/* install.sh uninstall.sh doctor.sh lib/checks.sh \
   gateway/bin/tellico-gateway gateway/install-gateway.sh \
   remote/bin/tellico-remote remote/install-remote.sh \
-  relay/bin/tellico-relay relay/install-relay.sh crush/hooks/*.sh tests/run.sh; do
+  relay/bin/tellico-relay relay/install-relay.sh \
+  dashboard/bin/tellico-dashboard dashboard/install-dashboard.sh crush/hooks/*.sh tests/run.sh; do
   sh -n "$script"
 done
 python3 -m json.tool config/opencode.json >/dev/null
-python3 -m py_compile relay/tellico_relay.py
+python3 -m py_compile relay/tellico_relay.py dashboard/tellico_dashboard.py gateway/tellico_gateway.py
 node --test tests/*.test.mjs
 python3 -I -m unittest discover -s tests -p '*_test.py'
