@@ -13,6 +13,7 @@ command -v grafana >/dev/null 2>&1 || { echo 'install-grafana.sh: Grafana is not
 [ -d /var/lib/grafana/plugins/frser-sqlite-datasource ] ||
   sudo grafana cli plugins install frser-sqlite-datasource
 
+sudo chown -R grafana:grafana /var/lib/grafana/plugins
 python3 "$here/build_dashboard.py" >/dev/null
 sudo install -m 0644 "$here/datasource.yaml" /etc/grafana/provisioning/datasources/tellico.yaml
 sudo install -m 0644 "$here/dashboards.yaml" /etc/grafana/provisioning/dashboards/tellico.yaml
