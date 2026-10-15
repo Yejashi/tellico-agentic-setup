@@ -5,8 +5,8 @@ Run it after changing a panel:  python3 dashboard/grafana/build_dashboard.py
 
 Every query runs against tellico_dashboard.py's tables (samples, gateway,
 requests, rejections, job) through the frser-sqlite-datasource plugin, whose
-"time" columns are Unix seconds. $__unixEpochFrom()/$__unixEpochTo() bound the
-range and $__interval_ms sets the bucket, so every panel follows the picker.
+"time" columns are Unix seconds. $__from/$__to (ms) bound the range and
+$__interval_ms sets the bucket, so every panel follows the picker.
 """
 
 import json
@@ -14,7 +14,9 @@ import os
 
 DS = {"type": "frser-sqlite-datasource", "uid": "tellico-sqlite"}
 NODES = ("node0", "node1")
-RANGE = "ts >= $__unixEpochFrom() AND ts < $__unixEpochTo()"
+# The plugin (4.0.6) has no $__unixEpochFrom(); $__from and $__to are
+# Grafana's own range, in milliseconds.
+RANGE = "ts >= $__from / 1000.0 AND ts < $__to / 1000.0"
 # Bucket start, in seconds, at Grafana's chosen interval (never below 10 s,
 # the sample period).
 BUCKET = "CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000)"

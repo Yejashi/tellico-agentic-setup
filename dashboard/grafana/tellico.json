@@ -133,8 +133,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT ts AS time, \"left\" AS \"time left\" FROM job WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() AND \"left\" IS NOT NULL ORDER BY ts",
-     "rawQueryText": "SELECT ts AS time, \"left\" AS \"time left\" FROM job WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() AND \"left\" IS NOT NULL ORDER BY ts",
+     "queryText": "SELECT ts AS time, \"left\" AS \"time left\" FROM job WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 AND \"left\" IS NOT NULL ORDER BY ts",
+     "rawQueryText": "SELECT ts AS time, \"left\" AS \"time left\" FROM job WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 AND \"left\" IS NOT NULL ORDER BY ts",
      "timeColumns": [
       "time"
      ]
@@ -205,8 +205,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT ts AS time, SUM(busy) AS \"busy of 4\" FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY ts ORDER BY ts",
-     "rawQueryText": "SELECT ts AS time, SUM(busy) AS \"busy of 4\" FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY ts ORDER BY ts",
+     "queryText": "SELECT ts AS time, SUM(busy) AS \"busy of 4\" FROM samples WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY ts ORDER BY ts",
+     "rawQueryText": "SELECT ts AS time, SUM(busy) AS \"busy of 4\" FROM samples WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY ts ORDER BY ts",
      "timeColumns": [
       "time"
      ]
@@ -276,8 +276,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT ts AS time, SUM(used) AS tokens FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY ts ORDER BY ts",
-     "rawQueryText": "SELECT ts AS time, SUM(used) AS tokens FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY ts ORDER BY ts",
+     "queryText": "SELECT ts AS time, SUM(used) AS tokens FROM samples WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY ts ORDER BY ts",
+     "rawQueryText": "SELECT ts AS time, SUM(used) AS tokens FROM samples WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY ts ORDER BY ts",
      "timeColumns": [
       "time"
      ]
@@ -340,8 +340,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT ts AS time, inflight AS \"in flight\" FROM gateway WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() ORDER BY ts",
-     "rawQueryText": "SELECT ts AS time, inflight AS \"in flight\" FROM gateway WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() ORDER BY ts",
+     "queryText": "SELECT ts AS time, inflight AS \"in flight\" FROM gateway WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 ORDER BY ts",
+     "rawQueryText": "SELECT ts AS time, inflight AS \"in flight\" FROM gateway WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 ORDER BY ts",
      "timeColumns": [
       "time"
      ]
@@ -403,8 +403,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT ts AS time, waiting AS waiting FROM gateway WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() ORDER BY ts",
-     "rawQueryText": "SELECT ts AS time, waiting AS waiting FROM gateway WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() ORDER BY ts",
+     "queryText": "SELECT ts AS time, waiting AS waiting FROM gateway WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 ORDER BY ts",
+     "rawQueryText": "SELECT ts AS time, waiting AS waiting FROM gateway WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 ORDER BY ts",
      "timeColumns": [
       "time"
      ]
@@ -487,8 +487,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT COUNT(*) AS requests FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo()",
-     "rawQueryText": "SELECT COUNT(*) AS requests FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo()",
+     "queryText": "SELECT COUNT(*) AS requests FROM requests WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0",
+     "rawQueryText": "SELECT COUNT(*) AS requests FROM requests WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0",
      "timeColumns": [
       "time"
      ]
@@ -550,8 +550,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT COUNT(DISTINCT user) AS users FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo()",
-     "rawQueryText": "SELECT COUNT(DISTINCT user) AS users FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo()",
+     "queryText": "SELECT COUNT(DISTINCT user) AS users FROM requests WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0",
+     "rawQueryText": "SELECT COUNT(DISTINCT user) AS users FROM requests WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0",
      "timeColumns": [
       "time"
      ]
@@ -613,8 +613,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT SUM(completion) AS tokens FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo()",
-     "rawQueryText": "SELECT SUM(completion) AS tokens FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo()",
+     "queryText": "SELECT SUM(completion) AS tokens FROM requests WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0",
+     "rawQueryText": "SELECT SUM(completion) AS tokens FROM requests WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0",
      "timeColumns": [
       "time"
      ]
@@ -677,8 +677,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT SUM(prompt) AS tokens FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo()",
-     "rawQueryText": "SELECT SUM(prompt) AS tokens FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo()",
+     "queryText": "SELECT SUM(prompt) AS tokens FROM requests WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0",
+     "rawQueryText": "SELECT SUM(prompt) AS tokens FROM requests WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0",
      "timeColumns": [
       "time"
      ]
@@ -741,8 +741,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT SUM(cache) * 1.0 / NULLIF(SUM(CASE WHEN cache IS NOT NULL THEN prompt END), 0) AS hit FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo()",
-     "rawQueryText": "SELECT SUM(cache) * 1.0 / NULLIF(SUM(CASE WHEN cache IS NOT NULL THEN prompt END), 0) AS hit FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo()",
+     "queryText": "SELECT SUM(cache) * 1.0 / NULLIF(SUM(CASE WHEN cache IS NOT NULL THEN prompt END), 0) AS hit FROM requests WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0",
+     "rawQueryText": "SELECT SUM(cache) * 1.0 / NULLIF(SUM(CASE WHEN cache IS NOT NULL THEN prompt END), 0) AS hit FROM requests WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0",
      "timeColumns": [
       "time"
      ]
@@ -806,8 +806,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT SUM(CASE WHEN gms > 0 THEN completion END) * 1000.0 / NULLIF(SUM(CASE WHEN gms > 0 THEN gms END), 0) AS \"tok/s\" FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo()",
-     "rawQueryText": "SELECT SUM(CASE WHEN gms > 0 THEN completion END) * 1000.0 / NULLIF(SUM(CASE WHEN gms > 0 THEN gms END), 0) AS \"tok/s\" FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo()",
+     "queryText": "SELECT SUM(CASE WHEN gms > 0 THEN completion END) * 1000.0 / NULLIF(SUM(CASE WHEN gms > 0 THEN gms END), 0) AS \"tok/s\" FROM requests WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0",
+     "rawQueryText": "SELECT SUM(CASE WHEN gms > 0 THEN completion END) * 1000.0 / NULLIF(SUM(CASE WHEN gms > 0 THEN gms END), 0) AS \"tok/s\" FROM requests WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0",
      "timeColumns": [
       "time"
      ]
@@ -871,8 +871,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT AVG(queued + pms / 1000.0) AS ttft FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() AND stream = 1 AND pms IS NOT NULL",
-     "rawQueryText": "SELECT AVG(queued + pms / 1000.0) AS ttft FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() AND stream = 1 AND pms IS NOT NULL",
+     "queryText": "SELECT AVG(queued + pms / 1000.0) AS ttft FROM requests WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 AND stream = 1 AND pms IS NOT NULL",
+     "rawQueryText": "SELECT AVG(queued + pms / 1000.0) AS ttft FROM requests WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 AND stream = 1 AND pms IS NOT NULL",
      "timeColumns": [
       "time"
      ]
@@ -936,8 +936,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT (SELECT COUNT(*) FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() AND status >= 400) + (SELECT COUNT(*) FROM rejections WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo()) AS failed",
-     "rawQueryText": "SELECT (SELECT COUNT(*) FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() AND status >= 400) + (SELECT COUNT(*) FROM rejections WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo()) AS failed",
+     "queryText": "SELECT (SELECT COUNT(*) FROM requests WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 AND status >= 400) + (SELECT COUNT(*) FROM rejections WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0) AS failed",
+     "rawQueryText": "SELECT (SELECT COUNT(*) FROM requests WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 AND status >= 400) + (SELECT COUNT(*) FROM rejections WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0) AS failed",
      "timeColumns": [
       "time"
      ]
@@ -1016,8 +1016,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(CASE WHEN node = 'node0' THEN d_gen END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node0' THEN secs END), 0) AS node0, SUM(CASE WHEN node = 'node1' THEN d_gen END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node1' THEN secs END), 0) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
-     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(CASE WHEN node = 'node0' THEN d_gen END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node0' THEN secs END), 0) AS node0, SUM(CASE WHEN node = 'node1' THEN d_gen END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node1' THEN secs END), 0) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(CASE WHEN node = 'node0' THEN d_gen END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node0' THEN secs END), 0) AS node0, SUM(CASE WHEN node = 'node1' THEN d_gen END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node1' THEN secs END), 0) AS node1 FROM samples WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY 1 ORDER BY 1",
+     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(CASE WHEN node = 'node0' THEN d_gen END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node0' THEN secs END), 0) AS node0, SUM(CASE WHEN node = 'node1' THEN d_gen END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node1' THEN secs END), 0) AS node1 FROM samples WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY 1 ORDER BY 1",
      "timeColumns": [
       "time"
      ]
@@ -1077,8 +1077,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(CASE WHEN node = 'node0' THEN d_prompt END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node0' THEN secs END), 0) AS node0, SUM(CASE WHEN node = 'node1' THEN d_prompt END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node1' THEN secs END), 0) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
-     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(CASE WHEN node = 'node0' THEN d_prompt END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node0' THEN secs END), 0) AS node0, SUM(CASE WHEN node = 'node1' THEN d_prompt END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node1' THEN secs END), 0) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(CASE WHEN node = 'node0' THEN d_prompt END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node0' THEN secs END), 0) AS node0, SUM(CASE WHEN node = 'node1' THEN d_prompt END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node1' THEN secs END), 0) AS node1 FROM samples WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY 1 ORDER BY 1",
+     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(CASE WHEN node = 'node0' THEN d_prompt END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node0' THEN secs END), 0) AS node0, SUM(CASE WHEN node = 'node1' THEN d_prompt END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node1' THEN secs END), 0) AS node1 FROM samples WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY 1 ORDER BY 1",
      "timeColumns": [
       "time"
      ]
@@ -1138,8 +1138,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(CASE WHEN node = 'node0' THEN d_gen END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node0' THEN d_gen_s END), 0) AS node0, SUM(CASE WHEN node = 'node1' THEN d_gen END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node1' THEN d_gen_s END), 0) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
-     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(CASE WHEN node = 'node0' THEN d_gen END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node0' THEN d_gen_s END), 0) AS node0, SUM(CASE WHEN node = 'node1' THEN d_gen END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node1' THEN d_gen_s END), 0) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(CASE WHEN node = 'node0' THEN d_gen END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node0' THEN d_gen_s END), 0) AS node0, SUM(CASE WHEN node = 'node1' THEN d_gen END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node1' THEN d_gen_s END), 0) AS node1 FROM samples WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY 1 ORDER BY 1",
+     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(CASE WHEN node = 'node0' THEN d_gen END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node0' THEN d_gen_s END), 0) AS node0, SUM(CASE WHEN node = 'node1' THEN d_gen END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node1' THEN d_gen_s END), 0) AS node1 FROM samples WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY 1 ORDER BY 1",
      "timeColumns": [
       "time"
      ]
@@ -1199,8 +1199,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(CASE WHEN node = 'node0' THEN d_prompt END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node0' THEN d_prompt_s END), 0) AS node0, SUM(CASE WHEN node = 'node1' THEN d_prompt END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node1' THEN d_prompt_s END), 0) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
-     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(CASE WHEN node = 'node0' THEN d_prompt END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node0' THEN d_prompt_s END), 0) AS node0, SUM(CASE WHEN node = 'node1' THEN d_prompt END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node1' THEN d_prompt_s END), 0) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(CASE WHEN node = 'node0' THEN d_prompt END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node0' THEN d_prompt_s END), 0) AS node0, SUM(CASE WHEN node = 'node1' THEN d_prompt END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node1' THEN d_prompt_s END), 0) AS node1 FROM samples WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY 1 ORDER BY 1",
+     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(CASE WHEN node = 'node0' THEN d_prompt END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node0' THEN d_prompt_s END), 0) AS node0, SUM(CASE WHEN node = 'node1' THEN d_prompt END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node1' THEN d_prompt_s END), 0) AS node1 FROM samples WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY 1 ORDER BY 1",
      "timeColumns": [
       "time"
      ]
@@ -1260,8 +1260,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(CASE WHEN node = 'node0' THEN d_acc END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node0' THEN d_draft END), 0) AS node0, SUM(CASE WHEN node = 'node1' THEN d_acc END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node1' THEN d_draft END), 0) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
-     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(CASE WHEN node = 'node0' THEN d_acc END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node0' THEN d_draft END), 0) AS node0, SUM(CASE WHEN node = 'node1' THEN d_acc END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node1' THEN d_draft END), 0) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(CASE WHEN node = 'node0' THEN d_acc END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node0' THEN d_draft END), 0) AS node0, SUM(CASE WHEN node = 'node1' THEN d_acc END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node1' THEN d_draft END), 0) AS node1 FROM samples WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY 1 ORDER BY 1",
+     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(CASE WHEN node = 'node0' THEN d_acc END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node0' THEN d_draft END), 0) AS node0, SUM(CASE WHEN node = 'node1' THEN d_acc END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node1' THEN d_draft END), 0) AS node1 FROM samples WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY 1 ORDER BY 1",
      "timeColumns": [
       "time"
      ]
@@ -1336,8 +1336,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, AVG(CASE WHEN node = 'node0' THEN busy END) AS node0, AVG(CASE WHEN node = 'node1' THEN busy END) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
-     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, AVG(CASE WHEN node = 'node0' THEN busy END) AS node0, AVG(CASE WHEN node = 'node1' THEN busy END) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, AVG(CASE WHEN node = 'node0' THEN busy END) AS node0, AVG(CASE WHEN node = 'node1' THEN busy END) AS node1 FROM samples WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY 1 ORDER BY 1",
+     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, AVG(CASE WHEN node = 'node0' THEN busy END) AS node0, AVG(CASE WHEN node = 'node1' THEN busy END) AS node1 FROM samples WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY 1 ORDER BY 1",
      "timeColumns": [
       "time"
      ]
@@ -1399,8 +1399,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, AVG(CASE WHEN node = 'node0' THEN used END) AS node0, AVG(CASE WHEN node = 'node1' THEN used END) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
-     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, AVG(CASE WHEN node = 'node0' THEN used END) AS node0, AVG(CASE WHEN node = 'node1' THEN used END) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, AVG(CASE WHEN node = 'node0' THEN used END) AS node0, AVG(CASE WHEN node = 'node1' THEN used END) AS node1 FROM samples WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY 1 ORDER BY 1",
+     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, AVG(CASE WHEN node = 'node0' THEN used END) AS node0, AVG(CASE WHEN node = 'node1' THEN used END) AS node1 FROM samples WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY 1 ORDER BY 1",
      "timeColumns": [
       "time"
      ]
@@ -1460,8 +1460,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(CASE WHEN node = 'node0' THEN d_cached END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node0' THEN (d_cached + d_prompt) END), 0) AS node0, SUM(CASE WHEN node = 'node1' THEN d_cached END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node1' THEN (d_cached + d_prompt) END), 0) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
-     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(CASE WHEN node = 'node0' THEN d_cached END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node0' THEN (d_cached + d_prompt) END), 0) AS node0, SUM(CASE WHEN node = 'node1' THEN d_cached END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node1' THEN (d_cached + d_prompt) END), 0) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(CASE WHEN node = 'node0' THEN d_cached END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node0' THEN (d_cached + d_prompt) END), 0) AS node0, SUM(CASE WHEN node = 'node1' THEN d_cached END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node1' THEN (d_cached + d_prompt) END), 0) AS node1 FROM samples WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY 1 ORDER BY 1",
+     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(CASE WHEN node = 'node0' THEN d_cached END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node0' THEN (d_cached + d_prompt) END), 0) AS node0, SUM(CASE WHEN node = 'node1' THEN d_cached END) * 1.0 / NULLIF(SUM(CASE WHEN node = 'node1' THEN (d_cached + d_prompt) END), 0) AS node1 FROM samples WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY 1 ORDER BY 1",
      "timeColumns": [
       "time"
      ]
@@ -1523,8 +1523,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, AVG(inflight) AS \"in flight\", AVG(workers) AS workers, MAX(waiting) AS \"leads waiting\", MAX(max) AS cap FROM gateway WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
-     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, AVG(inflight) AS \"in flight\", AVG(workers) AS workers, MAX(waiting) AS \"leads waiting\", MAX(max) AS cap FROM gateway WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, AVG(inflight) AS \"in flight\", AVG(workers) AS workers, MAX(waiting) AS \"leads waiting\", MAX(max) AS cap FROM gateway WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY 1 ORDER BY 1",
+     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, AVG(inflight) AS \"in flight\", AVG(workers) AS workers, MAX(waiting) AS \"leads waiting\", MAX(max) AS cap FROM gateway WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY 1 ORDER BY 1",
      "timeColumns": [
       "time"
      ]
@@ -1614,8 +1614,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, AVG(CASE WHEN node = 'node0' THEN up END) AS node0, AVG(CASE WHEN node = 'node1' THEN up END) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
-     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, AVG(CASE WHEN node = 'node0' THEN up END) AS node0, AVG(CASE WHEN node = 'node1' THEN up END) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, AVG(CASE WHEN node = 'node0' THEN up END) AS node0, AVG(CASE WHEN node = 'node1' THEN up END) AS node1 FROM samples WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY 1 ORDER BY 1",
+     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, AVG(CASE WHEN node = 'node0' THEN up END) AS node0, AVG(CASE WHEN node = 'node1' THEN up END) AS node1 FROM samples WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY 1 ORDER BY 1",
      "timeColumns": [
       "time"
      ]
@@ -1677,8 +1677,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, MAX(CASE WHEN node = 'node0' THEN deferred END) AS node0, MAX(CASE WHEN node = 'node1' THEN deferred END) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
-     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, MAX(CASE WHEN node = 'node0' THEN deferred END) AS node0, MAX(CASE WHEN node = 'node1' THEN deferred END) AS node1 FROM samples WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, MAX(CASE WHEN node = 'node0' THEN deferred END) AS node0, MAX(CASE WHEN node = 'node1' THEN deferred END) AS node1 FROM samples WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY 1 ORDER BY 1",
+     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, MAX(CASE WHEN node = 'node0' THEN deferred END) AS node0, MAX(CASE WHEN node = 'node1' THEN deferred END) AS node1 FROM samples WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY 1 ORDER BY 1",
      "timeColumns": [
       "time"
      ]
@@ -1751,8 +1751,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, user, SUM(completion) AS tokens FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() AND completion IS NOT NULL GROUP BY 1, 2 ORDER BY 1",
-     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, user, SUM(completion) AS tokens FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() AND completion IS NOT NULL GROUP BY 1, 2 ORDER BY 1",
+     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, user, SUM(completion) AS tokens FROM requests WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 AND completion IS NOT NULL GROUP BY 1, 2 ORDER BY 1",
+     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, user, SUM(completion) AS tokens FROM requests WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 AND completion IS NOT NULL GROUP BY 1, 2 ORDER BY 1",
      "timeColumns": [
       "time"
      ]
@@ -1827,8 +1827,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, user, COUNT(*) AS requests FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1, 2 ORDER BY 1",
-     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, user, COUNT(*) AS requests FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1, 2 ORDER BY 1",
+     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, user, COUNT(*) AS requests FROM requests WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY 1, 2 ORDER BY 1",
+     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, user, COUNT(*) AS requests FROM requests WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY 1, 2 ORDER BY 1",
      "timeColumns": [
       "time"
      ]
@@ -1903,8 +1903,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "\nSELECT user AS \"User\",\n  COUNT(*) AS \"Requests\",\n  SUM(role = 'lead') AS \"Lead\",\n  SUM(role = 'worker') AS \"Worker\",\n  SUM(status >= 400) AS \"Errors\",\n  SUM(prompt) AS \"Tokens in\",\n  SUM(cache) AS \"Cached\",\n  SUM(completion) AS \"Tokens out\",\n  SUM(cache) * 1.0 / NULLIF(SUM(CASE WHEN cache IS NOT NULL THEN prompt END), 0) AS \"Cache hit\",\n  SUM(CASE WHEN gms > 0 THEN completion END) * 1000.0 / NULLIF(SUM(CASE WHEN gms > 0 THEN gms END), 0) AS \"Gen tok/s\",\n  AVG(CASE WHEN stream = 1 AND pms IS NOT NULL THEN queued + pms / 1000.0 END) AS \"Avg first token\",\n  AVG(dur) AS \"Avg duration\",\n  MAX(dur) AS \"Longest\",\n  AVG(queued) AS \"Avg queue\",\n  SUM(gone) AS \"Abandoned\"\nFROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY user ORDER BY \"Tokens out\" DESC, \"Requests\" DESC\n",
-     "rawQueryText": "\nSELECT user AS \"User\",\n  COUNT(*) AS \"Requests\",\n  SUM(role = 'lead') AS \"Lead\",\n  SUM(role = 'worker') AS \"Worker\",\n  SUM(status >= 400) AS \"Errors\",\n  SUM(prompt) AS \"Tokens in\",\n  SUM(cache) AS \"Cached\",\n  SUM(completion) AS \"Tokens out\",\n  SUM(cache) * 1.0 / NULLIF(SUM(CASE WHEN cache IS NOT NULL THEN prompt END), 0) AS \"Cache hit\",\n  SUM(CASE WHEN gms > 0 THEN completion END) * 1000.0 / NULLIF(SUM(CASE WHEN gms > 0 THEN gms END), 0) AS \"Gen tok/s\",\n  AVG(CASE WHEN stream = 1 AND pms IS NOT NULL THEN queued + pms / 1000.0 END) AS \"Avg first token\",\n  AVG(dur) AS \"Avg duration\",\n  MAX(dur) AS \"Longest\",\n  AVG(queued) AS \"Avg queue\",\n  SUM(gone) AS \"Abandoned\"\nFROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY user ORDER BY \"Tokens out\" DESC, \"Requests\" DESC\n",
+     "queryText": "\nSELECT user AS \"User\",\n  COUNT(*) AS \"Requests\",\n  SUM(role = 'lead') AS \"Lead\",\n  SUM(role = 'worker') AS \"Worker\",\n  SUM(status >= 400) AS \"Errors\",\n  SUM(prompt) AS \"Tokens in\",\n  SUM(cache) AS \"Cached\",\n  SUM(completion) AS \"Tokens out\",\n  SUM(cache) * 1.0 / NULLIF(SUM(CASE WHEN cache IS NOT NULL THEN prompt END), 0) AS \"Cache hit\",\n  SUM(CASE WHEN gms > 0 THEN completion END) * 1000.0 / NULLIF(SUM(CASE WHEN gms > 0 THEN gms END), 0) AS \"Gen tok/s\",\n  AVG(CASE WHEN stream = 1 AND pms IS NOT NULL THEN queued + pms / 1000.0 END) AS \"Avg first token\",\n  AVG(dur) AS \"Avg duration\",\n  MAX(dur) AS \"Longest\",\n  AVG(queued) AS \"Avg queue\",\n  SUM(gone) AS \"Abandoned\"\nFROM requests WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY user ORDER BY \"Tokens out\" DESC, \"Requests\" DESC\n",
+     "rawQueryText": "\nSELECT user AS \"User\",\n  COUNT(*) AS \"Requests\",\n  SUM(role = 'lead') AS \"Lead\",\n  SUM(role = 'worker') AS \"Worker\",\n  SUM(status >= 400) AS \"Errors\",\n  SUM(prompt) AS \"Tokens in\",\n  SUM(cache) AS \"Cached\",\n  SUM(completion) AS \"Tokens out\",\n  SUM(cache) * 1.0 / NULLIF(SUM(CASE WHEN cache IS NOT NULL THEN prompt END), 0) AS \"Cache hit\",\n  SUM(CASE WHEN gms > 0 THEN completion END) * 1000.0 / NULLIF(SUM(CASE WHEN gms > 0 THEN gms END), 0) AS \"Gen tok/s\",\n  AVG(CASE WHEN stream = 1 AND pms IS NOT NULL THEN queued + pms / 1000.0 END) AS \"Avg first token\",\n  AVG(dur) AS \"Avg duration\",\n  MAX(dur) AS \"Longest\",\n  AVG(queued) AS \"Avg queue\",\n  SUM(gone) AS \"Abandoned\"\nFROM requests WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY user ORDER BY \"Tokens out\" DESC, \"Requests\" DESC\n",
      "timeColumns": [
       "time"
      ]
@@ -2151,8 +2151,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT CAST(ts / 86400 AS INTEGER) * 86400 AS time, user, SUM(prompt) AS \"in\", SUM(completion) AS \"out\" FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() AND prompt IS NOT NULL GROUP BY 1, 2 ORDER BY 1",
-     "rawQueryText": "SELECT CAST(ts / 86400 AS INTEGER) * 86400 AS time, user, SUM(prompt) AS \"in\", SUM(completion) AS \"out\" FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() AND prompt IS NOT NULL GROUP BY 1, 2 ORDER BY 1",
+     "queryText": "SELECT CAST(ts / 86400 AS INTEGER) * 86400 AS time, user, SUM(prompt) AS \"in\", SUM(completion) AS \"out\" FROM requests WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 AND prompt IS NOT NULL GROUP BY 1, 2 ORDER BY 1",
+     "rawQueryText": "SELECT CAST(ts / 86400 AS INTEGER) * 86400 AS time, user, SUM(prompt) AS \"in\", SUM(completion) AS \"out\" FROM requests WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 AND prompt IS NOT NULL GROUP BY 1, 2 ORDER BY 1",
      "timeColumns": [
       "time"
      ]
@@ -2227,8 +2227,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, AVG(dur) AS \"avg duration\", MAX(dur) AS \"longest\", AVG(CASE WHEN stream = 1 AND pms IS NOT NULL THEN queued + pms / 1000.0 END) AS \"avg first token\", AVG(queued) AS \"avg queue\" FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
-     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, AVG(dur) AS \"avg duration\", MAX(dur) AS \"longest\", AVG(CASE WHEN stream = 1 AND pms IS NOT NULL THEN queued + pms / 1000.0 END) AS \"avg first token\", AVG(queued) AS \"avg queue\" FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, AVG(dur) AS \"avg duration\", MAX(dur) AS \"longest\", AVG(CASE WHEN stream = 1 AND pms IS NOT NULL THEN queued + pms / 1000.0 END) AS \"avg first token\", AVG(queued) AS \"avg queue\" FROM requests WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY 1 ORDER BY 1",
+     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, AVG(dur) AS \"avg duration\", MAX(dur) AS \"longest\", AVG(CASE WHEN stream = 1 AND pms IS NOT NULL THEN queued + pms / 1000.0 END) AS \"avg first token\", AVG(queued) AS \"avg queue\" FROM requests WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY 1 ORDER BY 1",
      "timeColumns": [
       "time"
      ]
@@ -2301,8 +2301,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT COALESCE(finish, 'not recorded') AS finish, COUNT(*) AS requests FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 2 DESC",
-     "rawQueryText": "SELECT COALESCE(finish, 'not recorded') AS finish, COUNT(*) AS requests FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 2 DESC",
+     "queryText": "SELECT COALESCE(finish, 'not recorded') AS finish, COUNT(*) AS requests FROM requests WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY 1 ORDER BY 2 DESC",
+     "rawQueryText": "SELECT COALESCE(finish, 'not recorded') AS finish, COUNT(*) AS requests FROM requests WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY 1 ORDER BY 2 DESC",
      "timeColumns": [
       "time"
      ]
@@ -2365,8 +2365,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT node, COUNT(*) AS requests FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
-     "rawQueryText": "SELECT node, COUNT(*) AS requests FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "queryText": "SELECT node, COUNT(*) AS requests FROM requests WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY 1 ORDER BY 1",
+     "rawQueryText": "SELECT node, COUNT(*) AS requests FROM requests WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY 1 ORDER BY 1",
      "timeColumns": [
       "time"
      ]
@@ -2429,8 +2429,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT strftime('%H', ts, 'unixepoch', 'localtime') AS hour, COUNT(*) AS requests FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
-     "rawQueryText": "SELECT strftime('%H', ts, 'unixepoch', 'localtime') AS hour, COUNT(*) AS requests FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "queryText": "SELECT strftime('%H', ts, 'unixepoch', 'localtime') AS hour, COUNT(*) AS requests FROM requests WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY 1 ORDER BY 1",
+     "rawQueryText": "SELECT strftime('%H', ts, 'unixepoch', 'localtime') AS hour, COUNT(*) AS requests FROM requests WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY 1 ORDER BY 1",
      "timeColumns": [
       "time"
      ]
@@ -2486,8 +2486,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(status >= 400) AS errors FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
-     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(status >= 400) AS errors FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(status >= 400) AS errors FROM requests WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY 1 ORDER BY 1",
+     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, SUM(status >= 400) AS errors FROM requests WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY 1 ORDER BY 1",
      "timeColumns": [
       "time"
      ]
@@ -2499,8 +2499,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, COUNT(*) AS rejected FROM rejections WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
-     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, COUNT(*) AS rejected FROM rejections WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() GROUP BY 1 ORDER BY 1",
+     "queryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, COUNT(*) AS rejected FROM rejections WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY 1 ORDER BY 1",
+     "rawQueryText": "SELECT CAST(ts / MAX(10, $__interval_ms / 1000) AS INTEGER) * MAX(10, $__interval_ms / 1000) AS time, COUNT(*) AS rejected FROM rejections WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 GROUP BY 1 ORDER BY 1",
      "timeColumns": [
       "time"
      ]
@@ -2564,8 +2564,8 @@
       "uid": "tellico-sqlite"
      },
      "queryType": "table",
-     "queryText": "SELECT ts AS time, user, node, role, status, queued AS queue, dur AS duration, prompt AS \"in\", cache AS cached, completion AS \"out\", finish, gone AS abandoned FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() ORDER BY ts DESC LIMIT 300",
-     "rawQueryText": "SELECT ts AS time, user, node, role, status, queued AS queue, dur AS duration, prompt AS \"in\", cache AS cached, completion AS \"out\", finish, gone AS abandoned FROM requests WHERE ts >= $__unixEpochFrom() AND ts < $__unixEpochTo() ORDER BY ts DESC LIMIT 300",
+     "queryText": "SELECT ts AS time, user, node, role, status, queued AS queue, dur AS duration, prompt AS \"in\", cache AS cached, completion AS \"out\", finish, gone AS abandoned FROM requests WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 ORDER BY ts DESC LIMIT 300",
+     "rawQueryText": "SELECT ts AS time, user, node, role, status, queued AS queue, dur AS duration, prompt AS \"in\", cache AS cached, completion AS \"out\", finish, gone AS abandoned FROM requests WHERE ts >= $__from / 1000.0 AND ts < $__to / 1000.0 ORDER BY ts DESC LIMIT 300",
      "timeColumns": [
       "time"
      ]
