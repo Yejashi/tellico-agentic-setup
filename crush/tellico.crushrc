@@ -107,7 +107,7 @@ if [[ -r $tellico_key_file ]]; then
 
   model large "tellico-$tellico_node/qwen3.8-27b-gsq-iq3s" \
     --max-tokens 32768 \
-    --temperature 0.6 \
+    --temperature 0.5 \
     --top-p 0.95
   model small "tellico-$tellico_node-quiet/qwen3.8-27b-gsq-iq3s" \
     --max-tokens 32768

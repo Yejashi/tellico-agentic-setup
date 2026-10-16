@@ -24,14 +24,14 @@
             "output": 32768
           },
           "options": {
-            "temperature": 0.6,
+            "temperature": 0.5,
             "top_p": 0.95,
             "parallel_tool_calls": true,
             "chat_template_kwargs": {
               "preserve_thinking": false
             },
             "extraBody": {
-              "temperature": 0.6,
+              "temperature": 0.5,
               "top_p": 0.95,
               "parallel_tool_calls": true,
               "chat_template_kwargs": {
@@ -122,7 +122,7 @@
             "output": 32768
           },
           "options": {
-            "temperature": 0.6,
+            "temperature": 0.5,
             "top_p": 0.95,
             "parallel_tool_calls": true,
             "chat_template_kwargs": {
@@ -130,7 +130,7 @@
               "preserve_thinking": false
             },
             "extraBody": {
-              "temperature": 0.6,
+              "temperature": 0.5,
               "top_p": 0.95,
               "parallel_tool_calls": true,
               "chat_template_kwargs": {
@@ -172,14 +172,14 @@
             "output": 32768
           },
           "options": {
-            "temperature": 0.6,
+            "temperature": 0.5,
             "top_p": 0.95,
             "parallel_tool_calls": true,
             "chat_template_kwargs": {
               "preserve_thinking": false
             },
             "extraBody": {
-              "temperature": 0.6,
+              "temperature": 0.5,
               "top_p": 0.95,
               "parallel_tool_calls": true,
               "chat_template_kwargs": {
@@ -270,7 +270,7 @@
             "output": 32768
           },
           "options": {
-            "temperature": 0.6,
+            "temperature": 0.5,
             "top_p": 0.95,
             "parallel_tool_calls": true,
             "chat_template_kwargs": {
@@ -278,7 +278,7 @@
               "preserve_thinking": false
             },
             "extraBody": {
-              "temperature": 0.6,
+              "temperature": 0.5,
               "top_p": 0.95,
               "parallel_tool_calls": true,
               "chat_template_kwargs": {
@@ -323,14 +323,14 @@
             "output": 32768
           },
           "options": {
-            "temperature": 0.6,
+            "temperature": 0.5,
             "top_p": 0.95,
             "parallel_tool_calls": true,
             "chat_template_kwargs": {
               "preserve_thinking": false
             },
             "extraBody": {
-              "temperature": 0.6,
+              "temperature": 0.5,
               "top_p": 0.95,
               "parallel_tool_calls": true,
               "chat_template_kwargs": {
@@ -421,7 +421,7 @@
             "output": 32768
           },
           "options": {
-            "temperature": 0.6,
+            "temperature": 0.5,
             "top_p": 0.95,
             "parallel_tool_calls": true,
             "chat_template_kwargs": {
@@ -429,7 +429,7 @@
               "preserve_thinking": false
             },
             "extraBody": {
-              "temperature": 0.6,
+              "temperature": 0.5,
               "top_p": 0.95,
               "parallel_tool_calls": true,
               "chat_template_kwargs": {
@@ -474,14 +474,14 @@
             "output": 32768
           },
           "options": {
-            "temperature": 0.6,
+            "temperature": 0.5,
             "top_p": 0.95,
             "parallel_tool_calls": true,
             "chat_template_kwargs": {
               "preserve_thinking": false
             },
             "extraBody": {
-              "temperature": 0.6,
+              "temperature": 0.5,
               "top_p": 0.95,
               "parallel_tool_calls": true,
               "chat_template_kwargs": {
@@ -572,7 +572,7 @@
             "output": 32768
           },
           "options": {
-            "temperature": 0.6,
+            "temperature": 0.5,
             "top_p": 0.95,
             "parallel_tool_calls": true,
             "chat_template_kwargs": {
@@ -580,7 +580,7 @@
               "preserve_thinking": false
             },
             "extraBody": {
-              "temperature": 0.6,
+              "temperature": 0.5,
               "top_p": 0.95,
               "parallel_tool_calls": true,
               "chat_template_kwargs": {
@@ -626,7 +626,7 @@
       "mode": "primary",
       "model": "tellico-0/qwen3.8-27b-gsq-iq3s",
       "variant": "medium",
-      "temperature": 0.6,
+      "temperature": 0.5,
       "top_p": 0.95,
       "prompt": "{file:./prompts/orchestrate.md}",
       "steps": 200,
@@ -653,7 +653,7 @@
       "mode": "primary",
       "model": "tellico-1/qwen3.8-27b-gsq-iq3s",
       "variant": "medium",
-      "temperature": 0.6,
+      "temperature": 0.5,
       "top_p": 0.95,
       "prompt": "{file:./prompts/orchestrate.md}",
       "steps": 200,
@@ -680,7 +680,7 @@
       "mode": "primary",
       "model": "tellico-0/qwen3.8-27b-gsq-iq3s",
       "variant": "medium",
-      "temperature": 0.6,
+      "temperature": 0.5,
       "top_p": 0.95,
       "prompt": "{file:./prompts/build.md}",
       "steps": 200,
@@ -703,7 +703,7 @@
       "mode": "primary",
       "model": "tellico-1/qwen3.8-27b-gsq-iq3s",
       "variant": "medium",
-      "temperature": 0.6,
+      "temperature": 0.5,
       "top_p": 0.95,
       "prompt": "{file:./prompts/build.md}",
       "steps": 200,
@@ -726,7 +726,7 @@
       "mode": "subagent",
       "model": "tellico-0-worker/qwen3.8-27b-gsq-iq3s",
       "variant": "medium",
-      "temperature": 0.6,
+      "temperature": 0.5,
       "top_p": 0.95,
       "prompt": "{file:./prompts/worker.md}",
       "steps": 200,
@@ -741,7 +741,7 @@
       "mode": "subagent",
       "model": "tellico-1-worker/qwen3.8-27b-gsq-iq3s",
       "variant": "medium",
-      "temperature": 0.6,
+      "temperature": 0.5,
       "top_p": 0.95,
       "prompt": "{file:./prompts/worker.md}",
       "steps": 200,

@@ -68,7 +68,21 @@ replay (2026-10-16), the whole spread is just acceptance:
 | tok/s | 132 | **86** | 130 | 160 | 183 | 230 |
 
 So a session that reads 86 tok/s is a session the drafter cannot predict --
-long prose at depth, typically -- not a regression. To tell the two apart,
+long prose at depth, typically -- not a regression.
+
+This is also why the sampler is a speed setting here and not only a quality
+one: a drafted token survives only if the target's sampler picks *that* token,
+so a flatter target rejects tokens the drafter got right. Measured over the
+same replay set, median acceptance is 0.643 at temperature 0.6 and 0.705 at
+0.5, which the fit above puts at 166 against 181 tok/s. **The default moved
+0.6 -> 0.5 on 2026-10-16**, after eight repeats of the 12-task coding suite
+came out level (90/96 at 0.6, 92/96 at 0.3, 90/96 at top_p 0.8) and a
+1600-token thinking-mode degeneracy probe found no repetition at any
+temperature down to greedy -- repetition being the documented risk, since Qwen
+recommends 0.6 for this model. What the sampler cannot fix is free prose: that
+stays at acceptance ~0.26 whatever the setting, and a higher-precision drafter
+does not help either (DFlash2 Q8_0 measured -0.8% with acceptance unchanged),
+so a long prose answer is near 80 tok/s by nature. To tell the two apart,
 `print_timing` in `/data/gclab/qwen38/logs/server-<job>-<node>.err` gives that
 request's own rate and whether the other slot was busy, and
 `tellico-v100/bench/shape_probe.py` sends one deep prompt twice, once as

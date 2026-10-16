@@ -27,6 +27,7 @@ the cluster that day; the raw results are in
 | Time to first token, returning session | 0.9-1.1 s when the turn continues or branches from what the slot holds (2026-10-16, r6) |
 | Time to first token, new 100k prompt | ~75-100 s; nothing to reuse, so this is prefill |
 | Thinking | graded: `off`, `low`, `medium` (server default), `xhigh` |
+| Sampling | temperature **0.5**, top_p 0.95 (0.6 until 2026-10-16; the sampler sets draft acceptance, which sets tok/s) |
 
 ## How a request gets there
 
