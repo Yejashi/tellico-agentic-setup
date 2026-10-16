@@ -60,7 +60,19 @@ decided almost entirely by how well the draft model predicts it, not by
 context length: a round of generation takes 31-38 ms whatever the depth,
 while the number of tokens it yields ranges from 3.9 to 6.7. Tool-heavy
 editing of familiar code drafts well and runs near 200; unfamiliar prose-ish
-reasoning drafts badly and runs near 110. `tellico-compute1` measures 7-8%
+reasoning drafts badly and runs near 110. Measured on one build, one node, one
+replay (2026-10-16), the whole spread is just acceptance:
+
+| draft acceptance | 0.42 | 0.45 | 0.50 | 0.64 | 0.73 | 0.84 |
+|---|---|---|---|---|---|---|
+| tok/s | 132 | **86** | 130 | 160 | 183 | 230 |
+
+So a session that reads 86 tok/s is a session the drafter cannot predict --
+long prose at depth, typically -- not a regression. To tell the two apart,
+`print_timing` in `/data/gclab/qwen38/logs/server-<job>-<node>.err` gives that
+request's own rate and whether the other slot was busy, and
+`tellico-v100/bench/shape_probe.py` sends one deep prompt twice, once as
+tool-shaped work and once as long prose, printing acceptance beside tok/s. `tellico-compute1` measures 7-8%
 below `compute0` on identical builds: one of its two GPUs does not boost
 above its 1312 MHz application clock while the others reach 1530, and
 `nvidia-smi -ac` is root-only, so only an administrator can fix it.
