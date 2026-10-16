@@ -16,14 +16,16 @@ the cluster that day; the raw results are in
 | Model | Qwen3.8-27B, ISTA-DASLab GSQ-RCO `IQ3_S` (non-uniform per-tensor quantisation, 11.77 GB) |
 | Speculative decoding | Qwen3.8-27B DFlash2 drafter (Q4_K_M), draft length 7 |
 | Model id | `qwen3.8-27b-gsq-iq3s` (the gateway also accepts `qwen3.6-35b-a3b` and `qwen3.8-27b`) |
-| Runtime | our `llama.cpp-v100` fork, `--split-mode tensor` over both V100s of a node; frozen build `tellico-v100/builds/tellico-dev-r5` |
+| Runtime | our `llama.cpp-v100` fork, `--split-mode tensor` over both V100s of a node; frozen build `tellico-v100/builds/tellico-dev-r6` |
 | Servers | one `llama-server` per GPU node, spanning both V100s, `tellico-compute0` and `tellico-compute1` |
 | Slots | 2 per node, 4 cluster-wide |
 | Context | 131,072 tokens per request |
 | Speed, one request on code | 105-216 tok/s, median 152 (2026-10-15, 17-request agent replay, `compute0`) |
 | Speed, two requests on one node | 130-170 tok/s each on short prompts |
 | Speed, a session 96-120k deep | 95-142 tok/s |
-| Prompt reading, cold | ~1500 tok/s at 12k |
+| Prompt reading, cold | ~1500 tok/s at 12k, ~1050 at 119k (attention is about half of prefill at depth) |
+| Time to first token, returning session | 0.9-1.1 s when the turn continues or branches from what the slot holds (2026-10-16, r6) |
+| Time to first token, new 100k prompt | ~75-100 s; nothing to reuse, so this is prefill |
 | Thinking | graded: `off`, `low`, `medium` (server default), `xhigh` |
 
 ## How a request gets there
@@ -57,7 +59,12 @@ OpenCode (opencode-tellico)                     other clients (curl, SDKs)
 
 ## The server on each node
 
-The live command line, read from `/proc` on compute0 (compute1 is identical):
+The base command line, read from `/proc` on compute0 (compute1 is identical).
+The `tellico-v100` rollout fragments appended to `service.env` override six of
+these values in production today: `QWEN38_LLAMA_ROOT=builds/tellico-dev-r6`,
+`--split-mode tensor`, `--batch-size 1024`, `--ubatch-size 1024`,
+`--ctx-checkpoints 8` and `--prefill-pace 30 --backend-sampling
+--spec-draft-backend-sampling`.
 
 ```text
 build-v100-mmq/bin/llama-server
@@ -71,7 +78,7 @@ build-v100-mmq/bin/llama-server
   --threads 32 --threads-batch 64 --cont-batching
   --jinja --reasoning auto --reasoning-format deepseek --reasoning-effort medium
   --metrics --no-warmup
-  --cache-ram 49152 --ctx-checkpoints 2          # bounded prompt cache, unchanged
+  --cache-ram 49152 --ctx-checkpoints 8          # bounded prompt cache; 8 since r6
   --spec-type draft-dflash
   --spec-draft-model /home/bbogale/models/Qwen3.8-27B-DFlash2-Q4_K_M.gguf
   --spec-draft-n-max 7 --spec-draft-ngl 999

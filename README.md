@@ -47,7 +47,15 @@ did not. Historical measurements before the engine work were 72-86 tok/s alone, 
 each with two requests and 430-650 tok/s cold prefill. The **2026-10-15
 snapshot**, one request at a time on `tellico-compute0` over a 17-request
 replay of real agent traffic, is 105-216 tok/s with a median of 152 and
-~1500 tok/s cold prefill. Which end of that range a request lands on is
+~1500 tok/s cold prefill. **Time to first token** was fixed separately on
+2026-10-16: a returning session now answers in 0.9-1.1 s whether its next
+turn continues or branches from what the server holds, where a branching turn
+previously re-read the whole prompt (75.1 s for one sharing 97012 tokens).
+The model is hybrid -- 16 attention layers and 48 recurrent ones -- so a slot
+can only resume where a context checkpoint was saved, and the two the server
+kept were both at the very end of the prompt; `tellico-v100` r6 changed which
+ones survive and raised the budget to 8 after a 61-minute fault soak. Which
+end of the tok/s range a request lands on is
 decided almost entirely by how well the draft model predicts it, not by
 context length: a round of generation takes 31-38 ms whatever the depth,
 while the number of tokens it yields ranges from 3.9 to 6.7. Tool-heavy
@@ -698,8 +706,10 @@ marked `--can-reason`: Crush's own `--reasoning-effort` offers `high`, which
 the Qwen3.8 template rejects outright, so the level travels in `extra_body`
 instead and Crush never adds one of its own. And `request-timeout` is raised to
 3600 from its default of 60 -- Crush aborts on that many seconds of
-inactivity, and a cold 110k-token prompt on this cluster waits about four
-minutes before the first token, so every deep session would otherwise die.
+inactivity, and a *cold* 110k-token prompt on this cluster still waits about
+90 seconds before the first token, so a deep session started from scratch
+would otherwise die. A session the server has already seen comes back in
+about a second (see below).
 
 Tunnel and cluster checks:
 
