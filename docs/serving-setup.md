@@ -16,14 +16,14 @@ the cluster that day; the raw results are in
 | Model | Qwen3.8-27B, ISTA-DASLab GSQ-RCO `IQ3_S` (non-uniform per-tensor quantisation, 11.77 GB) |
 | Speculative decoding | Qwen3.8-27B DFlash2 drafter (Q4_K_M), draft length 7 |
 | Model id | `qwen3.8-27b-gsq-iq3s` (the gateway also accepts `qwen3.6-35b-a3b` and `qwen3.8-27b`) |
-| Runtime | llama.cpp `c25030496`, `build-v100-mmq` (sm_70, forced MMQ kernels) |
+| Runtime | our `llama.cpp-v100` fork, `--split-mode tensor` over both V100s of a node; frozen build `tellico-v100/builds/tellico-dev-r5` |
 | Servers | one `llama-server` per GPU node, spanning both V100s, `tellico-compute0` and `tellico-compute1` |
 | Slots | 2 per node, 4 cluster-wide |
 | Context | 131,072 tokens per request |
-| Speed, one request on code | 72-86 tok/s |
-| Speed, two requests on one node | 52-70 tok/s each |
-| Speed, a session 64-110k tokens deep | ~33 tok/s alone, ~20 each with two that deep |
-| Prompt reading, cold | 656 tok/s at 4k, 505 at 70k, 431 at 109k (a fresh 110k prompt: ~4 min) |
+| Speed, one request on code | 105-216 tok/s, median 152 (2026-10-15, 17-request agent replay, `compute0`) |
+| Speed, two requests on one node | 130-170 tok/s each on short prompts |
+| Speed, a session 96-120k deep | 95-142 tok/s |
+| Prompt reading, cold | ~1500 tok/s at 12k |
 | Thinking | graded: `off`, `low`, `medium` (server default), `xhigh` |
 
 ## How a request gets there
@@ -92,14 +92,34 @@ validation including two warm 110k sessions, of 16 GiB each.
 
 ## Measured performance
 
-Per request, one node, tok/s. All with DFlash2 unless noted.
+Per request, one node, tok/s, all with DFlash2 unless noted. The
+**2026-10-15** column is a 17-request replay of real agent traffic on
+`tellico-compute0`, one request at a time; the same build on both sides of
+the A/B harness agrees to within 1% per request, so that is the noise floor.
+`tellico-compute1` measures 7-8% lower because one of its GPUs does not boost
+past 1312 MHz.
 
-| | 1 at once | 2 at once | 3 at once |
+| | 2026-10-09 (pre-engine) | 2026-10-15 | 2 at once |
 |---|---:|---:|---:|
-| Short code prompts | 72-86 | 52-70 | third waits for a slot |
-| Warm 64k session | 33 | -- | -- |
-| Warm 110k session | 33 | 20 each (64k + 110k together) | -- |
-| Without DFlash2, short code | 34 | 29-31 | -- |
+| Short code prompts (2k) | 72-86 | 182-216 | 130-170 each |
+| 12-33k session | -- | 129-205 | -- |
+| 64-65k session | 33 | 154-196 | -- |
+| 96-120k session | 33 | 95-142 | 20 each, pre-engine |
+| Without DFlash2, short code | 34 | -- | 29-31 |
+
+**What decides where a request lands in that range is draft acceptance, not
+context depth.** A round of generation takes 31-38 ms whatever the depth,
+while the tokens it yields range from 3.9 to 6.7: the drafter emits a fixed
+8-token block and the target verifies all 8 in one pass, so a request whose
+continuations the drafter predicts well runs near 200 and one it predicts
+badly runs near 110 at the *same* context length. Acceptance on the replay
+set ranges 0.42 to 0.82.
+
+The practical ceiling is near 250 tok/s on well-drafted requests, for two
+measured reasons: the draft block is 8 tokens, and a round cannot be shorter
+than ~15 ms because one GPU must read its half of the weights once
+(6.26 GB at the 693 GB/s a real streaming kernel reaches). See
+`tellico-v100/docs/report-2026-10-15-r5.md`.
 
 Three users on one node, three short requests at once: two run immediately,
 the third queues; walls 8-14 s against ~16 s for three slots without the
@@ -237,10 +257,14 @@ is also in `service.env`, commented, as is
 - **Four slots.** Three users with a lead and a worker each exceed it; extra
   requests queue. Through the gateway, leads go first; in tunnel mode the
   servers are first come, first served.
-- **Cold prefill.** ~4 minutes for a fresh 110k prompt. The prompt cache hides
-  it for a returning session.
-- **Deep sessions are slower.** ~33 tok/s at 64-110k, ~20 each when both slots
-  of a node are that deep.
+- **Cold prefill.** ~1500 tok/s, so about 80 s for a fresh 110k prompt (it was
+  ~4 minutes before the engine work). The prompt cache hides it for a
+  returning session.
+- **Deep sessions are somewhat slower, badly-drafted ones much more so.**
+  95-142 tok/s at 96-120k against 182-216 at 2k - but a 16k request the
+  drafter predicts poorly (129 tok/s) is slower than a 65k one it predicts
+  well (196). Depth costs ~0.075 ms of round time per 1k of context;
+  acceptance costs or saves whole tokens per round.
 - **GPU copy-engine faults (Xid 31).** Seen on the 27B with a large prompt
   cache and checkpoints, about every four hours under load. The supervisor
   restarts the faulting node in ~30 s; in-flight requests on it fail.

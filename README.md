@@ -43,16 +43,35 @@ GB, publisher-reported lossless on LiveCodeBench v6), with a DFlash2 draft
 model for speculative decoding, chosen on 2026-10-09 for agentic coding at
 128k. On a 12-task unit-tested coding suite it passed 11/12 against 4/12 for
 the Qwen3.6-35B-A3B it replaced, and its tool calls held up where the 35B's
-did not. Historical measurements before the latest engine work were 72-86 tok/s alone,
-52-70 each with two requests and 430-650 tok/s cold prefill. The 2026-10-11
-engine snapshot recorded 157-187 tok/s alone at 2k-16k context on the agent
-replay, 130-170 each at two, and 1300-1900 tok/s cold prefill; since
-2026-10-13 the server reads prompts in 1024-token rather than 2048-token
-chunks, which halves the stall a prompt causes other streams on its node and
-costs about 20% of that prefill speed. These are named
-measurement snapshots, not guarantees for every task or context length; draft
-acceptance, cache reuse and concurrency affect the result. Measure completed,
-verified work as well as token throughput.
+did not. Historical measurements before the engine work were 72-86 tok/s alone, 52-70
+each with two requests and 430-650 tok/s cold prefill. The **2026-10-15
+snapshot**, one request at a time on `tellico-compute0` over a 17-request
+replay of real agent traffic, is 105-216 tok/s with a median of 152 and
+~1500 tok/s cold prefill. Which end of that range a request lands on is
+decided almost entirely by how well the draft model predicts it, not by
+context length: a round of generation takes 31-38 ms whatever the depth,
+while the number of tokens it yields ranges from 3.9 to 6.7. Tool-heavy
+editing of familiar code drafts well and runs near 200; unfamiliar prose-ish
+reasoning drafts badly and runs near 110. `tellico-compute1` measures 7-8%
+below `compute0` on identical builds: one of its two GPUs does not boost
+above its 1312 MHz application clock while the others reach 1530, and
+`nvidia-smi -ac` is root-only, so only an administrator can fix it.
+
+Since 2026-10-13 the server reads prompts in 1024-token rather than
+2048-token chunks, which halves the stall a prompt causes other streams on
+its node and costs about 20% of prefill speed.
+
+Do not expect this to improve much further. The generation speed is bounded
+by two measured facts: the draft model emits a fixed 8-token block per round,
+and a round cannot be shorter than about 15 ms because one GPU has to read
+its half of the model's weights once. Together those put the practical
+ceiling near 250 tok/s on well-drafted requests. The analysis, and the five
+engine changes that were implemented and then rejected for measuring slower,
+are in the `tellico-v100` repository (`docs/report-2026-10-15-r5.md`).
+
+These are named measurement snapshots, not guarantees for every task or
+context length; draft acceptance, cache reuse and concurrency affect the
+result. Measure completed, verified work as well as token throughput.
 
 Slots are not free in VRAM: a third 128k slot does not fit beside the drafter
 (it does without it, at 24-34 tok/s each, which is slower for everyone). Speculation makes the model evaluate a block
