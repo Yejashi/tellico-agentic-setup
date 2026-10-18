@@ -116,18 +116,22 @@ that way and never inline a key into JSON or a unit file.
 
 ## Editing config or prompts does nothing until you install
 
-`config/opencode.json`, `pi/`, `crush/`, `prompts/*.md` and the `plugins/`
-files are templates.
-Both harnesses read the installed copies under `~/.config/tellico-qwen/`.
-`config/opencode.json`, `config/tui.json` and `pi/models.json` are substituted
-rather than copied, by `tellico_render_config`: `__TELLICO_BASE_URL_0__` and
+`config/opencode.json`, `pi/`, `crush/`, `hermes/`, `prompts/*.md` and the
+`plugins/` files are templates.
+Every harness reads the installed copies under `~/.config/tellico-qwen/`.
+`config/opencode.json`, `config/tui.json`, `pi/models.json` and
+`hermes/config.yaml` are substituted rather than copied, by
+`tellico_render_config`: `__TELLICO_BASE_URL_0__` and
 `__TELLICO_BASE_URL_1__` become loopback tunnel ports or gateway node paths
 depending on the mode, `__TELLICO_PLUGIN_DIR__` becomes the installed plugin
 directory, and `__TELLICO_CONFIG_DIR__` becomes the configuration directory, so
-never hardcode any of them back in. Whatever the fingerprint in
-`tellico_config_fingerprint` puts back has to match, or `./doctor.sh` reports a
-rendered file as drifted on every device. A change to this repo has no effect
-until `./install.sh --no-start` copies it across, and both harnesses load their
+never hardcode any of them back in. `hermes/config.yaml` goes through
+`tellico_render_hermes_config`, which adds the three node-dependent
+placeholders and renders the file once per lead node. Whatever the fingerprint
+in `tellico_config_fingerprint` -- or `tellico_hermes_fingerprint` for the
+YAML one -- puts back has to match, or `./doctor.sh` reports a rendered file as
+drifted on every device. A change to this repo has no effect
+until `./install.sh --no-start` copies it across, and every harness loads its
 configuration and extensions once at startup, so the user must then restart
 their session. Say so explicitly when handing back a change to any of them.
 
@@ -568,6 +572,118 @@ gateway defaults; a model swap touches all of them.
   `updated_input` (a shallow merge, so no JSON parsing) and blocks any later
   one. It does nothing unless `TELLICO_LEAD_NODE` is set, because the fragment
   that registers it runs in every Crush session the user starts.
+- `hermes/config.yaml` is the Hermes harness, and it is configured through a
+  mechanism neither of the other two needed: Hermes' **managed scope**. Hermes
+  keeps everything in one `~/.hermes/config.yaml` -- skills, auth, the
+  messaging gateway, kanban, platform toolsets -- and rewrites that file from
+  inside a session whenever a setting changes. So the `crushrc` trick of
+  appending a marked line is wrong twice over: the file is far more the user's
+  than `crushrc` is, and Hermes would rewrite around the addition. `HERMES_HOME`
+  would isolate the way `PI_CODING_AGENT_DIR` does, and is also wrong -- it
+  gives a Tellico session a blank profile with none of the user's skills, auth
+  or sessions, and runs onboarding. The answer is `HERMES_MANAGED_DIR`, the
+  layer an administrator pushes policy through: Hermes deep-merges
+  `$HERMES_MANAGED_DIR/config.yaml` over the user's own per leaf, siblings
+  untouched, and `bin/hermes-tellico` is the only thing that sets the variable.
+  A plain `hermes` is therefore byte-for-byte unaffected, and the session still
+  runs in the user's real home with their skills and auth. Nothing in
+  `install.sh` or `uninstall.sh` writes inside `~/.hermes`; `tests/hermes.test.mjs`
+  asserts that neither script even mentions it.
+- The managed overlay is **immutable from inside a session** -- that is the
+  point of the layer -- so `/model` cannot move a `hermes-tellico` session off
+  the cluster. That is a feature here and should not be worked around.
+- The overlay is rendered **twice**, into `hermes/node0/` and `hermes/node1/`,
+  because the two keys that choose a node are configuration rather than flags:
+  `model.provider` for the session and `delegation.provider` for its subagents.
+  `tellico_render_hermes_config` adds the three placeholders
+  `tellico_render_config` does not know about -- the lead node's number, its
+  peer's, and the lead's own base URL. Do not try to collapse this into one
+  directory by exporting `HERMES_INFERENCE_PROVIDER` instead: config beats that
+  variable in `runtime_provider.py`, and leaving `model.provider` unset so the
+  variable wins would let the user's own stale `model.provider` through from
+  the layer underneath.
+- Hermes is the only harness here with subagents, so `hermes-tellico` is the
+  counterpart of `opencode-tellico --orchestrate`, not of `build-tellico`.
+  `delegation.provider` points at the *peer* node's worker entry, which is why
+  there are four providers rather than two: `tellico-N` for the lead and
+  `tellico-N-worker`, the same endpoint plus `X-Tellico-Role: worker`, for the
+  children. That header is what the gateway reads for lead-first admission, so
+  dropping it would let a subagent's background request queue ahead of a person
+  at a prompt. The `delegation.provider` branch resolves a named custom entry
+  through the runtime provider system and honours `extra_headers` and
+  `key_cmd`; `delegation.base_url` would be simpler but takes the direct-endpoint
+  branch, which carries no headers.
+- `key_cmd` rather than `api_key` or `key_env`: Hermes mints a `key_cmd`
+  credential per request, so the overlay holds no secret and a key the tunnel
+  refetched is picked up without reinstalling. It is the same arrangement as
+  `!cat` in `pi/models.json`, and the same reason
+  `pi/extensions/secret-guard/` matters -- the path is in a file the model can
+  read.
+- `transport: chat_completions` is declared rather than left to Hermes'
+  hostname-based guessing. An unrecognised or absent `api_mode` falls through
+  to that guess, and the gateway's hostname tells it nothing, so a future
+  Hermes release changing the fallback would silently move the provider onto
+  the Responses wire.
+- Thinking is the one place Hermes needs **guarding** rather than configuring.
+  Its ladder is `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`,
+  `ultra`; its custom-provider profile forwards whichever it is given as a
+  top-level `reasoning_effort`, clamped only to the widest OpenAI-compatible
+  set, because "a custom endpoint's vocabulary is undiscoverable". There is no
+  config key to narrow it -- `supported_reasoning_efforts` is a method on the
+  profile class, and `capabilities` takes booleans only. The Qwen3.8 template
+  accepts `none`, `low`, `medium` and `xhigh` and raises on the other four,
+  which arrives as an HTTP 500 that Hermes retries three times and then reports
+  as an empty answer with no error at all. Measured, not inferred. So the level
+  is pinned twice: `agent.reasoning_effort: medium` in the overlay, and
+  `bin/hermes-tellico --think` refusing `minimal`, `high`, `max` and `ultra`
+  before a request is made. Unlike pi there is nothing declarative to clamp
+  with, so the launcher is the only place this failure can be made legible.
+- Hermes compacts in three layers and only the last one costs a model call:
+  tool-result pruning (`[Old tool output cleared to save context space]`, free),
+  a post-turn micro-compaction pass, then a full summary. It bounds the
+  summary's INPUT at 160,000 chars and never sets `max_tokens` on the call --
+  `agent/context_compressor.py` says "NEVER add a max_tokens wire cap on the
+  summary call" -- so the OpenCode truncation `plugins/compaction-guard/`
+  exists for cannot recur the same way. Do not "fix" that by adding a cap.
+- Summaries are still pinned thinking-off, for throughput rather than
+  truncation: the compressor passes no reasoning config, an empty
+  `reasoning_effort` sends nothing, and the Qwen3.8 template's default is
+  thinking on -- so an unguarded compaction generates reasoning prose at
+  acceptance ~0.26, the slowest shape this cluster has. `auxiliary.compression`
+  and `auxiliary.session_search` need **all three** of provider, model and
+  `reasoning_effort: none`: `resolve_compression_fast_lane` only certifies the
+  non-reasoning path when the configured provider and model match the route the
+  call actually resolves to, so an effort on its own silently does nothing.
+  That is why those blocks carry the per-node provider and why
+  `tellico_check_hermes` greps for `reasoning_effort: none`. `title_generation`
+  already runs thinking-off unasked (measured: 254 prompt, 8 output tokens,
+  unchanged by setting it) and is left alone.
+- Compaction threshold: `compression.threshold` is 0.50 but models under 512k
+  are floored at 0.75 raise-only (`_SMALL_CTX_THRESHOLD_PERCENT`), so it fires
+  near 98k of the 131,072 window, not 64k. A `hermes-tellico` session starts at
+  ~22.1k in this repo (~3.7k system prompt, ~10.1k of tool schemas for 17
+  toolsets, ~8.3k of `AGENTS.md` plus `README.md`), leaving ~76k. The 43 KB
+  skills snapshot costs nothing upfront -- skills are disclosed through the
+  `skills` tool, and `--skills ''` measures identically. Narrow the toolsets
+  with `-t` for a long session rather than trimming the overlay; that choice
+  was made deliberately on 2026-10-18.
+- Hermes is **fail-open** about a managed file it cannot parse: it logs one
+  loud warning and continues with the user's own provider. A broken overlay
+  therefore looks like a working session answering from the wrong place, which
+  is why `tellico_check_hermes` exists and `doctor.sh` runs it over both
+  copies. It checks for leftover placeholders (valid YAML, so nothing
+  downstream objects -- the request just goes to a host named
+  `__TELLICO_BASE_URL_0__`), for a tab, and that each copy pins the node its
+  directory is named for.
+- Never name a `__TELLICO_*` placeholder in the prose of a template. Rendering
+  is a plain `sed` over the whole file, so a placeholder mentioned in a comment
+  is substituted too, and every installed copy then reads as drifted.
+- `doctor.sh` also warns when the user's *own* `~/.hermes/config.yaml` has a
+  Tellico provider whose base URL is not the `/v1` path. That is reported, not
+  repaired -- the file is theirs -- but it is worth naming because the symptom
+  is a bare `HTTP 404: {"error":"Not found."}`: `/tellico/` on the same host is
+  the relay's web page and answers HTML, and a fragment like `/tellico/#/`
+  pasted from a browser loses the `#` before it reaches the wire.
 - `config/gateway-url` is the single source of the built-in gateway URL, read
   by both `install.sh` and `doctor.sh` so a user supplies only a key. It is a
   plain file rather than a value in `lib/checks.sh` because both scripts need

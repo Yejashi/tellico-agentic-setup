@@ -1,0 +1,153 @@
+# Tellico providers for the Hermes agent, as a managed-scope overlay.
+#
+# Hermes reads one config.yaml under its home directory, and that file is the
+# user's own: it carries their skills, auth, gateway, kanban and platform
+# settings, and Hermes rewrites it whenever a setting changes in a session. So
+# this setup does not edit it. Instead it uses the managed scope, the layer an
+# administrator pushes config through: $HERMES_MANAGED_DIR/config.yaml
+# deep-merges ON TOP of the user's file per leaf, leaving sibling keys alone,
+# and bin/hermes-tellico is the only thing that sets that variable. A plain
+# "hermes" therefore behaves exactly as it did before this was installed, and
+# nothing here can be clobbered from inside a session.
+#
+# The overlay is rendered once per lead node, into node0/ and node1/, because
+# the keys that choose a node -- model.provider and the node the subagents go
+# to -- are config, not command-line flags. bin/hermes-tellico points
+# HERMES_MANAGED_DIR at the directory for the node it was asked for.
+#
+# The double-underscore placeholders below are filled in by install.sh: the
+# two node base URLs and this setup's config directory by
+# tellico_render_config, and the lead node's number, its peer's and the lead's
+# own base URL by tellico_render_hermes_config. They are spelled out only
+# where they are used, never in a comment -- rendering is a plain sed over the
+# whole file, so a placeholder named in prose would be substituted too, and
+# the drift check would then see every installed copy as stale.
+
+providers:
+  # Hermes resolves a custom provider by route, meaning by base URL, so the
+  # two nodes have to be two entries. The -worker pair repeats them with the
+  # role header the gateway reads for lead-first admission: a person waiting
+  # at a prompt is never queued behind a subagent's background request.
+  #
+  # key_cmd rather than an api_key value or a key_env name: the key is minted
+  # per request, so this file carries no secret, and in tunnel mode a key the
+  # tunnel refetched is picked up without reinstalling. It is the same
+  # arrangement as "!cat" in pi/models.json.
+  tellico-0:
+    name: tellico-0
+    api: __TELLICO_BASE_URL_0__
+    transport: chat_completions
+    key_cmd: cat __TELLICO_CONFIG_DIR__/api-key
+    default_model: qwen3.8-27b-gsq-iq3s
+    context_length: 131072
+    # The endpoint serves exactly one model under several ids. Listing it
+    # keeps /model honest and stops Hermes offering the aliases as if they
+    # were separate models.
+    discover_models: false
+    models:
+      qwen3.8-27b-gsq-iq3s:
+        context_length: 131072
+        reasoning: true
+        vision: false
+  tellico-1:
+    name: tellico-1
+    api: __TELLICO_BASE_URL_1__
+    transport: chat_completions
+    key_cmd: cat __TELLICO_CONFIG_DIR__/api-key
+    default_model: qwen3.8-27b-gsq-iq3s
+    context_length: 131072
+    discover_models: false
+    models:
+      qwen3.8-27b-gsq-iq3s:
+        context_length: 131072
+        reasoning: true
+        vision: false
+  tellico-0-worker:
+    name: tellico-0-worker
+    api: __TELLICO_BASE_URL_0__
+    transport: chat_completions
+    key_cmd: cat __TELLICO_CONFIG_DIR__/api-key
+    default_model: qwen3.8-27b-gsq-iq3s
+    context_length: 131072
+    discover_models: false
+    extra_headers:
+      X-Tellico-Role: worker
+    models:
+      qwen3.8-27b-gsq-iq3s:
+        context_length: 131072
+        reasoning: true
+        vision: false
+  tellico-1-worker:
+    name: tellico-1-worker
+    api: __TELLICO_BASE_URL_1__
+    transport: chat_completions
+    key_cmd: cat __TELLICO_CONFIG_DIR__/api-key
+    default_model: qwen3.8-27b-gsq-iq3s
+    context_length: 131072
+    discover_models: false
+    extra_headers:
+      X-Tellico-Role: worker
+    models:
+      qwen3.8-27b-gsq-iq3s:
+        context_length: 131072
+        reasoning: true
+        vision: false
+
+model:
+  # Pinned rather than left to the user's own model setting, which is what a
+  # plain "hermes" uses: hermes-tellico is for this cluster, and a session
+  # that silently fell back to whatever else the device has configured would
+  # be the confusing outcome. base_url is pinned for the same reason -- it
+  # overrides a stale value in the user's file, which is otherwise still
+  # merged underneath.
+  provider: tellico-__TELLICO_LEAD__
+  default: qwen3.8-27b-gsq-iq3s
+  base_url: __TELLICO_BASE_URL_LEAD__
+  context_length: 131072
+  max_tokens: 32768
+
+agent:
+  # The Qwen3.8 chat template accepts none, low, medium and xhigh and raises
+  # on anything else, which reaches the client as an HTTP 500 the agent then
+  # retries into an empty answer. Hermes' ladder also has minimal, high, max
+  # and ultra, and its custom-provider profile forwards whichever it is given
+  # without clamping, so the level is checked in two places: this default, and
+  # bin/hermes-tellico's --think.
+  reasoning_effort: medium
+
+auxiliary:
+  # Compaction summaries must not think. Under OpenCode this repository already
+  # paid for that once -- a summary that spends its budget reasoning comes back
+  # truncated -- which is what plugins/compaction-guard/ and Crush's -quiet
+  # providers exist for. Hermes is less exposed, because it bounds the summary's
+  # INPUT (160k chars, head and tail kept) and never puts a max_tokens cap on
+  # the call, so a long summary is not cut off. But the compressor passes no
+  # reasoning config of its own and an empty reasoning_effort sends nothing at
+  # all, which leaves the server default -- and the Qwen3.8 template's default
+  # is thinking ON. Free prose is this model's worst shape (acceptance ~0.26,
+  # near 80 tok/s), so an unguarded compaction thinks its way through a summary
+  # at the slowest rate the cluster has, at the least convenient moment.
+  #
+  # All three keys are required, not just the effort: Hermes only certifies the
+  # non-reasoning path when the configured provider and model both match the
+  # route the call actually resolves to (resolve_compression_fast_lane), and an
+  # effort on its own leaves that certification off.
+  compression:
+    provider: tellico-__TELLICO_LEAD__
+    model: qwen3.8-27b-gsq-iq3s
+    reasoning_effort: none
+  # Summarising matched past sessions is the same kind of work, and the same
+  # argument applies. Title generation already runs thinking-off without being
+  # asked (measured: 254 prompt and 8 output tokens, unchanged by setting it),
+  # so it is left alone.
+  session_search:
+    provider: tellico-__TELLICO_LEAD__
+    model: qwen3.8-27b-gsq-iq3s
+    reasoning_effort: none
+
+delegation:
+  # Subagents go to the other node, so a session with children in flight uses
+  # both servers rather than queuing on one, and they carry the worker role.
+  # This is the Hermes counterpart of opencode.json's node-pinned workers.
+  provider: tellico-__TELLICO_PEER__-worker
+  model: qwen3.8-27b-gsq-iq3s

@@ -120,7 +120,7 @@ fi
 # failed. install.sh writes the pi agent directory either way.
 doctor_harnesses='opencode'
 doctor_harnesses_missing=
-for harness in pi crush; do
+for harness in pi crush hermes; do
   if command -v "$harness" >/dev/null 2>&1; then
     doctor_harnesses="$doctor_harnesses, $harness"
   else
@@ -150,6 +150,47 @@ if [ -r "$config_dir/crush/tellico.crushrc" ]; then
   else
     tellico_status_line crushrc WARN \
       "$config_home/crush/crushrc does not source tellico.crushrc"
+  fi
+fi
+
+# Hermes merges its overlay over the user's own config.yaml and is fail-open
+# about it: an overlay it cannot parse is logged once and ignored, and the
+# session then runs on whatever provider the user's own file names rather than
+# stopping. So a broken overlay looks like a working Hermes answering from
+# somewhere else entirely, which is worth checking for by itself.
+hermes_failed=false
+for hermes_node in 0 1; do
+  hermes_config="$config_dir/hermes/node$hermes_node/config.yaml"
+  [ -r "$hermes_config" ] || continue
+  if tellico_check_hermes "$hermes_config" "$hermes_node" 2>/dev/null; then
+    tellico_status_line "hermes-$hermes_node" OK \
+      "overlay pins node $hermes_node, both providers present"
+  else
+    tellico_status_line "hermes-$hermes_node" FAIL \
+      "$hermes_config is not a usable overlay"
+    hermes_failed=true
+  fi
+done
+
+# A Tellico provider the user configured in their own Hermes config, by hand
+# or through "hermes setup", before this setup had a Hermes launcher. It is
+# reported rather than touched -- that file is theirs -- but a wrong base URL
+# there is the one mistake worth naming, because the symptom is a flat "HTTP
+# 404: Not found" with nothing to say which of the two URLs is wrong. The API
+# is at /v1; /tellico/ is the relay's web page and answers HTML.
+hermes_user_config="${HERMES_HOME:-$HOME/.hermes}/config.yaml"
+if command -v hermes >/dev/null 2>&1 && [ -r "$hermes_user_config" ]; then
+  # Both spellings Hermes accepts for a provider's endpoint, quoted or not.
+  # sed's BRE alternation is not portable, so they are two expressions.
+  hermes_bad_url=$(sed -n \
+    -e 's|^[[:space:]]*base_url:[[:space:]]*["'"'"']*\([^"'"'"' ]*\).*|\1|p' \
+    -e 's|^[[:space:]]*api:[[:space:]]*["'"'"']*\([^"'"'"' ]*\).*|\1|p' \
+    "$hermes_user_config" 2>/dev/null |
+    grep '^https\{0,1\}://' | grep -i 'tellico' | grep -v '/v1' |
+    sed -e '1q' || true)
+  if [ -n "$hermes_bad_url" ]; then
+    tellico_status_line hermes-own WARN \
+      "your own hermes config points at $hermes_bad_url"
   fi
 fi
 
@@ -231,6 +272,35 @@ Reinstall it from a clean checkout:
 
 EOF
   status=1
+fi
+
+if [ "$hermes_failed" = true ]; then
+  cat <<EOF
+
+Next step: the Hermes overlay is unusable, and Hermes ignores an overlay it
+cannot read rather than failing, so hermes-tellico would answer from your own
+provider instead of the cluster. Reinstall it:
+
+    ./install.sh --no-start   # safe while a session is live
+
+EOF
+  status=1
+fi
+
+if [ -n "${hermes_bad_url:-}" ]; then
+  cat <<EOF
+
+Note: $hermes_user_config configures a Tellico provider at
+$hermes_bad_url, which is not an API endpoint -- the API is
+the /v1 path and that one answers HTML, so a plain "hermes" against it fails
+with "HTTP 404: Not found".
+
+hermes-tellico does not use that entry and is unaffected. To repair a plain
+"hermes" as well, point the provider at the gateway's API base:
+
+    $(tellico_is_gateway && tellico_gateway_url || echo "https://HOST/v1")
+
+EOF
 fi
 
 if [ -n "$missing" ]; then

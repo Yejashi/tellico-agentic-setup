@@ -30,6 +30,7 @@ rm -f \
   "$bin_dir/opencode-tellico" \
   "$bin_dir/pi-tellico" \
   "$bin_dir/crush-tellico" \
+  "$bin_dir/hermes-tellico" \
   "$bin_dir/tellico-qwen-tunnel" \
   "$systemd_dir/$unit_name" \
   "$config_dir/api-key" \
@@ -59,6 +60,8 @@ rm -f \
   "$config_dir/crush/tellico.crushrc" \
   "$config_dir/crush/hooks/secret-guard.sh" \
   "$config_dir/crush/hooks/fetch-guard.sh" \
+  "$config_dir/hermes/node0/config.yaml" \
+  "$config_dir/hermes/node1/config.yaml" \
   "$bin_dir/tellico-gateway" \
   "$lib_dir/tellico_gateway.py" \
   "$systemd_dir/$gateway_unit" \
@@ -136,6 +139,12 @@ rm -rf "$config_dir/pi/npm"
 # directory never deletes a transcript. It is left in place deliberately.
 rmdir "$config_dir/pi" 2>/dev/null || true
 rmdir "$config_dir/crush/hooks" 2>/dev/null || true
+# Only the overlay directories this setup rendered. The user's own Hermes home
+# is never touched by install.sh, so there is nothing of theirs to restore
+# here -- unlike crushrc above.
+rmdir "$config_dir/hermes/node0" 2>/dev/null || true
+rmdir "$config_dir/hermes/node1" 2>/dev/null || true
+rmdir "$config_dir/hermes" 2>/dev/null || true
 rmdir "$config_dir/crush" 2>/dev/null || true
 rmdir "$config_dir/plugins" 2>/dev/null || true
 rmdir "$config_dir" 2>/dev/null || true

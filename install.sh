@@ -386,11 +386,16 @@ pi_dir="$config_dir/pi"
 # elsewhere, so this fragment is sourced from the user's crushrc instead.
 crush_dir="$config_dir/crush"
 crushrc="$config_home/crush/crushrc"
+# Hermes' config.yaml belongs to the user -- it holds their skills, auth and
+# platform settings, and Hermes rewrites it from inside a session -- so this
+# setup stays out of it and uses the managed scope instead. One overlay
+# directory per lead node; see hermes/config.yaml.
+hermes_dir="$config_dir/hermes"
 
 mkdir -p "$config_dir/prompts" "$config_dir/lib" "$plugin_dir/tui" "$plugin_dir/tui-v2/subagents" \
   "$plugin_dir/secret-guard" "$plugin_dir/dispatch-balance" \
   "$plugin_dir/compaction-guard" "$pi_dir/extensions/secret-guard" \
-  "$crush_dir/hooks" "$bin_dir"
+  "$crush_dir/hooks" "$hermes_dir/node0" "$hermes_dir/node1" "$bin_dir"
 chmod 700 "$config_dir"
 
 # In gateway mode the key comes from the operator rather than over SSH, so it
@@ -526,6 +531,21 @@ else
   echo "Added one line to $crushrc, sourcing the Tellico providers."
 fi
 install -m 755 "$script_dir/bin/opencode-tellico" "$bin_dir/opencode-tellico"
+
+# The Hermes harness. Nothing of the user's own is touched: the overlay lives
+# here and bin/hermes-tellico is the only thing that points Hermes at it, so a
+# plain "hermes" keeps the user's own providers and settings. Rendered once per
+# lead node, because the node is chosen by config keys rather than by a flag.
+for hermes_node in 0 1; do
+  hermes_tmp="$hermes_dir/node$hermes_node/.config.yaml.tmp.$$"
+  trap 'rm -f "$hermes_tmp"' EXIT HUP INT TERM
+  tellico_render_hermes_config "$script_dir/hermes/config.yaml" \
+    "$base_url0" "$base_url1" "$config_dir" "$hermes_node" >"$hermes_tmp"
+  mv "$hermes_tmp" "$hermes_dir/node$hermes_node/config.yaml"
+  chmod 600 "$hermes_dir/node$hermes_node/config.yaml"
+  trap - EXIT HUP INT TERM
+done
+install -m 755 "$script_dir/bin/hermes-tellico" "$bin_dir/hermes-tellico"
 
 # Magic Context, which replaces native compaction in opencode-tellico and
 # pi-tellico sessions by default. The plugin reads one user-level

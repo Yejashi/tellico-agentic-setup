@@ -712,6 +712,85 @@ EOF
   [ "$tellico_config_ok" = true ]
 }
 
+# The Hermes managed-scope overlay for one lead node. Hermes merges this file
+# over the user's own config.yaml, and the merge is fail-open: an overlay it
+# cannot parse is logged and ignored, after which the session quietly runs on
+# whatever provider the user's own file names. That is the one failure here
+# that looks like success, so it is worth its own check.
+tellico_check_hermes() {
+  tellico_hermes_config=$1
+  tellico_hermes_node=$2
+  tellico_hermes_ok=true
+
+  if [ ! -s "$tellico_hermes_config" ]; then
+    echo "missing or empty: $tellico_hermes_config" >&2
+    return 1
+  fi
+
+  for tellico_hermes_provider in 0 1; do
+    if ! grep -q "^  tellico-$tellico_hermes_provider:" \
+      "$tellico_hermes_config"; then
+      echo "provider tellico-$tellico_hermes_provider is missing from" \
+        "$tellico_hermes_config" >&2
+      tellico_hermes_ok=false
+    fi
+  done
+
+  # The overlay exists to pin this node; an overlay for node 0 that names node
+  # 1 would start every session on the wrong server without any error.
+  if ! grep -q "^  provider: tellico-$tellico_hermes_node\$" \
+    "$tellico_hermes_config"; then
+    echo "$tellico_hermes_config does not pin model.provider to" \
+      "tellico-$tellico_hermes_node" >&2
+    tellico_hermes_ok=false
+  fi
+
+  if ! grep -q 'qwen3\.8-27b-gsq-iq3s' "$tellico_hermes_config"; then
+    echo "model qwen3.8-27b-gsq-iq3s is missing from" \
+      "$tellico_hermes_config" >&2
+    tellico_hermes_ok=false
+  fi
+
+  # Summaries must not think -- the rule plugins/compaction-guard/ enforces
+  # under OpenCode. Hermes only honours it when the compression route names a
+  # provider and a model as well as the effort, so losing any of the three
+  # silently puts reasoning back into every compaction.
+  if ! grep -q '^    reasoning_effort: none$' "$tellico_hermes_config"; then
+    echo "$tellico_hermes_config does not turn reasoning off for the" \
+      "auxiliary summary tasks" >&2
+    tellico_hermes_ok=false
+  fi
+
+  # An unrendered placeholder parses as YAML, so nothing downstream would
+  # complain -- the request would just go to a host called
+  # __TELLICO_BASE_URL_0__.
+  if grep -q '__TELLICO_' "$tellico_hermes_config"; then
+    echo "unfilled placeholders remain in $tellico_hermes_config" >&2
+    tellico_hermes_ok=false
+  fi
+
+  # Hermes parses this with a YAML library this setup cannot assume is
+  # installed anywhere else, so the check is what is available: python3 with
+  # PyYAML when both are present, and otherwise nothing. Tabs are worth
+  # catching on their own, being the one indentation mistake YAML rejects
+  # outright and sed-based rendering can introduce.
+  if printf '%s' "$(cat "$tellico_hermes_config")" | grep -q "$(printf '\t')"; then
+    echo "$tellico_hermes_config contains a tab, which YAML rejects" >&2
+    tellico_hermes_ok=false
+  fi
+  if command -v python3 >/dev/null 2>&1; then
+    if python3 -c 'import yaml' >/dev/null 2>&1; then
+      if ! python3 -c 'import yaml,sys; yaml.safe_load(open(sys.argv[1]))' \
+        "$tellico_hermes_config" >/dev/null 2>&1; then
+        echo "not valid YAML: $tellico_hermes_config" >&2
+        tellico_hermes_ok=false
+      fi
+    fi
+  fi
+
+  [ "$tellico_hermes_ok" = true ]
+}
+
 # --- Rendering and drift ----------------------------------------------------
 #
 # config/opencode.json is a template: install.sh fills in the endpoints and
@@ -761,6 +840,34 @@ tellico_render_config() {
     "$1"
 }
 
+# The Hermes overlay for one lead node, on stdout. Hermes chooses its node
+# through config rather than a flag -- model.provider for the session and
+# delegation.provider for the subagents -- so the template is rendered once
+# per node and bin/hermes-tellico picks the directory. The extra placeholders
+# are the lead node's number, its peer's, and the lead's own base URL.
+tellico_render_hermes_config() {
+  tellico_hermes_template=$1
+  tellico_hermes_url0=$2
+  tellico_hermes_url1=$3
+  tellico_hermes_dir=$4
+  tellico_hermes_lead=$5
+
+  if [ "$tellico_hermes_lead" = 0 ]; then
+    tellico_hermes_peer=1
+    tellico_hermes_lead_url=$tellico_hermes_url0
+  else
+    tellico_hermes_peer=0
+    tellico_hermes_lead_url=$tellico_hermes_url1
+  fi
+
+  tellico_render_config "$tellico_hermes_template" \
+    "$tellico_hermes_url0" "$tellico_hermes_url1" '' "$tellico_hermes_dir" |
+    sed \
+      -e "s|__TELLICO_BASE_URL_LEAD__|$tellico_hermes_lead_url|g" \
+      -e "s|__TELLICO_LEAD__|$tellico_hermes_lead|g" \
+      -e "s|__TELLICO_PEER__|$tellico_hermes_peer|g"
+}
+
 # Which server hosts the session. Left to itself every device would pick node
 # 0, piling every user's always-on session onto one server and costing it the
 # prompt-cache affinity that makes a long session cheap. Derive it from the
@@ -801,6 +908,19 @@ tellico_config_fingerprint() {
     "$1"
 }
 
+# The same idea for the Hermes overlay, which needs its own because it is YAML
+# and because it is rendered once per node: the node a line names is
+# normalised away too, so both installed copies compare against the one
+# template. Which node each copy actually pins is tellico_check_hermes' job.
+tellico_hermes_fingerprint() {
+  sed \
+    -e 's|^\( *\)api: .*|\1api: __TELLICO_BASE_URL__|' \
+    -e 's|^\( *\)base_url: .*|\1base_url: __TELLICO_BASE_URL__|' \
+    -e 's|^\( *\)key_cmd: cat .*|\1key_cmd: cat __TELLICO_CONFIG_DIR__/api-key|' \
+    -e 's|^\( *\)provider: tellico-.*|\1provider: tellico-__TELLICO_NODE__|' \
+    "$1"
+}
+
 # Files installed byte for byte, at the same relative path on both sides.
 TELLICO_INSTALLED_COPIES='lib/checks.sh
 prompts/orchestrate.md
@@ -835,6 +955,7 @@ plugins/tui-v2/subagents/package.json'
 TELLICO_INSTALLED_COMMANDS='opencode-tellico
 pi-tellico
 crush-tellico
+hermes-tellico
 tellico-qwen-tunnel'
 
 # Which installed copies no longer match this checkout. Editing the repository
@@ -921,6 +1042,23 @@ EOF
     "$tellico_drift_config/magic-context.jsonc"; then
     tellico_drifted="$tellico_drifted magic-context.jsonc"
   fi
+
+  # One overlay per lead node, both rendered from hermes/config.yaml.
+  for tellico_drift_node in 0 1; do
+    tellico_drift_name="hermes/node$tellico_drift_node/config.yaml"
+    if [ ! -r "$tellico_drift_config/$tellico_drift_name" ]; then
+      tellico_drift_absent="$tellico_drift_absent $tellico_drift_name"
+      continue
+    fi
+    tellico_drift_tmp="${TMPDIR:-/tmp}/tellico-drift.$$"
+    tellico_hermes_fingerprint "$tellico_drift_config/$tellico_drift_name" \
+      >"$tellico_drift_tmp"
+    if ! tellico_hermes_fingerprint "$tellico_drift_repo/hermes/config.yaml" |
+      cmp -s - "$tellico_drift_tmp"; then
+      tellico_drifted="$tellico_drifted $tellico_drift_name"
+    fi
+    rm -f "$tellico_drift_tmp"
+  done
 
   if [ ! -r "$tellico_drift_config/crush/tellico.crushrc" ]; then
     tellico_drift_absent="$tellico_drift_absent crush/tellico.crushrc"

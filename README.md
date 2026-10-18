@@ -133,12 +133,16 @@ OpenCode gets two primary agents per node and two node-pinned subagents:
 is only where the session starts. See
 [Orchestrate or solo](#orchestrate-or-solo).
 
-The same two servers also back two more harnesses, both single-agent:
-`pi-tellico` runs the [pi](https://pi.dev) coding agent and `crush-tellico`
-runs [Crush](https://github.com/charmbracelet/crush). Each is the counterpart
-of the default `opencode-tellico` session in its own harness. See
-[The pi harness](#the-pi-harness) and
-[The Crush harness](#the-crush-harness).
+The same two servers also back three more harnesses. `pi-tellico` runs the
+[pi](https://pi.dev) coding agent and `crush-tellico` runs
+[Crush](https://github.com/charmbracelet/crush); both are single-agent, so
+each is the counterpart of the default `opencode-tellico` session in its own
+harness. `hermes-tellico` runs [Hermes](https://hermes-agent.nousresearch.com),
+which has subagents, so it is the counterpart of `opencode-tellico
+--orchestrate` instead: lead on one node, children on the other. See
+[The pi harness](#the-pi-harness),
+[The Crush harness](#the-crush-harness) and
+[The Hermes harness](#the-hermes-harness).
 
 The cluster side of the service -- the Slurm job, the per-node llama.cpp server
 and the commands that start and inspect them -- lives in
@@ -325,10 +329,12 @@ rejected key from a gateway with no model server behind it.
 
 ## Use
 
-Three commands start a session: `opencode-tellico` for the OpenCode harness
-with its lead and two workers, and `pi-tellico` and `crush-tellico` for the
-single-agent [pi](#the-pi-harness) and [Crush](#the-crush-harness) harnesses.
-All three share the tunnel, the key and the two servers.
+Four commands start a session: `opencode-tellico` for the OpenCode harness
+with its lead and two workers, `hermes-tellico` for
+[Hermes](#the-hermes-harness), which also spreads subagents across both
+nodes, and `pi-tellico` and `crush-tellico` for the single-agent
+[pi](#the-pi-harness) and [Crush](#the-crush-harness) harnesses. All four
+share the tunnel, the key and the two servers.
 
 Start a dual-node OpenCode session with the lead on node 0:
 
@@ -737,6 +743,147 @@ inactivity, and a *cold* 110k-token prompt on this cluster still waits about
 would otherwise die. A session the server has already seen comes back in
 about a second (see below).
 
+### The Hermes harness
+
+`hermes-tellico` runs [Hermes](https://hermes-agent.nousresearch.com) against
+the same two servers. Install Hermes first, then:
+
+```bash
+hermes-tellico                   # node derived from this device, as above
+hermes-tellico 0 --think off
+hermes-tellico 0 'Review this repository'
+hermes-tellico 0 -z 'What does install.sh install?'
+hermes-tellico --continue        # Hermes' own flags are passed through
+```
+
+Hermes has subagents, so unlike pi and Crush this is the **orchestrate**
+shape: the session runs on the node you chose and `delegate_task` sends its
+children to the other one, marked as workers so the gateway admits a person
+waiting at a prompt ahead of background work. That is the same arrangement as
+`opencode-tellico --orchestrate`, reached through Hermes' own `delegation`
+settings rather than through named agents.
+
+It is configured through Hermes' **managed scope**, which is the one piece of
+this worth understanding. Hermes keeps everything in a single
+`~/.hermes/config.yaml` -- skills, authentication, the messaging gateway, the
+kanban board, platform toolsets -- and rewrites that file whenever a setting
+changes inside a session. Appending to it the way this setup appends to
+`crushrc` would therefore be both invasive and unstable. So instead
+`install.sh` renders an overlay into `~/.config/tellico-qwen/hermes/nodeN/`
+and `hermes-tellico` is the only thing that points `HERMES_MANAGED_DIR` at it.
+Hermes deep-merges that file over your own per leaf, leaving sibling keys
+alone.
+
+Three consequences are worth spelling out:
+
+- **A plain `hermes` is completely unaffected.** Your own model, provider and
+  settings are what it uses, exactly as before this was installed. Nothing in
+  `install.sh` or `uninstall.sh` writes inside `~/.hermes` at all -- there is a
+  test that asserts it.
+- **Your own Hermes keeps working inside a Tellico session.** Skills, auth,
+  sessions and the kanban board are the ones you already have, because this
+  runs in your real Hermes home. Only the model settings are replaced.
+- **The overlay cannot be changed from inside a session.** Managed values are
+  immutable, so `/model` will not move a `hermes-tellico` session off the
+  cluster. Start a plain `hermes` for that.
+
+The overlay is rendered **once per lead node**, into `node0/` and `node1/`,
+because the two keys that choose a node -- `model.provider` for the session
+and `delegation.provider` for its subagents -- are configuration rather than
+command-line flags. All four providers are declared in both copies, so
+switching is still possible; only which one is the default differs.
+
+| Provider | Why |
+|---|---|
+| `tellico-0`, `tellico-1` | One per node. `transport: chat_completions` is declared rather than guessed from the hostname, and the key is a `key_cmd`, so the file holds no secret and a key the tunnel refetched is picked up without reinstalling. |
+| `tellico-0-worker`, `tellico-1-worker` | The same two endpoints with `X-Tellico-Role: worker`, which is what the gateway reads for lead-first admission. `delegation.provider` points at the peer node's worker entry. |
+
+Thinking is the one place where Hermes needs guarding rather than
+configuring. Its ladder has eight levels -- `none`, `minimal`, `low`,
+`medium`, `high`, `xhigh`, `max`, `ultra` -- and its custom-provider profile
+forwards whichever it is given as a top-level `reasoning_effort` without
+clamping, because a custom endpoint's vocabulary is undiscoverable. The
+Qwen3.8 chat template accepts exactly four of them and raises on the rest:
+
+| Level | `none` | `minimal` | `low` | `medium` | `high` | `xhigh` | `max` | `ultra` |
+|---|---|---|---|---|---|---|---|---|
+| Qwen3.8 template | ok | **500** | ok | ok | **500** | ok | **500** | **500** |
+
+A rejected level is an HTTP 500 from the chat template, which Hermes retries
+three times and then reports as an **empty answer with no explanation** --
+measured, not guessed. So the level is pinned in two places: the overlay
+defaults `agent.reasoning_effort` to `medium`, and `hermes-tellico --think`
+refuses the four bad levels before any request is made. Use `off` (spelled
+`none` by Hermes, and accepted either way here), `low`, `medium` or `xhigh`.
+
+What a Hermes session costs before you type anything, measured on 2026-10-18
+with `--usage-file` and a one-word prompt:
+
+| Configuration | Prompt tokens |
+|---|---|
+| `-t file` (the core system prompt, floored) | 3,713 |
+| `-t file,terminal` | 5,021 |
+| 10 coding toolsets | 10,505 |
+| All 17 default CLI toolsets | 13,837 |
+| The default, in this repository | 22,105 |
+
+That is ~3.7k of system prompt, ~10.1k of tool schemas for 17 toolsets, and
+~8.3k of project context -- Hermes loads `AGENTS.md` and `README.md`, and this
+repository's `AGENTS.md` alone is 50 KB. The 43 KB skills snapshot costs
+nothing upfront: `--skills ''` measures identically, because skills are
+disclosed through the `skills` tool rather than preloaded.
+
+Against the 131,072-token window that leaves about 76,000 tokens of
+conversation before the first compaction, because the compaction point is not
+the `0.50` that `compression.threshold` defaults to. Models under 512k are
+floored at **0.75, raise-only** (`_SMALL_CTX_THRESHOLD_PERCENT` in
+`agent/context_compressor.py`), since at half a 128k window the incompressible
+floor eats the headroom and compaction re-fires every turn or two. So it fires
+near 98k, not 64k. Pass `-t` with a narrower list for a session you expect to
+run long; ten coding toolsets save about 3.3k, and `vision`, `image_gen` and
+`tts` cannot do anything on this text-only model in any case.
+
+Compaction is Hermes' own, not Magic Context, and it works in three layers
+rather than one. Old tool results are first replaced in place with
+`[Old tool output cleared to save context space]`, which costs no model call
+at all; a post-turn micro-compaction pass trims incrementally; and only then
+does a full summary call happen. The summary targets
+`max(2000, min(content x 0.20, min(context x 0.05, 10000)))` tokens, so 2,000
+to 6,553 on this window.
+
+Hermes bounds the summary's **input** -- 160,000 characters of serialized
+turns, head and tail kept -- and deliberately puts no `max_tokens` cap on the
+call ("NEVER add a max_tokens wire cap on the summary call",
+`agent/context_compressor.py`). That is the inverse of the arrangement that
+cost this repository a session under OpenCode, where the summary's *output*
+budget was what reasoning ate, so the truncation
+[`plugins/compaction-guard/`](#compaction) exists to prevent cannot happen the
+same way here.
+
+The overlay still pins summaries thinking-off, for a different reason. The
+compressor passes no reasoning config of its own, and an empty
+`reasoning_effort` sends nothing at all, which leaves the server default --
+and the Qwen3.8 template's default is thinking **on**. Free prose is this
+model's worst shape, acceptance ~0.26 and near 80 tok/s, so an unguarded
+compaction reasons its way through a summary at the slowest rate the cluster
+has, at the least convenient moment. `auxiliary.compression` therefore names a
+provider, a model and `reasoning_effort: none`: all three are needed, because
+Hermes only certifies the non-reasoning path when the configured route matches
+the one the call resolves to. `session_search` gets the same treatment;
+`title_generation` already runs thinking-off unasked.
+
+Because `auxiliary.compression.provider` is the session's own node, a summary
+is a second request on that node and takes one of its two slots. It happens
+between turns, so it does not compete with the session's own generation.
+
+`./doctor.sh` checks both overlays, because Hermes is **fail-open** about a
+managed file it cannot parse: it logs one warning and carries on with your own
+provider, which looks like a working session answering from the wrong place.
+It also warns if your own `~/.hermes/config.yaml` has a Tellico provider whose
+base URL is not the `/v1` API path -- a hand-configured `/tellico/` points at
+the relay's web page, which answers HTML and so fails with a bare
+`HTTP 404: Not found`.
+
 Tunnel and cluster checks:
 
 ```bash
@@ -862,11 +1009,14 @@ Client side, on each user's own device:
 ~/.config/tellico-qwen/plugins/
 ~/.config/tellico-qwen/pi/
 ~/.config/tellico-qwen/crush/
+~/.config/tellico-qwen/hermes/node0/config.yaml
+~/.config/tellico-qwen/hermes/node1/config.yaml
 ~/.config/tellico-qwen/magic-context.jsonc
 ~/.config/tellico-qwen/api-key
 ~/.local/bin/opencode-tellico
 ~/.local/bin/pi-tellico
 ~/.local/bin/crush-tellico
+~/.local/bin/hermes-tellico
 ~/.local/bin/tellico-qwen-tunnel
 ```
 
@@ -880,6 +1030,14 @@ only if it is still this setup's.
 `PI_CODING_AGENT_DIR` points pi at it. Pi sessions go to
 `~/.local/share/tellico-qwen/pi-sessions` instead, so uninstalling does not
 delete them.
+
+`hermes/node0/` and `hermes/node1/` are the two managed-scope overlays, one
+per lead node, and `hermes-tellico` points `HERMES_MANAGED_DIR` at whichever
+one it was asked for. Unlike `pi/` this is not a whole harness configuration:
+a Hermes session runs in your own `~/.hermes`, and the overlay replaces only
+the model settings on top of it. Nothing here is written inside `~/.hermes`,
+so Hermes sessions, skills and auth are untouched by installing or removing
+this setup.
 
 On systems with a working systemd user manager, the installer also enables:
 

@@ -1,0 +1,178 @@
+#!/bin/sh
+set -eu
+
+config_home=${XDG_CONFIG_HOME:-"$HOME/.config"}
+config_dir="$config_home/tellico-qwen"
+hermes_dir="$config_dir/hermes"
+checks="$config_dir/lib/checks.sh"
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+tunnel_command="$script_dir/tellico-qwen-tunnel"
+
+node=
+think=${TELLICO_THINK:-}
+
+usage() {
+  cat <<'EOF'
+usage: hermes-tellico [0|1] [--think LEVEL] [HERMES_ARGS...]
+
+Starts the Hermes agent against Tellico's two Qwen servers. The optional 0 or
+1 selects which server answers the session; with no number it is derived from
+this device, so that several users do not all land on node 0 and compete for
+one server's prompt cache. It is stable for a given device, and
+TELLICO_LEAD_NODE overrides it.
+
+Hermes has subagents, so this is the orchestrate shape rather than the solo
+one: the session runs on the node you chose and delegate_task sends its
+children to the other node, marked as workers so the gateway lets a person
+waiting at a prompt go first. Four requests fit cluster-wide.
+
+Everything after the options goes to Hermes unchanged, so its own interface is
+available: a subcommand, -z for one-shot output, --continue to resume,
+--worktree, -t to choose toolsets, --yolo, and so on. See "hermes --help".
+
+This runs in your own Hermes home, so your skills, authentication, kanban and
+sessions are all the ones you already have. Only the model settings are
+replaced, through Hermes' managed-scope overlay, and only for this command: a
+plain "hermes" is left exactly as it was. That also means the overlay's
+settings cannot be changed from inside a session -- /model will not move this
+session off the cluster.
+
+How much the model thinks is a thinking level. The config defaults it to
+medium, and --think sets it for the session. The Qwen3.8 chat template accepts
+only these four:
+
+  off      no reasoning at all, fastest ("none" is accepted too)
+  low      brief reasoning
+  medium   the default
+  xhigh    the most the chat template allows
+
+Hermes' ladder also has minimal, high, max and ultra. Those are refused here
+rather than passed on, because the chat template raises on them: the server
+answers 500, Hermes retries three times and the session ends with an empty
+answer and no explanation.
+
+examples:
+  hermes-tellico
+  hermes-tellico 0
+  hermes-tellico 1 --think off
+  hermes-tellico 0 'Review this repository'
+  hermes-tellico 0 -z 'What does install.sh install?'
+  hermes-tellico --continue
+
+environment:
+  TELLICO_THINK    Default thinking level, same values as --think, which
+                   overrides it. Unset, the configured level (medium) applies.
+  TELLICO_LEAD_NODE
+                   Force the node to 0 or 1 instead of deriving it from this
+                   device.
+EOF
+}
+
+case ${1:-} in
+  0|1)
+    node=$1
+    shift
+    ;;
+  -h|--help)
+    usage
+    exit 0
+    ;;
+esac
+
+# After the node, so "hermes-tellico 1 --think low" reads naturally. Anything
+# else is Hermes' own argument and is passed through untouched.
+while [ "$#" -gt 0 ]; do
+  case $1 in
+    --think)
+      if [ "$#" -lt 2 ]; then
+        echo 'hermes-tellico: --think requires a level' >&2
+        exit 2
+      fi
+      think=$2
+      shift 2
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+# Hermes' own levels are none, minimal, low, medium, high, xhigh, max and
+# ultra, and its custom-provider profile forwards whichever it is given
+# without clamping. The Qwen3.8 chat template raises "Unexpected reasoning
+# effort" on four of them, which arrives as an HTTP 500 and then, after
+# Hermes' retries, as an empty answer. Refusing them here is the only place
+# that failure can be made legible.
+case $think in
+  ''|off|none|low|medium|xhigh) ;;
+  minimal|high|max|ultra)
+    echo "hermes-tellico: the Qwen3.8 chat template does not accept thinking level '$think'" >&2
+    echo 'Use one of: off, low, medium, xhigh' >&2
+    exit 2
+    ;;
+  *)
+    echo "hermes-tellico: unknown thinking level '$think'" >&2
+    echo 'Use one of: off, low, medium, xhigh' >&2
+    exit 2
+    ;;
+esac
+# This setup spells "no reasoning at all" off, as the other launchers do;
+# Hermes spells it none. An if rather than an && list: the failing test of an
+# AND-OR list is exempt from set -e, but the list's own non-zero status is
+# not guaranteed to be, and that would exit for every other level.
+if [ "$think" = off ]; then
+  think=none
+fi
+
+if ! command -v hermes >/dev/null 2>&1; then
+  echo 'hermes-tellico: hermes is not installed or not on PATH' >&2
+  echo 'Install it from https://hermes-agent.nousresearch.com' >&2
+  exit 1
+fi
+
+if [ -z "$node" ]; then
+  if [ ! -r "$checks" ]; then
+    echo "hermes-tellico: missing $checks" >&2
+    echo 'Rerun install.sh from the tellico-agentic-setup repository.' >&2
+    exit 1
+  fi
+  # Installed by install.sh alongside this script. Shared with the other
+  # launchers, so one device does not start on node 0 in one harness and node
+  # 1 in another.
+  # shellcheck disable=SC1090
+  . "$checks"
+  node=$(tellico_default_lead_node) || exit $?
+fi
+
+# One overlay directory per lead node: the settings that choose a node --
+# model.provider and where the subagents go -- are config rather than
+# command-line flags, so they are rendered per node at install time instead of
+# being rewritten here on every start. See hermes/config.yaml.
+managed_dir="$hermes_dir/node$node"
+if [ ! -r "$managed_dir/config.yaml" ]; then
+  echo "hermes-tellico: missing $managed_dir/config.yaml" >&2
+  echo 'Rerun install.sh from the tellico-agentic-setup repository.' >&2
+  exit 1
+fi
+
+if ! "$tunnel_command" start >/dev/null; then
+  "$tunnel_command" status >&2 || true
+  exit 1
+fi
+
+# The one variable that makes this a Tellico session. Hermes merges
+# $HERMES_MANAGED_DIR/config.yaml over the user's own config.yaml per leaf,
+# and nothing else sets it, so a plain "hermes" is unaffected. Note that the
+# merge is fail-open: if the file cannot be parsed Hermes warns loudly and
+# ignores it, and the session then falls back to the user's own provider
+# rather than failing -- ./doctor.sh checks that the file still parses.
+export HERMES_MANAGED_DIR="$managed_dir"
+
+# The model, provider, context and subagent routing all arrive through the
+# overlay, so no --provider or --model is passed here. That is deliberate as
+# well as tidy: "hermes -z" rejects one of the two without the other, so
+# passing them would break one-shot runs for every caller that adds -z.
+#
+# $think is one word or empty, so it must stay unquoted.
+# shellcheck disable=SC2086
+exec hermes ${think:+--reasoning "$think"} "$@"
