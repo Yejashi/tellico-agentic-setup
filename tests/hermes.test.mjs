@@ -208,6 +208,22 @@ test("both nodes declare all four providers against the right endpoints", (t) =>
   }
 });
 
+test("subagents are capped at the slots one node has", (t) => {
+  // Hermes defaults to 10. Every child lands on the peer node's two slots, so
+  // a higher cap converts finished work into gateway queue timeouts (120s,
+  // and workers starve first by design).
+  for (const node of [0, 1]) {
+    assert.match(render(node), /^  max_concurrent_children: 2$/m);
+  }
+});
+
+test("the check rejects an overlay that oversubscribes the cluster", (t) => {
+  const greedy = render(0).replace("  max_concurrent_children: 2", "  max_concurrent_children: 10");
+  const result = checkHermes(t, greedy);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /does not cap subagents/);
+});
+
 test("summaries are pinned non-reasoning on the session's own node", (t) => {
   // The rule plugins/compaction-guard/ enforces under OpenCode. Hermes only
   // certifies the non-reasoning path when provider and model match the route

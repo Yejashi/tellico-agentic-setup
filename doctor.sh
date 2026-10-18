@@ -281,7 +281,11 @@ Next step: the Hermes overlay is unusable, and Hermes ignores an overlay it
 cannot read rather than failing, so hermes-tellico would answer from your own
 provider instead of the cluster. Reinstall it:
 
-    ./install.sh --no-start   # safe while a session is live
+    ./install.sh --no-start
+
+Stop any hermes-tellico session first. Unlike the other harnesses, Hermes
+re-reads its managed overlay whenever the file changes, so reinstalling would
+move a live session onto the new settings mid-run.
 
 EOF
   status=1
@@ -326,9 +330,14 @@ fi
 if [ "$drift_warning" = true ]; then
   echo
   echo 'Note: the installed copies differ from this checkout, so a session is'
-  echo 'running the older files. Install them and restart OpenCode:'
+  echo 'running the older files. Install them and restart the session:'
   echo
-  echo '  ./install.sh --no-start   # safe while a session is live'
+  echo '  ./install.sh --no-start'
+  echo
+  echo 'That is safe to run while an OpenCode, pi or Crush session is live --'
+  echo 'they read their configuration once at startup. A hermes-tellico'
+  echo 'session re-reads its managed overlay when the file changes, so stop'
+  echo 'that one first.'
   echo
 fi
 

@@ -763,6 +763,31 @@ waiting at a prompt ahead of background work. That is the same arrangement as
 `opencode-tellico --orchestrate`, reached through Hermes' own `delegation`
 settings rather than through named agents.
 
+Children are capped at **two**, down from Hermes' default of ten.
+`delegation.provider` is a single value, so every child lands on the peer node
+-- and that node has two slots no matter what a key's per-user allowance says.
+Queueing past them is not a neutral wait: the gateway rejects a request it
+cannot admit within 120 seconds, and a worker never takes a slot while a lead
+is queued, so subagents are the first to starve. Two children plus the lead's
+own request also lands exactly on the gateway's global `MAX_INFLIGHT` of 3.
+
+`max_concurrent_children` is a hard cap on the number of tasks in one
+`delegate_task` call, not a queue in front of them. A larger batch is refused
+with "Too many tasks: N provided, but max_concurrent_children is 2", which
+names the three ways out, and the model simply splits the work -- measured with
+five tasks, it re-sent them as 2 + 2 + 1 and all five completed. So nothing is
+lost, at the cost of a turn. One sharp edge comes with it: when a single turn
+emits *several separate* `delegate_task` calls rather than one batch, the
+excess calls past the cap are dropped with only a log line
+(`_cap_delegate_task_calls`). Raise the cap if you would rather have the
+parallelism and take the queue; it is one line in `hermes/config.yaml`.
+
+Two other delegation limits are Hermes' own and this setup leaves them alone.
+`delegation.oneshot_max_children` caps a *one-shot* session -- anything run
+with `-z` -- at **2 children in total**, whatever the config above says, which
+is worth knowing before concluding that a cap is not working. And
+`max_spawn_depth` is 1, so children cannot spawn children of their own.
+
 It is configured through Hermes' **managed scope**, which is the one piece of
 this worth understanding. Hermes keeps everything in a single
 `~/.hermes/config.yaml` -- skills, authentication, the messaging gateway, the
@@ -786,6 +811,12 @@ Three consequences are worth spelling out:
 - **The overlay cannot be changed from inside a session.** Managed values are
   immutable, so `/model` will not move a `hermes-tellico` session off the
   cluster. Start a plain `hermes` for that.
+- **Reinstalling does reach a live session.** Hermes folds the managed file's
+  signature into its config cache, so it re-reads the overlay whenever the file
+  changes. `./install.sh --no-start` is safe to run while an OpenCode, pi or
+  Crush session is live -- those read their configuration once at startup --
+  but it would move a running `hermes-tellico` session onto the new settings
+  mid-run. Stop that one first.
 
 The overlay is rendered **once per lead node**, into `node0/` and `node1/`,
 because the two keys that choose a node -- `model.provider` for the session

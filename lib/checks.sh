@@ -751,6 +751,15 @@ tellico_check_hermes() {
     tellico_hermes_ok=false
   fi
 
+  # Every child lands on the peer node, which has two slots, and Hermes
+  # defaults the cap to 10. Losing this line turns finished subagent work into
+  # gateway queue timeouts.
+  if ! grep -q '^  max_concurrent_children: 2$' "$tellico_hermes_config"; then
+    echo "$tellico_hermes_config does not cap subagents at the two slots a" \
+      "node has" >&2
+    tellico_hermes_ok=false
+  fi
+
   # Summaries must not think -- the rule plugins/compaction-guard/ enforces
   # under OpenCode. Hermes only honours it when the compression route names a
   # provider and a model as well as the effort, so losing any of the three

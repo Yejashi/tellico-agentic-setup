@@ -151,3 +151,16 @@ delegation:
   # This is the Hermes counterpart of opencode.json's node-pinned workers.
   provider: tellico-__TELLICO_PEER__-worker
   model: qwen3.8-27b-gsq-iq3s
+  # Hermes defaults this to 10, which is nothing like what this cluster can
+  # serve. delegation.provider is a single value, so every child lands on the
+  # peer node -- and that node has two slots, whatever a key's per-user
+  # allowance says. Two is therefore the number that keeps children out of the
+  # gateway's queue rather than merely admitted to it, and queueing is not a
+  # neutral wait here: a request that cannot be admitted within
+  # TELLICO_GATEWAY_QUEUE_TIMEOUT (120s) is rejected, and workers are the first
+  # to starve because a worker never takes a slot while a lead is queued.
+  #
+  # It also lands exactly on the gateway's global MAX_INFLIGHT of 3: the lead's
+  # own request plus two children. Raising it does not buy parallelism the
+  # cluster has, it converts finished work into timeouts.
+  max_concurrent_children: 2

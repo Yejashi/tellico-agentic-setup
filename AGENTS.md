@@ -602,6 +602,38 @@ gateway defaults; a model swap touches all of them.
   variable in `runtime_provider.py`, and leaving `model.provider` unset so the
   variable wins would let the user's own stale `model.provider` through from
   the layer underneath.
+- `delegation.max_concurrent_children: 2`, against Hermes' default of 10.
+  `delegation.provider` is one value, so every child lands on the peer node's
+  two slots regardless of a key's per-user allowance -- a key rated for more
+  concurrency does not change this, because the node is the binding constraint,
+  not the key. The gateway rejects a request it cannot
+  admit within `TELLICO_GATEWAY_QUEUE_TIMEOUT` (120s) and workers starve first,
+  so oversubscribing turns finished subagent work into timeouts. Two children
+  plus the lead is also exactly the gateway's `MAX_INFLIGHT` of 3. Observed:
+  an unguarded session spawned 7 children at once.
+- Know what that knob actually is before tuning it, because it is three things
+  and only one is a throttle. It is a hard **validation cap on tasks per
+  `delegate_task` call** (`delegate_tool_tasks.py`: "Too many tasks: N
+  provided, but max_concurrent_children is 2" -- the call is refused, the model
+  splits, measured as 2 + 2 + 1 for five tasks with all five completing). It is
+  the batch's thread-pool width (`DaemonThreadPoolExecutor(max_workers=...)`),
+  which is moot once batches cannot exceed it. And it caps how many *separate*
+  `delegate_task` calls survive one turn, **dropping** the excess with only a
+  `logger.warning` (`run_agent.py::_cap_delegate_task_calls`) -- the one place
+  this setting can lose work rather than defer it.
+- Two delegation limits are Hermes' own and are deliberately left alone.
+  `delegation.oneshot_max_children` caps a `-z` one-shot session at 2 children
+  in TOTAL regardless of `max_concurrent_children`, so a one-shot is the wrong
+  way to test a fan-out change -- it was initially mistaken here for the cap
+  working. `max_spawn_depth` is 1, so children cannot spawn their own.
+- Reinstalling reaches a LIVE Hermes session, unlike every other harness here.
+  Hermes folds the managed file's stat signature into its config cache ("editing
+  the managed-scope config.yaml invalidates", `hermes_cli/config.py`), so it
+  re-reads the overlay whenever it changes. `./install.sh --no-start` is still
+  safe beside an OpenCode, pi or Crush session -- they read configuration once
+  at startup -- but it moves a running `hermes-tellico` session onto the new
+  settings mid-run. `doctor.sh` says so wherever it suggests reinstalling. Do
+  not restore the blanket "safe while a session is live" wording.
 - Hermes is the only harness here with subagents, so `hermes-tellico` is the
   counterpart of `opencode-tellico --orchestrate`, not of `build-tellico`.
   `delegation.provider` points at the *peer* node's worker entry, which is why
