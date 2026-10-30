@@ -105,6 +105,17 @@ RUNTIME_DIR = os.path.expanduser(
 STATE_PATH = os.path.join(RUNTIME_DIR, "state.json")
 CONTEXT = _env_int("TELLICO_GATEWAY_CONTEXT", 131072)
 
+# A vision model beside the cluster ones: "name=host:port", or empty for none.
+# The cluster servers load no vision projector, so an agent that needs to look
+# at an image asks this one instead (bin/tellico-look). It runs on this host
+# rather than on Tellico, so it is reached directly, takes none of the cluster
+# slots, and is never sent the cluster key. llama.cpp serves it one request at
+# a time, so requests for it queue here, behind VISION_QUEUE_TIMEOUT.
+VISION = _env("TELLICO_GATEWAY_VISION", "")
+VISION_CONTEXT = _env_int("TELLICO_GATEWAY_VISION_CONTEXT", 8192)
+VISION_PARALLEL = _env_int("TELLICO_GATEWAY_VISION_PARALLEL", 1)
+VISION_QUEUE_TIMEOUT = _env_int("TELLICO_GATEWAY_VISION_QUEUE_TIMEOUT", 300)
+
 # /v1/responses is what Codex speaks: its wire_api accepts only "responses",
 # and llama.cpp implements that endpoint.
 PROXY_PATHS = (
@@ -530,6 +541,34 @@ for _name in [MODEL] + [a for a in MODEL_ALIASES if a != MODEL]:
         MODEL_ROUTES["%s-%s" % (_name, _label)] = [_label]
 
 
+def parse_vision(spec):
+    """"qwen3-vl-8b=127.0.0.1:18190" -> ("qwen3-vl-8b", "127.0.0.1", 18190)."""
+    if not spec.strip():
+        return None
+    name, _, address = spec.strip().partition("=")
+    host, _, port = address.rpartition(":")
+    if not (name and host and port.isdigit()):
+        raise SystemExit("tellico-gateway: bad TELLICO_GATEWAY_VISION: %r" % spec)
+    if name in MODEL_ROUTES:
+        raise SystemExit("tellico-gateway: vision model %r is also a cluster model" % name)
+    return name, host, int(port)
+
+
+VISION_ROUTE = parse_vision(VISION)
+VISION_SLOTS = threading.BoundedSemaphore(max(1, VISION_PARALLEL))
+
+
+def vision_up(timeout=0.5):
+    """Whether the vision server accepts a connection; cheap, it is local."""
+    if VISION_ROUTE is None:
+        return False
+    try:
+        socket.create_connection(VISION_ROUTE[1:], timeout=timeout).close()
+        return True
+    except OSError:
+        return False
+
+
 def _item_text(item):
     """Plain text of one Responses input item, whatever shape it uses."""
     content = item.get("content")
@@ -827,6 +866,16 @@ class Handler(BaseHTTPRequestHandler):
                     "status": "up" if up else "down",
                 }
             )
+        if VISION_ROUTE is not None:
+            data.append(
+                {
+                    "id": VISION_ROUTE[0],
+                    "object": "model",
+                    "owned_by": "tellico",
+                    "context_length": VISION_CONTEXT,
+                    "status": "up" if vision_up() else "down",
+                }
+            )
         data.sort(key=lambda entry: entry["id"])
         # Codex's model lister insists on a "models" array alongside "data",
         # and llama.cpp's own /v1/models carries both; mirror that so it does
@@ -923,12 +972,16 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         requested = payload.get("model") or MODEL
+        if VISION_ROUTE is not None and requested == VISION_ROUTE[0]:
+            self.serve_vision(path, prefix_labels, payload, user)
+            return
         labels = MODEL_ROUTES.get(requested)
         if labels is None:
+            available = sorted(MODEL_ROUTES) + ([VISION_ROUTE[0]] if VISION_ROUTE else [])
             self.send_error_json(
                 404,
                 "Unknown model %r. Available: %s."
-                % (requested, ", ".join(sorted(MODEL_ROUTES))),
+                % (requested, ", ".join(sorted(available))),
                 "invalid_request_error",
             )
             return
@@ -1032,6 +1085,54 @@ class Handler(BaseHTTPRequestHandler):
                 )
                 return
 
+    def serve_vision(self, path, prefix_labels, payload, user):
+        """Proxy one request to the vision server, one at a time."""
+        name, host, port = VISION_ROUTE
+        if prefix_labels is not None or path != "/v1/chat/completions":
+            self.send_error_json(
+                400,
+                "Model %r is served only at /v1/chat/completions, with no node "
+                "in the URL." % name,
+                "invalid_request_error",
+            )
+            return
+        stream = bool(payload.get("stream"))
+        started = time.monotonic()
+        if not VISION_SLOTS.acquire(timeout=VISION_QUEUE_TIMEOUT):
+            log("user=%s model=%s rejected: queued %ds without a slot"
+                % (user, name, VISION_QUEUE_TIMEOUT))
+            self.send_error_json(
+                429,
+                "The vision model is busy: it describes one image at a time and "
+                "none finished within %ds." % VISION_QUEUE_TIMEOUT,
+                "rate_limit_error",
+                {"Retry-After": "60"},
+            )
+            return
+        queued = time.monotonic() - started
+        try:
+            # Its own name upstream too: llama.cpp serves it under that alias.
+            wire = json.dumps(dict(payload, model=name)).encode("utf-8")
+            try:
+                status, usage = self.forward(path, host, port, wire, stream, None, "worker")
+            except (OSError, http.client.HTTPException) as error:
+                log("user=%s model=%s failed: %s" % (user, name, error))
+                self.send_error_json(
+                    502,
+                    "The vision model server did not answer: %s." % error,
+                    "api_error",
+                )
+                return
+        finally:
+            VISION_SLOTS.release()
+        log(
+            "user=%s model=%s node=vision status=%s queued=%.1fs dur=%.1fs "
+            "stream=%d in=%s out=%s role=vision"
+            % (user, name, status, queued, time.monotonic() - started - queued,
+               1 if stream else 0, usage.get("prompt_tokens", "-"),
+               usage.get("completion_tokens", "-"))
+        )
+
     def report_unavailable(self, user, requested, outcome, queued):
         if outcome == "unavailable":
             log("user=%s model=%s rejected: no healthy node" % (user, requested))
@@ -1058,18 +1159,16 @@ class Handler(BaseHTTPRequestHandler):
     def forward(self, path, host, port, wire, stream, upstream_key, role="lead"):
         """Proxy one request. Raises on a connection-level failure."""
         conn = http.client.HTTPConnection(host, port, timeout=REQUEST_TIMEOUT)
+        headers = {
+            "Content-Type": "application/json",
+            "Content-Length": str(len(wire)),
+            "Accept": self.headers.get("Accept") or "*/*",
+        }
+        # None for the vision server, which must never see the cluster key.
+        if upstream_key:
+            headers["Authorization"] = "Bearer " + upstream_key
         try:
-            conn.request(
-                "POST",
-                path,
-                body=wire,
-                headers={
-                    "Content-Type": "application/json",
-                    "Content-Length": str(len(wire)),
-                    "Authorization": "Bearer " + upstream_key,
-                    "Accept": self.headers.get("Accept") or "*/*",
-                },
-            )
+            conn.request("POST", path, body=wire, headers=headers)
             response = conn.getresponse()
             passthrough = [
                 (name, value)
@@ -1180,9 +1279,10 @@ def main():
     socket.setdefaulttimeout(None)
 
     log(
-        "listening on %s:%d  model=%s  nodes=%s  max_inflight=%d  drain=%s"
+        "listening on %s:%d  model=%s  nodes=%s  max_inflight=%d  drain=%s  vision=%s"
         % (BIND, PORT, MODEL, ",".join(ALL_LABELS), MAX_INFLIGHT,
-           ("%ds via %s" % (DRAIN_SECONDS, SLURM_SSH)) if SLURM_SSH else "off")
+           ("%ds via %s" % (DRAIN_SECONDS, SLURM_SSH)) if SLURM_SSH else "off",
+           ("%s at %s:%d" % VISION_ROUTE) if VISION_ROUTE else "off")
     )
     try:
         server.serve_forever(poll_interval=0.5)

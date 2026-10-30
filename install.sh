@@ -15,6 +15,8 @@ api_key_file=
 ssh_identity=${TELLICO_SSH_IDENTITY:-}
 # Empty means "keep what this device had", which is off on a first install.
 remote_control=
+# Empty means "keep what this device had", which is on on a first install.
+t3code=
 
 config_home=${XDG_CONFIG_HOME:-"$HOME/.config"}
 config_dir="$config_home/tellico-qwen"
@@ -76,6 +78,12 @@ Both modes give the same dual-node session with the same two workers.
                    from a phone: open the gateway's /tellico/ page and sign in
                    with your gateway key. Off by default; --no-remote-control
                    turns it off again. A rerun keeps the last choice.
+  --no-t3code      Do not add a Tellico provider to t3code, and take out the
+                   one an earlier install added. By default, when t3code has
+                   been opened on this device, its settings get a "Tellico"
+                   OpenCode instance that runs opencode-tellico with
+                   build-tellico as its build agent. --t3code puts it back. A
+                   rerun keeps the last choice.
   -h, --help       Show this help
 EOF
 }
@@ -142,6 +150,14 @@ while [ "$#" -gt 0 ]; do
       remote_control=0
       shift
       ;;
+    --t3code)
+      t3code=1
+      shift
+      ;;
+    --no-t3code)
+      t3code=0
+      shift
+      ;;
     -h|--help)
       usage
       exit 0
@@ -162,8 +178,12 @@ if [ -r "$config_dir/client.env" ]; then
   if [ -z "$remote_control" ]; then
     remote_control=$(sed -n "s/^TELLICO_REMOTE_CONTROL='\(.*\)'$/\1/p" "$config_dir/client.env")
   fi
+  if [ -z "$t3code" ]; then
+    t3code=$(sed -n "s/^TELLICO_T3CODE_INSTANCE='\(.*\)'$/\1/p" "$config_dir/client.env")
+  fi
 fi
 [ "$remote_control" = 1 ] || remote_control=0
+[ "$t3code" = 0 ] || t3code=1
 
 # Echoes a mode name. Takes one too, so that an answer and a fallback on EOF
 # cannot disagree about what the default meant.
@@ -527,6 +547,37 @@ else
 fi
 install -m 755 "$script_dir/bin/opencode-tellico" "$bin_dir/opencode-tellico"
 
+# t3code. It has no agent picker for OpenCode 2 and always runs the agent
+# named "build", so it gets its own OpenCode instance that starts the server
+# through opencode-tellico with TELLICO_T3CODE=1, which makes that build agent
+# build-tellico (see bin/opencode-tellico). Only once t3code has been opened:
+# before then it has no userdata directory, and a rerun after opening it adds
+# the instance. t3code reloads its settings when the file changes, so a
+# running t3code picks the instance up without a restart.
+t3_home=${T3CODE_HOME:-"$HOME/.t3"}
+t3code_settings="$t3_home/userdata/settings.json"
+t3code_result=
+if [ -d "$t3_home/userdata" ]; then
+  if [ "$t3code" = 1 ]; then
+    t3code_action=add
+  else
+    t3code_action=remove
+  fi
+  t3code_status=0
+  tellico_t3code_instance "$t3code_action" "$t3code_settings" \
+    "$bin_dir/opencode-tellico" || t3code_status=$?
+  case $t3code_status in
+    0) t3code_result=$t3code_action ;;
+    2)
+      echo "Skipped t3code: python3 is needed to edit $t3code_settings." >&2
+      ;;
+    *)
+      echo "Skipped t3code: $t3code_settings is not valid JSON, or already" >&2
+      echo 'has a "tellico" provider instance that is not OpenCode.' >&2
+      ;;
+  esac
+fi
+
 # Magic Context, which replaces native compaction in opencode-tellico and
 # pi-tellico sessions by default. The plugin reads one user-level
 # file, $XDG_CONFIG_HOME/cortexkit/magic-context.jsonc, and nothing points it
@@ -550,6 +601,9 @@ fi
 rm -f "$bin_dir/codex-tellico" \
   "${CODEX_HOME:-$HOME/.codex}/tellico.config.toml"
 install -m 755 "$script_dir/bin/tellico-qwen-tunnel" "$bin_dir/tellico-qwen-tunnel"
+# The agents' eyes: the Tellico models are text-only, and the prompts tell
+# them to ask the gateway's vision model through this instead.
+install -m 755 "$script_dir/bin/tellico-look" "$bin_dir/tellico-look"
 
 umask 077
 env_tmp="$config_dir/.client.env.tmp.$$"
@@ -566,6 +620,10 @@ trap 'rm -f "$env_tmp"' EXIT HUP INT TERM
   printf "TELLICO_SSH_IDENTITY='%s'\n" "$ssh_identity"
   # Read by opencode-tellico: publish sessions to the relay for the phone.
   printf "TELLICO_REMOTE_CONTROL='%s'\n" "$remote_control"
+  # Read back by install.sh only. Not TELLICO_T3CODE: opencode-tellico sources
+  # this file for --connection, and that variable would turn every such launch
+  # into a t3code one.
+  printf "TELLICO_T3CODE_INSTANCE='%s'\n" "$t3code"
 } >"$env_tmp"
 mv "$env_tmp" "$config_dir/client.env"
 chmod 600 "$config_dir/client.env"
@@ -617,6 +675,19 @@ fi
 
 echo
 echo 'Tellico OpenCode client installed successfully.'
+
+case $t3code_result in
+  add)
+    echo
+    echo 't3code: added a "Tellico" provider. Pick a tellico-0 or tellico-1 model'
+    echo 'under it; its Build mode is build-tellico. A Tellico thread already open'
+    echo 'keeps its old server until t3code is restarted.'
+    ;;
+  remove)
+    echo
+    echo "t3code: removed the Tellico provider, if this setup had added one."
+    ;;
+esac
 
 if [ "$remote_control" = 1 ]; then
   relay_gateway=${gateway_url:-${default_gateway_url%/}}

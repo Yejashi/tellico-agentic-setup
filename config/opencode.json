@@ -107,6 +107,14 @@
                 "stop": []
               }
             }
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
           }
         },
         "qwen3.8-27b-gsq-iq3s-quiet": {
@@ -145,7 +153,15 @@
               "</think>"
             ]
           },
-          "id": "qwen3.8-27b-gsq-iq3s"
+          "id": "qwen3.8-27b-gsq-iq3s",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          }
         }
       }
     },
@@ -255,6 +271,14 @@
                 "stop": []
               }
             }
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
           }
         },
         "qwen3.8-27b-gsq-iq3s-quiet": {
@@ -293,7 +317,15 @@
               "</think>"
             ]
           },
-          "id": "qwen3.8-27b-gsq-iq3s"
+          "id": "qwen3.8-27b-gsq-iq3s",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          }
         }
       }
     },
@@ -406,6 +438,14 @@
                 "stop": []
               }
             }
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
           }
         },
         "qwen3.8-27b-gsq-iq3s-quiet": {
@@ -444,7 +484,15 @@
               "</think>"
             ]
           },
-          "id": "qwen3.8-27b-gsq-iq3s"
+          "id": "qwen3.8-27b-gsq-iq3s",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          }
         }
       }
     },
@@ -557,6 +605,14 @@
                 "stop": []
               }
             }
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
           }
         },
         "qwen3.8-27b-gsq-iq3s-quiet": {
@@ -595,7 +651,15 @@
               "</think>"
             ]
           },
-          "id": "qwen3.8-27b-gsq-iq3s"
+          "id": "qwen3.8-27b-gsq-iq3s",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          }
         }
       }
     }

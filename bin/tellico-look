@@ -1,0 +1,129 @@
+#!/bin/sh
+set -eu
+
+config_home=${XDG_CONFIG_HOME:-"$HOME/.config"}
+config_dir="$config_home/tellico-qwen"
+model=${TELLICO_VISION_MODEL:-qwen3-vl-8b}
+
+usage() {
+  cat <<'EOF'
+usage: tellico-look IMAGE [QUESTION]
+
+Asks the gateway's vision model (Qwen3-VL-8B) about one image and prints its
+answer. The Tellico models are text-only, so this is how an agent looks at a
+screenshot or a picture: a specific question ("Is the status bar visible?",
+"What does the error dialog say?") gets a better answer than a general
+description, which is what it gives with no question.
+
+It runs on CPU, one image at a time, and takes about a minute -- longer when
+another image is ahead of it. Give the shell call a timeout of several
+minutes. PNG, JPEG, WebP, GIF and BMP are accepted, up to 20 MB.
+
+It goes through the API gateway in either install mode: a gateway install
+uses its own key, a tunnel install the one in api-key.gateway.
+
+environment:
+  TELLICO_GATEWAY_URL   Gateway base URL. Unset, the one install.sh recorded.
+  TELLICO_VISION_MODEL  Model to ask (default: qwen3-vl-8b).
+EOF
+}
+
+case ${1:-} in
+  ''|-h|--help)
+    usage
+    [ -n "${1:-}" ] || exit 2
+    exit 0
+    ;;
+esac
+
+image=$1
+question=${2:-}
+
+if [ ! -r "$image" ] || [ -d "$image" ]; then
+  echo "tellico-look: cannot read $image" >&2
+  exit 1
+fi
+
+if ! command -v python3 >/dev/null 2>&1; then
+  echo 'tellico-look: python3 is needed to send the image.' >&2
+  exit 1
+fi
+
+tellico_client_env() {
+  sed -n "s/^$1='\(.*\)'$/\1/p" "$config_dir/client.env" 2>/dev/null | head -n 1
+}
+
+# The vision model is reached only through the gateway; the SSH tunnel goes to
+# the cluster servers, which have no vision projector. So a tunnel install
+# uses its gateway key, the same one remote control signs in with.
+mode=$(tellico_client_env TELLICO_MODE)
+case ${mode:-tunnel} in
+  gateway) key_file="$config_dir/api-key" ;;
+  *) key_file="$config_dir/api-key.gateway" ;;
+esac
+gateway=${TELLICO_GATEWAY_URL:-$(tellico_client_env TELLICO_GATEWAY_URL)}
+
+if [ -z "$gateway" ]; then
+  echo 'tellico-look: no gateway URL. Set TELLICO_GATEWAY_URL, or rerun install.sh,' >&2
+  echo 'which records the built-in one.' >&2
+  exit 1
+fi
+if [ ! -s "$key_file" ]; then
+  echo "tellico-look: no gateway API key in $key_file" >&2
+  echo 'A tunnel install needs one there too (mode 600) to reach the vision model.' >&2
+  exit 1
+fi
+
+python3 -I - "$image" "$question" "$gateway" "$key_file" "$model" <<'TELLICO_PY'
+import base64, json, os, sys, urllib.error, urllib.request
+
+image, question, gateway, key_file, model = sys.argv[1:6]
+types = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+         ".webp": "image/webp", ".gif": "image/gif", ".bmp": "image/bmp"}
+kind = types.get(os.path.splitext(image)[1].lower())
+if kind is None:
+    sys.exit("tellico-look: %s is not a PNG, JPEG, WebP, GIF or BMP file" % image)
+if os.path.getsize(image) > 20 * 1024 * 1024:
+    sys.exit("tellico-look: %s is over 20 MB; scale it down first" % image)
+with open(image, "rb") as handle:
+    data = base64.b64encode(handle.read()).decode("ascii")
+with open(key_file, encoding="utf-8") as handle:
+    key = handle.read().strip()
+
+prompt = question.strip() or (
+    "Describe this image for a software engineer who cannot see it. "
+    "Transcribe all visible text exactly. Describe the layout, controls, "
+    "colours and anything that looks wrong, cut off or broken."
+)
+payload = {
+    "model": model,
+    "messages": [{"role": "user", "content": [
+        {"type": "image_url", "image_url": {"url": "data:%s;base64,%s" % (kind, data)}},
+        {"type": "text", "text": prompt},
+    ]}],
+    "max_tokens": 1024,
+    "temperature": 0.2,
+}
+request = urllib.request.Request(
+    gateway.rstrip("/") + "/chat/completions",
+    data=json.dumps(payload).encode("utf-8"),
+    headers={"Content-Type": "application/json", "Authorization": "Bearer " + key},
+)
+try:
+    # The gateway queues a busy model for up to five minutes before it answers.
+    with urllib.request.urlopen(request, timeout=600) as response:
+        reply = json.load(response)
+except urllib.error.HTTPError as error:
+    try:
+        message = json.load(error).get("error", {}).get("message", "")
+    except ValueError:
+        message = ""
+    sys.exit("tellico-look: the gateway answered %d. %s" % (error.code, message))
+except (urllib.error.URLError, OSError) as error:
+    sys.exit("tellico-look: could not reach %s: %s" % (gateway, error))
+
+try:
+    print(reply["choices"][0]["message"]["content"].strip())
+except (KeyError, IndexError, TypeError, AttributeError):
+    sys.exit("tellico-look: unexpected reply from the gateway")
+TELLICO_PY

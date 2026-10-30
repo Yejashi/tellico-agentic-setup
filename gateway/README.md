@@ -269,6 +269,28 @@ Both paths serve the same model id, which is what a client with one base URL
 per provider needs. If a URL and a model name disagree, the request is
 refused rather than quietly sent somewhere.
 
+### Vision
+
+The cluster servers load no vision projector, so they reject an image with a
+500. `TELLICO_GATEWAY_VISION` adds one image model that runs on the gateway
+host itself, as `name=host:port`; on the Jetstream host that is Qwen3-VL-8B on
+CPU from `tellico-vision.service`:
+
+```sh
+TELLICO_GATEWAY_VISION="qwen3-vl-8b=127.0.0.1:18190"
+```
+
+| Model id | Routes to |
+|---|---|
+| `qwen3-vl-8b` | the vision server on this host, one request at a time |
+
+It is served only at `/v1/chat/completions`, takes none of the cluster slots,
+and is never sent the cluster key. Requests for it queue here for up to
+`TELLICO_GATEWAY_VISION_QUEUE_TIMEOUT` seconds and then get a `429`. Measured
+2026-10-30 on a 1200x800 screenshot: 45 s for a one-sentence answer, 109 s for
+a full description, 3 s for a second question about the same image. Clients
+reach it with `bin/tellico-look`.
+
 ## Giving someone the full OpenCode setup
 
 A gateway key is enough to run `opencode-tellico` itself -- the dual-node lead
@@ -319,6 +341,10 @@ scripted caller does not.
 | `TELLICO_GATEWAY_MODEL` | `qwen3.8-27b-gsq-iq3s` | Base model id |
 | `TELLICO_GATEWAY_MODEL_ALIASES` | `qwen3.6-35b-a3b qwen3.8-27b` | Old ids that still route to it, space-separated |
 | `TELLICO_GATEWAY_CONTEXT` | from `opencode.json` | Context advertised on `/v1/models` |
+| `TELLICO_GATEWAY_VISION` | empty | `name=host:port` of a vision model on this host; empty for none |
+| `TELLICO_GATEWAY_VISION_CONTEXT` | `8192` | Its context, advertised on `/v1/models` |
+| `TELLICO_GATEWAY_VISION_PARALLEL` | `1` | Requests sent to it at once |
+| `TELLICO_GATEWAY_VISION_QUEUE_TIMEOUT` | `300` | Seconds a request waits for it before `429` |
 | `TELLICO_GATEWAY_PIN_FALLBACK` | `1` | Pinned requests use the other node while theirs is down or draining; `0` is strict |
 | `TELLICO_GATEWAY_OUTAGE_WAIT` | `90` | Seconds a request waits for any node to come back before `503` |
 | `TELLICO_GATEWAY_SLURM_SSH` | the tunnel's ssh host | Where to run `squeue` for draining; empty turns draining off |

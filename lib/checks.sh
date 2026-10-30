@@ -835,7 +835,8 @@ plugins/tui-v2/subagents/package.json'
 TELLICO_INSTALLED_COMMANDS='opencode-tellico
 pi-tellico
 crush-tellico
-tellico-qwen-tunnel'
+tellico-qwen-tunnel
+tellico-look'
 
 # Which installed copies no longer match this checkout. Editing the repository
 # changes nothing until install.sh copies the files across, and OpenCode then
@@ -1084,4 +1085,57 @@ tellico_check_gateway() {
   esac
   tellico_explain_gateway "$tellico_gateway_key_file"
   return 1
+}
+
+# t3code keeps its provider instances in $T3CODE_HOME/userdata/settings.json
+# and reloads the file when it changes. "add" writes a "tellico" OpenCode
+# instance whose binary is opencode-tellico ($3) with TELLICO_T3CODE=1, so a
+# t3code thread on it gets this setup's providers, plugins and build-tellico as
+# its build agent; t3code's own OpenCode instance is left as it was. A
+# displayName, accent colour, enabled state or extra variable the user gave
+# the instance is kept. "remove" deletes the instance only while it still runs
+# $3. Returns 2 without python3, 1 when the file is not a JSON object or holds
+# a "tellico" instance of another driver, 0 otherwise.
+tellico_t3code_instance() {
+  command -v python3 >/dev/null 2>&1 || return 2
+  python3 - "$1" "$2" "$3" <<'TELLICO_PY'
+import json, os, sys
+action, path, binary = sys.argv[1:4]
+try:
+    with open(path, encoding="utf-8") as handle:
+        settings = json.load(handle)
+except FileNotFoundError:
+    if action == "remove":
+        sys.exit(0)
+    settings = {}
+except ValueError:
+    sys.exit(1)
+if not isinstance(settings, dict) or not isinstance(settings.get("providerInstances", {}), dict):
+    sys.exit(1)
+instances = settings.setdefault("providerInstances", {})
+current = instances.get("tellico")
+if current is not None and (not isinstance(current, dict) or current.get("driver") != "opencode"):
+    sys.exit(1)
+if action == "remove":
+    if current is None or (current.get("config") or {}).get("binaryPath") != binary:
+        sys.exit(0)
+    del instances["tellico"]
+else:
+    instance = dict(current or {})
+    instance["driver"] = "opencode"
+    instance.setdefault("displayName", "Tellico")
+    instance.setdefault("enabled", True)
+    environment = [variable for variable in instance.get("environment", [])
+                   if isinstance(variable, dict) and variable.get("name") != "TELLICO_T3CODE"]
+    environment.append({"name": "TELLICO_T3CODE", "value": "1", "sensitive": False})
+    instance["environment"] = environment
+    instance["config"] = dict(instance.get("config") or {}, binaryPath=binary)
+    instances["tellico"] = instance
+os.makedirs(os.path.dirname(path), exist_ok=True)
+# Rewritten in place rather than renamed over, so t3code's watch on the path
+# keeps the same file.
+with open(path, "w", encoding="utf-8") as handle:
+    json.dump(settings, handle, indent=2)
+    handle.write("\n")
+TELLICO_PY
 }

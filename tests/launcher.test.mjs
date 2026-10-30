@@ -33,7 +33,7 @@ tellico_cli_plugin_overlay() { printf '%s\\n' '{"plugins":["kept-user-plugin"]}'
   const capture = join(dir, "capture.mjs");
   writeFileSync(capture, `process.stdout.write(JSON.stringify({
 args: process.argv.slice(2),
-config: JSON.parse(process.env.OPENCODE_CONFIG_CONTENT),
+config: process.env.OPENCODE_CONFIG_CONTENT ? JSON.parse(process.env.OPENCODE_CONFIG_CONTENT) : null,
 background: process.env.OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS,
 lead: process.env.TELLICO_LEAD_NODE,
 connection: process.env.TELLICO_CONNECTION,
@@ -470,4 +470,56 @@ test("TELLICO_RELAY_URL points remote control at another relay", t => {
 
 test("every install registers the remote-control plugin, which is inert until the launcher turns it on", () => {
   assert.ok(config.plugin.includes("__TELLICO_PLUGIN_DIR__/remote-control"));
+});
+
+// t3code switches every turn to the agent named "build" and has no agent
+// picker, so its server redefines build as build-tellico. These fields are
+// copied by hand in bin/opencode-tellico; this keeps the copy in step.
+test("TELLICO_T3CODE makes the built-in build agent build-tellico on the lead node", t => {
+  const f = fixture(t);
+  const { captured, status } = f.run(["serve", "--hostname=127.0.0.1", "--port=4123"], { TELLICO_T3CODE: "1" });
+  assert.equal(status, 0);
+  const build = captured.config.agent.build;
+  const tellico = config.agent["build-tellico-1"];
+  for (const field of ["model", "variant", "temperature", "top_p", "steps"]) {
+    assert.deepEqual(build[field], tellico[field], field);
+  }
+  assert.equal(tellico.prompt, "{file:./prompts/build.md}");
+  assert.equal(build.prompt, `{file:${join(f.installed, "prompts/build.md")}}`);
+  // Only the denies: an agent-level allow would override t3code's approval modes.
+  assert.deepEqual(build.permission, { task: tellico.permission.task, doom_loop: tellico.permission.doom_loop });
+  assert.equal(captured.config.agent["build-tellico-1"], undefined);
+  assert.deepEqual(captured.args, ["serve", "--hostname=127.0.0.1", "--port=4123"]);
+});
+
+test("the t3code build agent takes --think and --steps, and is absent without TELLICO_T3CODE", t => {
+  const f = fixture(t);
+  const build = f.run(["0", "--think", "low", "--steps", "50", "serve"], { TELLICO_T3CODE: "1" }).captured.config.agent.build;
+  assert.equal(build.model, "tellico-0/qwen3.8-27b-gsq-iq3s");
+  assert.equal(build.variant, "low");
+  assert.equal(build.steps, 50);
+  assert.equal(f.run(["serve"]).captured.config.agent.build, undefined);
+});
+
+test("--version answers without touching the tunnel", t => {
+  const f = fixture(t);
+  writeFileSync(join(f.dir, "bin/tellico-qwen-tunnel"), "#!/bin/sh\necho tunnel touched >&2\nexit 1\n", { mode: 0o755 });
+  const { status, captured, stderr } = f.run(["--version"]);
+  assert.equal(status, 0, stderr);
+  assert.deepEqual(captured.args, ["--version"]);
+  assert.equal(captured.config, null);
+});
+
+// The Tellico servers load no vision projector, so an image sent to one fails
+// the whole turn with a 500 ("image input is not supported"). An agent reads
+// its own screenshots with the read tool; declared text-only, OpenCode keeps
+// the image out of the request and tells the model it cannot see it instead.
+test("every Tellico model is declared text-only", () => {
+  const models = Object.entries(config.provider)
+    .filter(([name]) => name.startsWith("tellico"))
+    .flatMap(([, provider]) => Object.values(provider.models));
+  assert.equal(models.length, 8);
+  for (const model of models) {
+    assert.deepEqual(model.modalities, { input: ["text"], output: ["text"] });
+  }
 });

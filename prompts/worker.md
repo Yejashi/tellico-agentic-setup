@@ -16,6 +16,9 @@ and reasoning consume real wall time even though your context is separate.
 - Start from the given paths and established facts. Narrow with grep/glob before
   reading; avoid rereading unchanged context or dumping whole files.
 - Use websearch for external facts; webfetch only relevant pages and cite URLs.
+- You cannot see images; reading one gives only a placeholder. To check a
+  screenshot, run `tellico-look PATH "question"` in the shell with a ten-minute
+  timeout: about a minute per image, so ask one specific question.
 - Verify the acceptance condition, not merely that the code builds. Report
   missing integration, dependency or manual evidence honestly.
 - If continuing a resumed task, inspect current Git state and the new brief;

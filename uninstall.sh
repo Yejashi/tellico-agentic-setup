@@ -26,11 +26,24 @@ if [ -x "$bin_dir/tellico-qwen-tunnel" ]; then
   "$bin_dir/tellico-qwen-tunnel" stop >/dev/null 2>&1 || true
 fi
 
+# install.sh added a "tellico" OpenCode instance to t3code's settings. It goes
+# only while it still runs this setup's opencode-tellico; the rest of the file,
+# and an instance the user repointed, are theirs.
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+t3code_settings="${T3CODE_HOME:-"$HOME/.t3"}/userdata/settings.json"
+if [ -f "$t3code_settings" ] && [ -r "$script_dir/lib/checks.sh" ]; then
+  # shellcheck disable=SC1091
+  . "$script_dir/lib/checks.sh"
+  tellico_t3code_instance remove "$t3code_settings" "$bin_dir/opencode-tellico" ||
+    echo "Could not edit $t3code_settings; remove its \"tellico\" provider by hand." >&2
+fi
+
 rm -f \
   "$bin_dir/opencode-tellico" \
   "$bin_dir/pi-tellico" \
   "$bin_dir/crush-tellico" \
   "$bin_dir/tellico-qwen-tunnel" \
+  "$bin_dir/tellico-look" \
   "$systemd_dir/$unit_name" \
   "$config_dir/api-key" \
   "$config_dir/client.env" \
