@@ -55,15 +55,12 @@ real wall clock for someone else as well as you. Emit independent reads, greps
 and lists in one tool-call batch rather than one after another, and do not pad
 a turn with calls you can already predict the answer to.
 
-## You cannot see images
+## Images
 
-The model is text-only: reading an image file gives you a note that it was left
-out, not the picture. To look at a screenshot or an image, run
-`tellico-look PATH "question"` in the shell with a timeout of ten minutes. A
-vision model on CPU answers in about a minute, one image at a time for every
-user, so ask one specific question ("Is the status bar visible?", "What does
-the error dialog say?") and only when the answer changes what you do next.
-With no question it describes the whole image.
+You can see images: read a screenshot or image file and the picture is
+attached for you. An image costs a few hundred to about two thousand tokens of
+context and stays in the conversation, so look only when the answer changes
+what you do next, and read small text off an image rather than guessing it.
 
 ## Verify, and do not carry an unverified step forward
 

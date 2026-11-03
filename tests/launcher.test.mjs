@@ -510,16 +510,16 @@ test("--version answers without touching the tunnel", t => {
   assert.equal(captured.config, null);
 });
 
-// The Tellico servers load no vision projector, so an image sent to one fails
-// the whole turn with a 500 ("image input is not supported"). An agent reads
-// its own screenshots with the read tool; declared text-only, OpenCode keeps
-// the image out of the request and tells the model it cannot see it instead.
-test("every Tellico model is declared text-only", () => {
+// The Tellico servers load the Qwen3.8-27B vision projector (since
+// 2026-11-03), so an agent reads its own screenshots with the read tool and
+// OpenCode attaches the picture. Declared text-only, OpenCode would leave the
+// image out and tell the model it cannot see it.
+test("every Tellico model is declared to take images", () => {
   const models = Object.entries(config.provider)
     .filter(([name]) => name.startsWith("tellico"))
     .flatMap(([, provider]) => Object.values(provider.models));
   assert.equal(models.length, 8);
   for (const model of models) {
-    assert.deepEqual(model.modalities, { input: ["text"], output: ["text"] });
+    assert.deepEqual(model.modalities, { input: ["text", "image"], output: ["text"] });
   }
 });

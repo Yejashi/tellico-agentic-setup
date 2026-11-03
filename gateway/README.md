@@ -271,8 +271,9 @@ refused rather than quietly sent somewhere.
 
 ### Vision
 
-The cluster servers load no vision projector, so they reject an image with a
-500. `TELLICO_GATEWAY_VISION` adds one image model that runs on the gateway
+Since 2026-11-03 the cluster servers load the Qwen3.8-27B vision projector and
+take images themselves (a 1920x1080 screenshot answers in about 3 s through the
+gateway), so this is optional. `TELLICO_GATEWAY_VISION` adds one separate image model that runs on the gateway
 host itself, as `name=host:port`; on the Jetstream host that is Qwen3-VL-8B on
 CPU from `tellico-vision.service`:
 

@@ -12,7 +12,8 @@
           "name": "Qwen3.8 27B GSQ IQ3_S 128k - Tellico 0",
           "reasoning": true,
           "input": [
-            "text"
+            "text",
+            "image"
           ],
           "contextWindow": 131072,
           "maxTokens": 32768,
@@ -63,7 +64,8 @@
           "name": "Qwen3.8 27B GSQ IQ3_S 128k - Tellico 1",
           "reasoning": true,
           "input": [
-            "text"
+            "text",
+            "image"
           ],
           "contextWindow": 131072,
           "maxTokens": 32768,

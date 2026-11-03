@@ -106,8 +106,8 @@ STATE_PATH = os.path.join(RUNTIME_DIR, "state.json")
 CONTEXT = _env_int("TELLICO_GATEWAY_CONTEXT", 131072)
 
 # A vision model beside the cluster ones: "name=host:port", or empty for none.
-# The cluster servers load no vision projector, so an agent that needs to look
-# at an image asks this one instead (bin/tellico-look). It runs on this host
+# The cluster servers take images themselves since 2026-11-03 (vision
+# projector); this one is the older separate path (bin/tellico-look). It runs on this host
 # rather than on Tellico, so it is reached directly, takes none of the cluster
 # slots, and is never sent the cluster key. llama.cpp serves it one request at
 # a time, so requests for it queue here, behind VISION_QUEUE_TIMEOUT.

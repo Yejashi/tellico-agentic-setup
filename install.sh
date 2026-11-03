@@ -601,8 +601,8 @@ fi
 rm -f "$bin_dir/codex-tellico" \
   "${CODEX_HOME:-$HOME/.codex}/tellico.config.toml"
 install -m 755 "$script_dir/bin/tellico-qwen-tunnel" "$bin_dir/tellico-qwen-tunnel"
-# The agents' eyes: the Tellico models are text-only, and the prompts tell
-# them to ask the gateway's vision model through this instead.
+# A second pair of eyes: the Tellico models see images themselves since
+# 2026-11-03; this asks the gateway's separate CPU vision model.
 install -m 755 "$script_dir/bin/tellico-look" "$bin_dir/tellico-look"
 
 umask 077

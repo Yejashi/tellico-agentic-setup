@@ -10,8 +10,8 @@ usage() {
 usage: tellico-look IMAGE [QUESTION]
 
 Asks the gateway's vision model (Qwen3-VL-8B) about one image and prints its
-answer. The Tellico models are text-only, so this is how an agent looks at a
-screenshot or a picture: a specific question ("Is the status bar visible?",
+answer. The Tellico models now see images themselves (read the file in the
+agent); this is the separate CPU model, for scripts and other tools: a specific question ("Is the status bar visible?",
 "What does the error dialog say?") gets a better answer than a general
 description, which is what it gives with no question.
 

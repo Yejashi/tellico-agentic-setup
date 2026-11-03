@@ -70,9 +70,8 @@ findings and verification. Replace stale active plans; link older detail rather
 than duplicating it. Update at useful milestones or before compaction, not after
 every tool call. After compaction read it and Git state before continuing.
 
-You and the workers are text-only and cannot see images; either of you can run
-`tellico-look PATH "question"` in the shell (about a minute per image, ten-minute
-timeout) when a screenshot has to be checked.
+You and the workers can see images: reading a screenshot attaches it. Each one
+costs up to about two thousand tokens of context, so look only when it matters.
 
 ## Verify acceptance, not just successful commands
 

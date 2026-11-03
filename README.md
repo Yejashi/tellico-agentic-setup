@@ -829,22 +829,18 @@ t3code was opened gets it on the next `./install.sh --no-start`.
 
 ### Images
 
-The Tellico models are text-only: the servers load no vision projector and
-answer an image with a 500 that ends the turn. Every model in
-`config/opencode.json` is declared text-only, so when an agent reads a
-screenshot OpenCode leaves the picture out and tells it so, and the turn goes
-on. To actually look, the prompts tell the agents to run
+The Tellico models see images. Since 2026-11-03 both servers load the
+Qwen3.8-27B vision projector (`mmproj-Qwen3.8-27B-Q8_0.gguf`), and every model
+in `config/opencode.json` and `pi/models.json` takes `image` input, so when an
+agent reads a screenshot the picture goes into the request. A 1920x1080
+screenshot is about 2,000 tokens of context and answers in about 3 s through
+the gateway; speculative decoding keeps working. A conversation with an image
+in it takes no context checkpoint right after the image, so branching from it
+re-prefills a little more.
 
-```bash
-tellico-look shot.png "What does the error dialog say?"
-```
-
-which asks the gateway's vision model, Qwen3-VL-8B on CPU (see "Vision" in
-gateway/README.md), and prints its answer. Allow about 45 s for a short answer
-about a new image and up to two minutes for a full description, which is what
-it gives with no question; one image is processed at a time for every user. It
-uses the gateway in either install mode, so a tunnel install needs a gateway
-key in `api-key.gateway`.
+`tellico-look shot.png "question"` still asks the gateway's separate CPU
+model, Qwen3-VL-8B (see "Vision" in gateway/README.md), for scripts and tools
+that are not an agent.
 
 ### Phone
 
