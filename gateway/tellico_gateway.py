@@ -112,6 +112,11 @@ CONTEXT = _env_int("TELLICO_GATEWAY_CONTEXT", 131072)
 # slots, and is never sent the cluster key. llama.cpp serves it one request at
 # a time, so requests for it queue here, behind VISION_QUEUE_TIMEOUT.
 VISION = _env("TELLICO_GATEWAY_VISION", "")
+# Whether the cluster models take images. They do since 2026-11-03 (both
+# servers load the Qwen3.8-27B vision projector); /v1/models says so the way
+# llama.cpp does, with "multimodal" in capabilities, which some clients check
+# before they will attach an image. Set to 0 if the servers drop the projector.
+MULTIMODAL = _env("TELLICO_GATEWAY_MULTIMODAL", "1") == "1"
 VISION_CONTEXT = _env_int("TELLICO_GATEWAY_VISION_CONTEXT", 8192)
 VISION_PARALLEL = _env_int("TELLICO_GATEWAY_VISION_PARALLEL", 1)
 VISION_QUEUE_TIMEOUT = _env_int("TELLICO_GATEWAY_VISION_QUEUE_TIMEOUT", 300)
@@ -864,6 +869,7 @@ class Handler(BaseHTTPRequestHandler):
                     "owned_by": "tellico",
                     "context_length": CONTEXT,
                     "status": "up" if up else "down",
+                    "capabilities": ["completion", "multimodal"] if MULTIMODAL else ["completion"],
                 }
             )
         if VISION_ROUTE is not None:
@@ -874,6 +880,7 @@ class Handler(BaseHTTPRequestHandler):
                     "owned_by": "tellico",
                     "context_length": VISION_CONTEXT,
                     "status": "up" if vision_up() else "down",
+                    "capabilities": ["completion", "multimodal"],
                 }
             )
         data.sort(key=lambda entry: entry["id"])
@@ -890,7 +897,7 @@ class Handler(BaseHTTPRequestHandler):
                 "type": "model",
                 "description": "",
                 "tags": [],
-                "capabilities": ["completion"],
+                "capabilities": entry["capabilities"],
             }
             for entry in data
         ]

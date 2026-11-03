@@ -85,6 +85,14 @@ still work and reach this model.
   short, mechanical requests, since thinking costs tokens and time.
 - **Suggested sampling**: `temperature` 0.6, `top_p` 0.95.
 - **Tool calling** works, including parallel tool calls.
+- **Images** work: put them in a message's `content` the OpenAI way, as
+  `{"type": "image_url", "image_url": {"url": "data:image/png;base64,..."}}`
+  next to a `{"type": "text", ...}` part. PNG, JPEG, WebP, GIF and BMP are
+  accepted. Send the image itself as a base64 data URL; the servers do not
+  fetch `https://` image links. A 1920x1080 screenshot costs about 2,000
+  tokens of context and answers in a few seconds. Requests are capped at
+  32 MB, so scale very large images down first. `/v1/models` lists the model
+  with `"multimodal"` among its `capabilities`.
 
 ## Capacity, and what errors mean
 
