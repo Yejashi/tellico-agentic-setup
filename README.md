@@ -282,6 +282,9 @@ to the mode already recorded on the device.
 --no-start               Install the files only, skipping every connectivity
                          check. Use this to set a device up before it has been
                          authorized on Tellico.
+--no-t3code, --t3code    Leave t3code alone (and take out the Tellico provider
+                         an earlier install added), or put it back. On by
+                         default; a rerun keeps the last choice. See t3code.
 ```
 
 ## Platform notes
@@ -978,6 +981,45 @@ Each connection keeps its own key: the one you installed with stays in
 connection fetches its key over SSH as usual. pi and Crush use only the
 installed connection.
 
+### t3code
+
+[t3code](https://t3.codes) drives OpenCode too, and `install.sh` sets it up
+whenever t3code has been opened on the device (it has a `~/.t3/userdata`
+directory, or `$T3CODE_HOME/userdata`). It adds a **Tellico** provider
+instance to t3code's `settings.json`, beside its own OpenCode one, which
+starts `opencode-tellico serve` with `TELLICO_T3CODE=1`. Pick a `tellico-0`
+or `tellico-1` model under it. t3code reloads the file itself, so a running
+t3code shows the provider without a restart.
+
+t3code has no agent picker for OpenCode 2: every turn it switches the session
+to the agent named `build`, or `plan` in its plan mode, and ignores
+`default_agent`. So `TELLICO_T3CODE=1` redefines OpenCode's own `build` as
+`build-tellico` on the lead node -- the same prompt, model, sampling and step
+limit, with no delegation. Its explicit `allow` permissions are left out so
+that t3code's approval modes still apply. Plan mode is OpenCode's stock
+`plan` on the same model, and orchestration is not reachable from t3code.
+
+Settings given to the instance in t3code -- a name, colour, extra environment
+variables such as `TELLICO_THINK=low`, or turning it off -- survive a rerun.
+`./install.sh --no-t3code` takes the instance out, and `uninstall.sh` does too
+while it still points at this setup's launcher. A device installed before
+t3code was opened gets it on the next `./install.sh --no-start`.
+
+### Images
+
+The Tellico models see images. Since 2026-11-03 both servers load the
+Qwen3.8-27B vision projector (`mmproj-Qwen3.8-27B-Q8_0.gguf`), and every model
+in `config/opencode.json` and `pi/models.json` takes `image` input, so when an
+agent reads a screenshot the picture goes into the request. A 1920x1080
+screenshot is about 2,000 tokens of context and answers in about 3 s through
+the gateway; speculative decoding keeps working. A conversation with an image
+in it takes no context checkpoint right after the image, so branching from it
+re-prefills a little more.
+
+`tellico-look shot.png "question"` still asks the gateway's separate CPU
+model, Qwen3-VL-8B (see "Vision" in gateway/README.md), for scripts and tools
+that are not an agent.
+
 ### Phone
 
 Sign in at `https://<gateway host>/tellico/` with your API key to see every
@@ -1049,6 +1091,7 @@ Client side, on each user's own device:
 ~/.local/bin/crush-tellico
 ~/.local/bin/hermes-tellico
 ~/.local/bin/tellico-qwen-tunnel
+~/.local/bin/tellico-look
 ```
 
 Plus one marked line in `~/.config/crush/crushrc` and a symlink at

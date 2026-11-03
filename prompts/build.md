@@ -55,6 +55,13 @@ real wall clock for someone else as well as you. Emit independent reads, greps
 and lists in one tool-call batch rather than one after another, and do not pad
 a turn with calls you can already predict the answer to.
 
+## Images
+
+You can see images: read a screenshot or image file and the picture is
+attached for you. An image costs a few hundred to about two thousand tokens of
+context and stays in the conversation, so look only when the answer changes
+what you do next, and read small text off an image rather than guessing it.
+
 ## Verify, and do not carry an unverified step forward
 
 Use focused checks during development. Run the repository's required checks

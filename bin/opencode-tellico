@@ -147,6 +147,9 @@ environment:
                    Optional absolute JSONL path for tool/dispatch timing.
                    Logs metadata only, never commands, prompts or outputs.
                    Background timings measure dispatch return, not completion.
+  TELLICO_T3CODE   Set to 1 to make OpenCode's built-in build agent act as
+                   build-tellico, for t3code, which always picks "build".
+                   install.sh sets it on the Tellico instance it adds to t3code.
 EOF
 }
 
@@ -158,6 +161,12 @@ case ${1:-} in
   -h|--help)
     usage
     exit 0
+    ;;
+  # Answered before the tunnel is touched: t3code probes "<binary> --version"
+  # with a ten-second timeout before it will start a server, and bringing the
+  # tunnel up, or probing the gateway, can take longer than that.
+  -v|--version)
+    exec opencode --version
     ;;
 esac
 
@@ -603,7 +612,24 @@ if [ -n "$connection" ] || [ -n "$think_kwargs" ]; then
   provider_config=",\"provider\":{${provider_config%,}}"
 fi
 
-runtime_config="{\"model\":\"${model}\",\"small_model\":\"${quiet_model}\",\"default_agent\":\"${lead_agent}\",\"agent\":{\"compaction\":{\"model\":\"${quiet_model}\"},\"summary\":{\"model\":\"${quiet_model}\"},\"title\":{\"model\":\"${quiet_model}\"}${think_overrides}}${websearch_config}${magic_context_config_json}${provider_config}}"
+# t3code has no agent picker for OpenCode 2: every turn it switches the
+# session to the agent named "build", or "plan" in its plan mode, whatever
+# default_agent says. So for a server t3code starts (install.sh sets
+# TELLICO_T3CODE=1 on its Tellico instance) the built-in build agent is
+# redefined as build-tellico on the lead node. OpenCode merges these fields
+# over its own build agent. Of build-tellico's permissions only the two
+# denies are copied: t3code writes its own session rules for its approval
+# modes, and an agent-level "allow" for bash or edit would override them.
+# Keep the rest in step with build-tellico in config/opencode.json; a test
+# compares the two.
+t3code_build=
+case ${TELLICO_T3CODE:-0} in
+  1|true|yes|on)
+    t3code_build=",\"build\":{\"description\":\"build-tellico on node ${node}, as t3code's build agent.\",\"model\":\"${model}\",\"variant\":\"${think:-medium}\",\"temperature\":0.5,\"top_p\":0.95,\"prompt\":\"{file:${config_dir}/prompts/build.md}\",\"steps\":${steps:-200},\"permission\":{\"task\":\"deny\",\"doom_loop\":\"deny\"}}"
+    ;;
+esac
+
+runtime_config="{\"model\":\"${model}\",\"small_model\":\"${quiet_model}\",\"default_agent\":\"${lead_agent}\",\"agent\":{\"compaction\":{\"model\":\"${quiet_model}\"},\"summary\":{\"model\":\"${quiet_model}\"},\"title\":{\"model\":\"${quiet_model}\"}${think_overrides}${t3code_build}}${websearch_config}${magic_context_config_json}${provider_config}}"
 
 # OpenCode's interactive command takes no --model (v2.0.24 rejects the flag
 # outright), so the lead model and agent reach the session through

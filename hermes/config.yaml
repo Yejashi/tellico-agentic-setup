@@ -48,7 +48,7 @@ providers:
       qwen3.8-27b-gsq-iq3s:
         context_length: 131072
         reasoning: true
-        vision: false
+        vision: true
   tellico-1:
     name: tellico-1
     api: __TELLICO_BASE_URL_1__
@@ -61,7 +61,7 @@ providers:
       qwen3.8-27b-gsq-iq3s:
         context_length: 131072
         reasoning: true
-        vision: false
+        vision: true
   tellico-0-worker:
     name: tellico-0-worker
     api: __TELLICO_BASE_URL_0__
@@ -76,7 +76,7 @@ providers:
       qwen3.8-27b-gsq-iq3s:
         context_length: 131072
         reasoning: true
-        vision: false
+        vision: true
   tellico-1-worker:
     name: tellico-1-worker
     api: __TELLICO_BASE_URL_1__
@@ -91,7 +91,7 @@ providers:
       qwen3.8-27b-gsq-iq3s:
         context_length: 131072
         reasoning: true
-        vision: false
+        vision: true
 
 model:
   # Pinned rather than left to the user's own model setting, which is what a
@@ -141,6 +141,13 @@ auxiliary:
   # asked (measured: 254 prompt and 8 output tokens, unchanged by setting it),
   # so it is left alone.
   session_search:
+    provider: tellico-__TELLICO_LEAD__
+    model: qwen3.8-27b-gsq-iq3s
+    reasoning_effort: none
+  # The cluster servers load the Qwen3.8-27B vision projector since 2026-11-03
+  # (hence vision: true above), so the image tool asks them too: about 3 s for
+  # a 1920x1080 screenshot, against ~50 s on the gateway host's CPU model.
+  vision:
     provider: tellico-__TELLICO_LEAD__
     model: qwen3.8-27b-gsq-iq3s
     reasoning_effort: none

@@ -165,6 +165,11 @@ TELLICO_GATEWAY_MODEL="$model"
 # before a model swap keep working.
 TELLICO_GATEWAY_MODEL_ALIASES="$model_aliases"
 TELLICO_GATEWAY_CONTEXT="$context"
+
+# A vision model on this host, as name=host:port, for bin/tellico-look; empty
+# for none. It takes no cluster slot and is sent no cluster key.
+TELLICO_GATEWAY_VISION="${TELLICO_GATEWAY_VISION:-}"
+TELLICO_GATEWAY_VISION_CONTEXT="${TELLICO_GATEWAY_VISION_CONTEXT:-8192}"
 EOF
 chmod 600 "$env_file"
 echo "Installed $lib_dir/tellico_gateway.py"
