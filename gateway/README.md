@@ -342,6 +342,7 @@ scripted caller does not.
 | `TELLICO_GATEWAY_MODEL` | `qwen3.8-27b-gsq-iq3s` | Base model id |
 | `TELLICO_GATEWAY_MODEL_ALIASES` | `qwen3.6-35b-a3b qwen3.8-27b` | Old ids that still route to it, space-separated |
 | `TELLICO_GATEWAY_CONTEXT` | from `opencode.json` | Context advertised on `/v1/models` |
+| `TELLICO_GATEWAY_MULTIMODAL` | `1` | `1` lists the cluster models with `"multimodal"` capability on `/v1/models`; `0` once the servers stop loading a vision projector |
 | `TELLICO_GATEWAY_VISION` | empty | `name=host:port` of a vision model on this host; empty for none |
 | `TELLICO_GATEWAY_VISION_CONTEXT` | `8192` | Its context, advertised on `/v1/models` |
 | `TELLICO_GATEWAY_VISION_PARALLEL` | `1` | Requests sent to it at once |
