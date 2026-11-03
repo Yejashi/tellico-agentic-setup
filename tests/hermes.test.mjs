@@ -231,12 +231,13 @@ test("summaries are pinned non-reasoning on the session's own node", (t) => {
   for (const node of [0, 1]) {
     const out = render(node);
     const aux = out.slice(out.indexOf("\nauxiliary:"), out.indexOf("\ndelegation:"));
-    for (const task of ["compression", "session_search"]) {
+    // vision joined them on 2026-11-03, when the servers gained a projector.
+    for (const task of ["compression", "session_search", "vision"]) {
       assert.match(aux, new RegExp(`^  ${task}:$`, "m"), `${task} missing from node ${node}`);
     }
-    assert.equal(aux.split("reasoning_effort: none").length - 1, 2);
-    assert.equal(aux.split(`provider: tellico-${node}\n`).length - 1, 2,
-      `node ${node} should summarise on its own node`);
+    assert.equal(aux.split("reasoning_effort: none").length - 1, 3);
+    assert.equal(aux.split(`provider: tellico-${node}\n`).length - 1, 3,
+      `node ${node} should summarise and look on its own node`);
     // Not the peer, which is where the subagents go.
     assert.doesNotMatch(aux, new RegExp(`provider: tellico-${node === 0 ? 1 : 0}`));
   }
